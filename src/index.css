@@ -1,0 +1,112 @@
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=Amiri:wght@400;700&family=Cairo:wght@300;400;600;700;800;900&family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Al-Foras Luxury Theme — Permanent Dark (OLED Black & Matte Gold) */
+    --background: 0 0% 0%;            /* OLED Black #000000 */
+    --foreground: 0 0% 100%;          /* Pure White #FFFFFF */
+
+    --card: 0 0% 7%;                  /* #121212 */
+    --card-foreground: 0 0% 100%;
+
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 100%;
+
+    --primary: 43 74% 38%;          /* Matte Gold #B8860B */
+    --primary-foreground: 0 0% 6%;
+    --primary-glow: 43 80% 55%;
+    --primary-deep: 38 65% 28%;
+
+    --secondary: 0 0% 7%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 0 0% 7%;
+    --muted-foreground: 220 15% 90%;  /* High-contrast, sharp legible text #E2E8F0 */
+
+    --accent: 43 74% 38%;
+    --accent-foreground: 0 0% 6%;
+
+    --destructive: 0 75% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 145 60% 40%;
+    --verified: 210 90% 55%;        /* Verified blue badge */
+    --review: 35 85% 55%;           /* Manual review badge */
+
+    --border: 43 30% 20%;
+    --input: 0 0% 12%;
+    --ring: 43 74% 45%;
+
+    --radius: 1rem;
+
+    --gradient-gold: linear-gradient(135deg, hsl(43 74% 38%), hsl(43 80% 55%) 50%, hsl(43 74% 38%));
+    --gradient-dark: linear-gradient(180deg, hsl(0 0% 6%) 0%, hsl(0 0% 3%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 9%) 0%, hsl(0 0% 5%) 100%);
+    --gradient-radial-gold: radial-gradient(circle at 30% 0%, hsl(43 74% 38% / 0.25), transparent 60%);
+
+    --shadow-gold: 0 10px 40px -10px hsl(43 74% 38% / 0.45);
+    --shadow-luxe: 0 25px 60px -20px hsl(0 0% 0% / 0.8);
+    --shadow-inner-gold: inset 0 1px 0 0 hsl(43 80% 55% / 0.3);
+
+    --transition-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* Light mode disabled — app is permanently dark. */
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  /* Direction is controlled dynamically by LanguageContext via <html dir="..."> */
+
+  body {
+    @apply bg-background text-foreground font-arabic antialiased;
+    font-feature-settings: "kern", "liga", "calt";
+    background-image: var(--gradient-radial-gold);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: hsl(var(--background)); }
+  ::-webkit-scrollbar-thumb { background: hsl(var(--primary) / 0.4); border-radius: 4px; }
+}
+
+@layer utilities {
+  .text-gold-gradient {
+    background: var(--gradient-gold);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .bg-gold-gradient { background: var(--gradient-gold); }
+  .bg-card-gradient { background: var(--gradient-card); }
+  .shadow-gold { box-shadow: var(--shadow-gold); }
+  .shadow-luxe { box-shadow: var(--shadow-luxe); }
+  .border-gold { border-color: hsl(var(--primary) / 0.4); }
+  .glow-gold { box-shadow: 0 0 30px hsl(var(--primary) / 0.3); }
+  .font-display { font-family: 'Amiri', 'Tajawal', serif; }
+  .glass {
+    background: hsl(0 0% 8% / 0.6);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid hsl(var(--primary) / 0.15);
+  }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.2), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 3s infinite;
+}

@@ -1,0 +1,132 @@
+import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Award, Newspaper, Bookmark, User, Settings as SettingsIcon, Bell, Languages, Briefcase, GraduationCap } from "lucide-react";
+import { BrandMark } from "@/components/foras/Logo";
+import { SettingsSheet } from "@/components/foras/SettingsSheet";
+import { NotificationsSheet } from "@/components/foras/NotificationsSheet";
+import { AIAdvisor } from "@/components/foras/AIAdvisor";
+import { ScholarshipsTab } from "./ScholarshipsTab";
+import { EconomyNewsTab } from "./EconomyNewsTab";
+import { ApplicationsTab } from "./ApplicationsTab";
+import { ProfileTab } from "./ProfileTab";
+import { JobsTab } from "./JobsTab";
+import { ArabUniversitiesTab } from "./ArabUniversitiesTab";
+import { useLiveNotifications } from "@/hooks/useLiveNotifications";
+import { useGeoSync } from "@/hooks/useGeoSync";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { notificationsStore } from "@/lib/notificationsStorage";
+
+const tabs = [
+  { id: "scholarships" as const, key: "tabScholarships", icon: Award, comp: ScholarshipsTab },
+  { id: "jobs" as const, key: "tabJobs", icon: Briefcase, comp: JobsTab },
+  { id: "news" as const, key: "tabNews", icon: Newspaper, comp: EconomyNewsTab },
+  { id: "arabUnis" as const, key: "tabArabUnis", icon: GraduationCap, comp: ArabUniversitiesTab },
+  { id: "applications" as const, key: "tabApplications", icon: Bookmark, comp: ApplicationsTab },
+  { id: "profile" as const, key: "tabProfile", icon: User, comp: ProfileTab },
+];
+
+export const AppShell = () => {
+  const [tab, setTab] = useState<typeof tabs[number]["id"]>("scholarships");
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [unread, setUnread] = useState(0);
+  const Active = tabs.find(t => t.id === tab)!.comp;
+  useLiveNotifications();
+  useGeoSync();
+  const { lang, toggleLang, t: tr } = useLanguage();
+
+  useEffect(() => {
+    const onNav = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { tab?: typeof tabs[number]["id"] };
+      if (detail?.tab) setTab(detail.tab);
+    };
+    window.addEventListener("foras:navigate", onNav as EventListener);
+    return () => window.removeEventListener("foras:navigate", onNav as EventListener);
+  }, []);
+
+  useEffect(() => {
+    const refresh = () => setUnread(notificationsStore.unreadCount());
+    refresh();
+    const id = window.setInterval(refresh, 30_000);
+    return () => window.clearInterval(id);
+  }, [notifOpen, tab]);
+
+  return (
+    <div className="min-h-screen bg-background relative">
+      {/* Top bar */}
+      <header className="sticky top-0 z-30 glass border-b border-primary/10">
+        <div className="max-w-2xl mx-auto flex justify-between items-center px-4 sm:px-5 py-2.5">
+          <BrandMark size={90} />
+          <div className="flex items-center gap-2">
+            <button onClick={toggleLang}
+              className="h-11 px-3 rounded-xl bg-card border border-primary/20 hover:border-primary hover:bg-primary/10 transition-all flex items-center gap-1.5"
+              aria-label="Toggle language">
+              <Languages className="w-4 h-4 text-primary" />
+              <span className="text-xs font-bold text-primary">
+                {lang === "ar" ? "EN" : "ع"}
+              </span>
+            </button>
+            <button onClick={() => setNotifOpen(true)}
+              className="relative w-11 h-11 rounded-xl bg-card border border-primary/20 hover:border-primary hover:bg-primary/10 transition-all flex items-center justify-center"
+              aria-label="الإشعارات">
+              <Bell className="w-5 h-5 text-primary" />
+              {unread > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive ring-2 ring-card text-[10px] font-bold text-white flex items-center justify-center">
+                  {unread > 9 ? "9+" : unread}
+                </span>
+              )}
+            </button>
+            <button onClick={() => setSettingsOpen(true)}
+              className="w-11 h-11 rounded-xl bg-card border border-primary/20 hover:border-primary hover:bg-primary/10 transition-all flex items-center justify-center"
+              aria-label="الإعدادات">
+              <SettingsIcon className="w-5 h-5 text-primary" />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-2xl mx-auto px-4 sm:px-5 pt-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))]">
+        <AnimatePresence mode="wait">
+          <motion.div key={tab}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+            className="w-full">
+            <Active />
+          </motion.div>
+        </AnimatePresence>
+      </main>
+
+      {/* Bottom navigation */}
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-30 backdrop-blur-md border-t border-primary/30"
+        style={{ backgroundColor: "rgba(0,0,0,0.85)" }}
+      >
+        <div className="max-w-2xl mx-auto grid grid-cols-6">
+          {tabs.map(tabItem => {
+            const Icon = tabItem.icon;
+            const active = tab === tabItem.id;
+            return (
+              <button key={tabItem.id} onClick={() => setTab(tabItem.id)}
+                className="relative flex flex-col items-center gap-1 py-3 transition-colors">
+                {active && (
+                  <motion.div layoutId="activeTab"
+                    className="absolute top-0 inset-x-4 h-0.5 bg-gold-gradient rounded-full" />
+                )}
+                <Icon className={`w-5 h-5 transition-colors ${active ? "text-primary" : "text-muted-foreground"}`} />
+                <span className={`text-[10px] font-medium ${active ? "text-primary" : "text-muted-foreground"}`}>
+                  {tr(tabItem.key)}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+
+      <SettingsSheet open={settingsOpen} onOpenChange={setSettingsOpen} />
+      <NotificationsSheet open={notifOpen} onOpenChange={setNotifOpen} />
+      <AIAdvisor />
+    </div>
+  );
+};
