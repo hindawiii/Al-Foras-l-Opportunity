@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, Briefcase, Globe, ExternalLink, Sparkles, Filter, Clock,
@@ -7,10 +7,12 @@ import {
   TrendingUp, Wallet, Check, AlertCircle, Share2, Layers, RefreshCw
 } from "lucide-react";
 import { JOBS, JOB_CATEGORIES, REGIONS_LIST, Job, JobCategory, JobRegion } from "@/lib/jobsData";
+import { dynamicStore } from "@/lib/dynamicStore";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { nativeShare } from "@/lib/share";
+import { OpportunityAICopilot } from "@/components/foras/OpportunityAICopilot";
 
 export const JobsTab = () => {
   const { t, lang, dir } = useLanguage();
@@ -24,9 +26,105 @@ export const JobsTab = () => {
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [activeTab, setActiveTab] = useState<"overview" | "guide" | "stories" | "payment">("overview");
 
+  const convertCustomJobs = (custom: any[]): Job[] => {
+    return custom.map(c => ({
+      id: c.id,
+      title: c.title_ar || "فرصة عمل عن بعد",
+      titleEn: c.title_en || c.title_ar,
+      company: c.company || "شركة عالمية",
+      emoji: "💼",
+      type: "عن بعد",
+      typeEn: "Remote",
+      region: "arab" as any,
+      category: (c.category as any) || "programming",
+      availability: {
+        global: true,
+        countries: ["كل الدول العربية", "عالمي"],
+        restrictedCountries: [],
+      },
+      salary: {
+        min: 500,
+        max: 3500,
+        currency: "$",
+        period: "month",
+        average: c.salary || "$1,500/month",
+      },
+      withdrawal: {
+        minAmount: 50,
+        currency: "$",
+        methods: [
+          {
+            name: (c as any).payout_method || "تحويل بنكي / بايبال / بايونير",
+            nameEn: (c as any).payout_method || "Bank Wire / PayPal / Payoneer",
+            availableInSudan: true,
+          }
+        ],
+        processingTime: "خلال 24 - 48 ساعة",
+        processingTimeEn: "24 - 48 hours",
+      },
+      rating: {
+        score: 4.8,
+        totalReviews: 120,
+        trustLevel: "موثوقة ومحققة",
+        trustLevelEn: "Verified Platform",
+      },
+      skills: (c.skills && c.skills.length > 0) ? c.skills : ["مهارات تقنية", "التزام بالعمل"],
+      skillsEn: (c.skills && c.skills.length > 0) ? c.skills : ["Technical Skills", "Work Commitment"],
+      description: c.description_ar || "تفاصيل فرصة العمل والمهام المطلوبة من المتقدم.",
+      descriptionEn: c.description_en || c.description_ar,
+      requirements: (c as any).requirements_ar || ["مهارات مهنية مناسبة", "الالتزام بالمواعيد والجودة"],
+      requirementsEn: (c as any).requirements_en || ["Relevant skills", "Dedication & Quality"],
+      registrationGuide: {
+        steps: [
+          {
+            step: 1,
+            title: "الانتقال لرابط التقديم الرسمي",
+            titleEn: "Visit Official Application Portal",
+            description: "ادخل إلى الرابط الرسمي للوظيفة وتأكد من قراءة الشروط.",
+          },
+          {
+            step: 2,
+            title: "إرسال السيرة الذاتية ونماذج العمل",
+            titleEn: "Submit Resume & Portfolio",
+            description: "ارفق سيرتك الذاتية المحدثة ورابط حسابك المهني.",
+          },
+        ],
+        estimatedTime: "5 - 10 دقائق",
+        estimatedTimeEn: "5 - 10 mins",
+      },
+      pros: (c.benefits_ar && c.benefits_ar.length > 0) ? c.benefits_ar : ["مرونة العمل من أي مكان", "دخل بالدولار الأمريكي"],
+      prosEn: ["100% Remote flexibility", "USD compensation"],
+      cons: ["تتطلب إدارة ذاتية للوقت والمهام"],
+      consEn: ["Requires self time management"],
+      successStories: [],
+      isVerified: true,
+      dateAdded: (c as any).posted_date || new Date().toISOString().split("T")[0],
+      contact: { website: c.apply_url || "https://example.com" },
+      ...((c as any).custom_fields ? { custom_fields: (c as any).custom_fields } : {}),
+    } as any));
+  };
+
+  const [liveJobs, setLiveJobs] = useState<Job[]>(() => {
+    const custom = dynamicStore.getJobs();
+    const converted = convertCustomJobs(custom);
+    const customIds = new Set(converted.map(j => j.id));
+    return [...converted, ...JOBS.filter(j => !customIds.has(j.id))];
+  });
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      const custom = dynamicStore.getJobs();
+      const converted = convertCustomJobs(custom);
+      const customIds = new Set(converted.map(j => j.id));
+      setLiveJobs([...converted, ...JOBS.filter(j => !customIds.has(j.id))]);
+    };
+    window.addEventListener("foras:data-updated", handleUpdate);
+    return () => window.removeEventListener("foras:data-updated", handleUpdate);
+  }, []);
+
   // Filtering based on category, region, and search query
   const filteredJobs = useMemo(() => {
-    return JOBS.filter((job) => {
+    return liveJobs.filter((job) => {
       // Category filter
       if (selectedCategory !== "all" && job.category !== selectedCategory) {
         return false;
@@ -49,7 +147,7 @@ export const JobsTab = () => {
       }
       return true;
     });
-  }, [selectedCategory, selectedRegion, searchQuery]);
+  }, [selectedCategory, selectedRegion, searchQuery, liveJobs]);
 
   const shareJob = async (job: Job) => {
     const title = ar ? job.title : (job.titleEn || job.title);
@@ -341,6 +439,24 @@ export const JobsTab = () => {
                     </ul>
                   </div>
 
+                  {/* Dynamic Custom Fields if present */}
+                  {((selectedJob as any).custom_fields || []).filter((f: any) => f && f.label && f.value && f.label.trim() && f.value.trim()).length > 0 && (
+                    <div className="bg-primary/5 border border-primary/30 rounded-2xl p-4 space-y-2">
+                      <h4 className="text-xs font-bold text-primary flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5" />
+                        {ar ? "شروط وملاحظات مخصصة إضافية" : "Additional Custom Criteria"}
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {((selectedJob as any).custom_fields || []).filter((f: any) => f && f.label && f.value && f.label.trim() && f.value.trim()).map((f: any, idx: number) => (
+                          <div key={idx} className="bg-background/60 border border-primary/20 rounded-xl p-2.5">
+                            <span className="block text-[11px] text-primary font-bold">{f.label}</span>
+                            <span className="text-xs text-foreground font-medium">{f.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Pros & Cons */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-3 space-y-1.5">
@@ -464,8 +580,15 @@ export const JobsTab = () => {
                 </div>
               )}
 
+              {/* Dedicated Opportunity AI Copilot */}
+              <OpportunityAICopilot
+                type="job"
+                item={selectedJob}
+                onOpenAdvisor={() => setSelectedJob(null)}
+              />
+
               {/* Direct Link Button */}
-              <div className="pt-4 mt-2">
+              <div className="pt-2 mt-1">
                 <Button asChild variant="luxe" size="lg" className="w-full">
                   <a
                     href={selectedJob.contact.website}

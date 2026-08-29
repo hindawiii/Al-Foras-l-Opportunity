@@ -24,8 +24,8 @@
     --secondary: 0 0% 7%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 0 0% 7%;
-    --muted-foreground: 220 15% 90%;  /* High-contrast, sharp legible text #E2E8F0 */
+    --muted: 0 0% 10%;
+    --muted-foreground: 220 20% 95%;  /* Ultra-sharp legible text #F1F5F9 */
 
     --accent: 43 74% 38%;
     --accent-foreground: 0 0% 6%;

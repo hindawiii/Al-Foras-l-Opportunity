@@ -7,8 +7,8 @@ import {
   Layers, List, Heart, X, Mic, FileText, Bot
 } from "lucide-react";
 import { ScholarshipCard } from "@/components/foras/ScholarshipCard";
-import { UniversitiesGuide } from "@/components/foras/UniversitiesGuide";
 import { SCHOLARSHIPS, Scholarship, computeMatchScore } from "@/lib/mockData";
+import { dynamicStore } from "@/lib/dynamicStore";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,6 +17,7 @@ import { nativeShare } from "@/lib/share";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { applicationsStore } from "@/lib/applicationsStorage";
+import { OpportunityAICopilot } from "@/components/foras/OpportunityAICopilot";
 
 export const ScholarshipsTab = () => {
   const { info: geo } = useGeolocation(true);
@@ -30,24 +31,33 @@ export const ScholarshipsTab = () => {
   const [viewMode, setViewMode] = useState<"deck" | "list">("deck");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
+  const [liveScholarships, setLiveScholarships] = useState<Scholarship[]>(() => dynamicStore.getScholarships());
+
+  useEffect(() => {
+    const handleUpdate = () => setLiveScholarships(dynamicStore.getScholarships());
+    window.addEventListener("foras:data-updated", handleUpdate);
+    return () => window.removeEventListener("foras:data-updated", handleUpdate);
+  }, []);
+
   // Filter by category, search query, selected tag, then prioritise scholarships in user's country
   const orderedDeck = useMemo(() => {
-    let filtered = SCHOLARSHIPS.filter(s => s.category === filter);
+    let filtered = liveScholarships.filter(s => s.category === filter || (filter === "global" && !s.category) || (!s.category && filter === "arab"));
 
     if (selectedTag) {
-      filtered = filtered.filter(s => s.tags.includes(selectedTag));
+      filtered = filtered.filter(s => (s.tags || []).includes(selectedTag));
     }
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       filtered = filtered.filter(s =>
-        s.title.toLowerCase().includes(q) ||
+        (s.title || "").toLowerCase().includes(q) ||
+        ((s as any).title_ar || "").toLowerCase().includes(q) ||
         (s.titleEn && s.titleEn.toLowerCase().includes(q)) ||
-        s.org.toLowerCase().includes(q) ||
-        (s.orgEn && s.orgEn.toLowerCase().includes(q)) ||
-        s.country.toLowerCase().includes(q) ||
-        (s.countryEn && s.countryEn.toLowerCase().includes(q)) ||
-        s.tags.some(tag => tag.toLowerCase().includes(q))
+        ((s as any).title_en && (s as any).title_en.toLowerCase().includes(q)) ||
+        (s.org || "").toLowerCase().includes(q) ||
+        ((s as any).university || "").toLowerCase().includes(q) ||
+        (s.country || "").toLowerCase().includes(q) ||
+        (s.tags || []).some(tag => tag.toLowerCase().includes(q))
       );
     }
 
@@ -60,12 +70,11 @@ export const ScholarshipsTab = () => {
     );
     const rest = filtered.filter(s => !matches.includes(s));
     return [...matches, ...rest];
-  }, [geo?.country, filter, searchQuery, selectedTag]);
+  }, [geo?.country, filter, searchQuery, selectedTag, liveScholarships]);
 
   const [deck, setDeck] = useState<Scholarship[]>(orderedDeck);
   const [detail, setDetail] = useState<Scholarship | null>(null);
   const [aiNotice, setAiNotice] = useState(false);
-  const [uniOpen, setUniOpen] = useState(false);
   const [profile, setProfile] = useState<{ location?: string; skills?: string[]; interests?: string[] }>({});
   const { user } = useAuth();
 
@@ -281,7 +290,7 @@ export const ScholarshipsTab = () => {
       {/* Quick access cards: Arab Universities Guide + Jobs */}
       <div className="grid grid-cols-2 gap-2.5 mb-3 mx-1">
         <button
-          onClick={() => setUniOpen(true)}
+          onClick={() => window.dispatchEvent(new CustomEvent("foras:navigate", { detail: { tab: "arabUnis" } }))}
           className={`group relative overflow-hidden rounded-2xl p-3.5 bg-card/60 backdrop-blur-md border border-primary/30 hover:border-primary/60 hover:bg-primary/5 transition-all flex flex-col items-start gap-2 ${
             isRtl ? "text-right" : "text-left"
           }`}
@@ -290,9 +299,9 @@ export const ScholarshipsTab = () => {
             <GraduationCap className="w-5 h-5 text-primary-foreground" strokeWidth={2} />
           </div>
           <div className="flex-1 w-full">
-            <p className="text-sm font-bold text-gold-gradient leading-tight">{t("sudanUniversitiesTitle")}</p>
+            <p className="text-sm font-bold text-gold-gradient leading-tight">{t("arabUniTitle")}</p>
             <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">
-              {t("sudanUniversitiesSub")}
+              {isRtl ? "شروط القبول، الرسوم، والمنح في 20 دولة عربية" : "Admission, fees & scholarships across 20 Arab nations"}
             </p>
           </div>
           <span className="inline-flex items-center gap-1 text-[11px] font-bold text-primary mt-1">
@@ -486,15 +495,37 @@ export const ScholarshipsTab = () => {
                 </div>
                 <p className="text-foreground leading-relaxed">{detailDesc}</p>
                 <div className="grid grid-cols-2 gap-3">
-                  <Detail icon={MapPin} label={t("country")} value={detailCountry} />
-                  <Detail icon={Award} label={t("amount")} value={detailAmount} />
-                  <Detail
-                    icon={Clock}
-                    label={t("deadline")}
-                    value={new Date(detail.deadline).toLocaleDateString(ar ? "ar-EG" : "en-US")}
-                  />
-                  <Detail icon={BadgeCheck} label={t("level")} value={detailLevel} />
+                  {detailCountry && <Detail icon={MapPin} label={t("country")} value={detailCountry} />}
+                  {detailAmount && <Detail icon={Award} label={t("amount")} value={detailAmount} />}
+                  {detail.deadline && (
+                    <Detail
+                      icon={Clock}
+                      label={t("deadline")}
+                      value={new Date(detail.deadline).toLocaleDateString(ar ? "ar-EG" : "en-US")}
+                    />
+                  )}
+                  {detailLevel && <Detail icon={BadgeCheck} label={t("level")} value={detailLevel} />}
+                  {(detail as any).language_req && (
+                    <Detail icon={Languages} label={ar ? "شرط اللغة" : "Language Requirement"} value={(detail as any).language_req} />
+                  )}
+                  {/* Dynamic Custom Fields added by Admin if present */}
+                  {((detail as any).custom_fields || []).filter((f: any) => f && f.label && f.value && f.label.trim() && f.value.trim()).map((f: any, idx: number) => (
+                    <div key={idx} className="bg-primary/5 border border-primary/20 rounded-xl p-3 col-span-2 sm:col-span-1">
+                      <div className="flex items-center gap-1.5 text-primary text-xs mb-1 font-bold">
+                        <Sparkles className="w-3 h-3" />
+                        <span>{f.label}</span>
+                      </div>
+                      <p className="text-foreground text-xs sm:text-sm font-medium">{f.value}</p>
+                    </div>
+                  ))}
                 </div>
+
+                {/* AI Advisor Copilot Module: Inquire, Match & Mock Interview */}
+                <OpportunityAICopilot
+                  type="scholarship"
+                  item={detail}
+                  onOpenAdvisor={() => setDetail(null)}
+                />
 
                 <div className="grid grid-cols-1 gap-2 pt-2">
                   <Button asChild variant="luxe" size="lg" className="w-full">
@@ -532,8 +563,6 @@ export const ScholarshipsTab = () => {
           )}
         </SheetContent>
       </Sheet>
-
-      <UniversitiesGuide open={uniOpen} onOpenChange={setUniOpen} />
     </div>
   );
 };

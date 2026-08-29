@@ -1,0 +1,1727 @@
+import React, { useState, useEffect, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  ShieldCheck, Sparkles, Plus, Trash2, Edit3, ExternalLink, Check, X,
+  RefreshCw, Globe, Search, ArrowRight, ArrowLeft, Download, AlertCircle,
+  Briefcase, GraduationCap, Lock, Eye, Users, FileCheck2, History,
+  KeyRound, Mail, UserCheck, ShieldAlert, CheckCircle2, XCircle,
+  Archive, RotateCcw, Menu, ChevronRight, ChevronLeft, AlertTriangle,
+  Upload, Layers, CheckSquare, Square, MinusSquare
+} from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { Scholarship } from "@/lib/mockData";
+import { dynamicStore, CustomJobItem, ArchivedItem } from "@/lib/dynamicStore";
+import { adminAuthStore, AdminUser, AuditLog, PendingItem, AdminRole } from "@/lib/adminAuthStore";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { SecurityPasswordManager } from "@/components/foras/SecurityPasswordManager";
+
+export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
+  const { lang, dir } = useLanguage();
+  const isRtl = dir === "rtl";
+
+  // Active Task Section in Slide Sidebar
+  type AdminTab =
+    | "scholarships"
+    | "jobs"
+    | "archive"
+    | "url_parser"
+    | "pending_reviews"
+    | "team"
+    | "audit_logs"
+    | "backup"
+    | "security";
+
+  const [activeTab, setActiveTab] = useState<AdminTab>("scholarships");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarSearch, setSidebarSearch] = useState("");
+
+  // Current session & Users
+  const [currentUser, setCurrentUser] = useState<AdminUser | null>(() => adminAuthStore.getCurrentSession());
+  const [teamMembers, setTeamMembers] = useState<AdminUser[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [pendingItems, setPendingItems] = useState<PendingItem[]>([]);
+  const [archivedItems, setArchivedItems] = useState<ArchivedItem[]>([]);
+
+  // Login form state
+  const [identifierInput, setIdentifierInput] = useState("alforas.one@gmail.com");
+  const [passwordInput, setPasswordInput] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Password change state
+  const [newPasswordInput, setNewPasswordInput] = useState("");
+  const [confirmPasswordInput, setConfirmPasswordInput] = useState("");
+
+  // Data lists
+  const [scholarships, setScholarships] = useState<Scholarship[]>([]);
+  const [jobs, setJobs] = useState<CustomJobItem[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Multi-Selection State (Selection System from Video 1)
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
+
+  // Editing state
+  const [editingScholarship, setEditingScholarship] = useState<Scholarship | null>(null);
+  const [editingJob, setEditingJob] = useState<CustomJobItem | null>(null);
+  const [editingMember, setEditingMember] = useState<AdminUser | null>(null);
+
+  // URL Parser State
+  const [urlInput, setUrlInput] = useState("");
+  const [urlType, setUrlType] = useState<"scholarship" | "job">("scholarship");
+  const [isParsing, setIsParsing] = useState(false);
+  const [parsedPreview, setParsedPreview] = useState<any>(null);
+
+  // Danger Zone confirmation state
+  const [emptyArchiveConfirmText, setEmptyArchiveConfirmText] = useState("");
+  const [isDeletingConfirmOpen, setIsDeletingConfirmOpen] = useState(false);
+  const [pendingDeleteAction, setPendingDeleteAction] = useState<{
+    id: string;
+    type: "scholarship" | "job";
+    title: string;
+  } | null>(null);
+
+  const loadData = () => {
+    setScholarships(dynamicStore.getScholarships());
+    setJobs(dynamicStore.getJobs());
+    setArchivedItems(dynamicStore.getArchivedItems());
+    setTeamMembers(adminAuthStore.getUsers());
+    setAuditLogs(adminAuthStore.getAuditLogs());
+    setPendingItems(adminAuthStore.getPendingItems());
+    setCurrentUser(adminAuthStore.getCurrentSession());
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      loadData();
+      setSelectedIds([]);
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    const handleUpdates = () => loadData();
+    window.addEventListener("foras:data-updated", handleUpdates);
+    window.addEventListener("foras:archive-updated", handleUpdates);
+    window.addEventListener("foras:audit-updated", handleUpdates);
+    return () => {
+      window.removeEventListener("foras:data-updated", handleUpdates);
+      window.removeEventListener("foras:archive-updated", handleUpdates);
+      window.removeEventListener("foras:audit-updated", handleUpdates);
+    };
+  }, []);
+
+  // Clear selection when changing tabs
+  useEffect(() => {
+    setSelectedIds([]);
+    setLastSelectedIndex(null);
+    setSearchQuery("");
+  }, [activeTab]);
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!identifierInput.trim() || !passwordInput.trim()) {
+      toast.error(isRtl ? "يرجى إدخال البريد الإلكتروني أو اسم المستخدم وكلمة المرور" : "Please enter credentials");
+      return;
+    }
+
+    const res = adminAuthStore.login(identifierInput, passwordInput);
+    if (res.success && res.user) {
+      setCurrentUser(res.user);
+      loadData();
+      toast.success(
+        isRtl
+          ? `مرحباً بك يا ${res.user.name} (${res.user.role === "super_admin" ? "المدير العام" : "مشرف"})`
+          : `Welcome, ${res.user.name}`
+      );
+    } else {
+      toast.error(res.message || (isRtl ? "بيانات الدخول غير صحيحة" : "Invalid login credentials"));
+    }
+  };
+
+  const handleLogout = () => {
+    adminAuthStore.logout();
+    setCurrentUser(null);
+    setSelectedIds([]);
+    toast.info(isRtl ? "تم تسجيل الخروج وقفل اللوحة" : "Logged out and dashboard locked");
+  };
+
+  // Filtered lists
+  const filteredScholarships = useMemo(() => {
+    if (!searchQuery.trim()) return scholarships;
+    const q = searchQuery.toLowerCase().trim();
+    return scholarships.filter(
+      s =>
+        (s.title || "").toLowerCase().includes(q) ||
+        ((s as any).title_ar || "").toLowerCase().includes(q) ||
+        (s.country || "").toLowerCase().includes(q) ||
+        (s.org || "").toLowerCase().includes(q)
+    );
+  }, [scholarships, searchQuery]);
+
+  const filteredJobs = useMemo(() => {
+    if (!searchQuery.trim()) return jobs;
+    const q = searchQuery.toLowerCase().trim();
+    return jobs.filter(
+      j =>
+        (j.title_ar || "").toLowerCase().includes(q) ||
+        (j.company || "").toLowerCase().includes(q) ||
+        (j.category || "").toLowerCase().includes(q)
+    );
+  }, [jobs, searchQuery]);
+
+  const filteredArchive = useMemo(() => {
+    if (!searchQuery.trim()) return archivedItems;
+    const q = searchQuery.toLowerCase().trim();
+    return archivedItems.filter(a => {
+      const title = a.itemData?.title_ar || a.itemData?.title || a.itemData?.titleEn || a.id;
+      return title.toLowerCase().includes(q) || (a.deletedBy?.name || "").toLowerCase().includes(q);
+    });
+  }, [archivedItems, searchQuery]);
+
+  // Current active list based on tab
+  const currentVisibleList = activeTab === "scholarships" ? filteredScholarships : activeTab === "jobs" ? filteredJobs : filteredArchive;
+
+  // Tri-State Selection Calculation (Video 1)
+  const isAllSelected = currentVisibleList.length > 0 && currentVisibleList.every(item => selectedIds.includes(item.id));
+  const isPartiallySelected = selectedIds.length > 0 && !isAllSelected;
+
+  const handleToggleSelectAll = () => {
+    if (isAllSelected || isPartiallySelected) {
+      // Clear
+      setSelectedIds([]);
+    } else {
+      // Select All
+      setSelectedIds(currentVisibleList.map(item => item.id));
+    }
+  };
+
+  const handleToggleSelectItem = (id: string, index: number, event: React.MouseEvent) => {
+    // Support Shift + Click Range Selection (Video 1)
+    if (event.shiftKey && lastSelectedIndex !== null && lastSelectedIndex !== index) {
+      const start = Math.min(lastSelectedIndex, index);
+      const end = Math.max(lastSelectedIndex, index);
+      const rangeIds = currentVisibleList.slice(start, end + 1).map(item => item.id);
+      
+      const newSelected = new Set(selectedIds);
+      rangeIds.forEach(rId => newSelected.add(rId));
+      setSelectedIds(Array.from(newSelected));
+    } else {
+      setSelectedIds(prev =>
+        prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+      );
+    }
+    setLastSelectedIndex(index);
+  };
+
+  // Perform single delete/archive with security check
+  const requestDelete = (id: string, type: "scholarship" | "job", title: string) => {
+    if (currentUser?.role === "super_admin") {
+      // Direct Soft-Delete & Archive
+      dynamicStore.archiveItem(id, type, currentUser);
+      window.dispatchEvent(
+        new CustomEvent("foras:show-undo", {
+          detail: { itemIds: [id], count: 1, itemType: type, title },
+        })
+      );
+      toast.success(isRtl ? `تمت أرشفة "${title}" بنجاح` : `Archived "${title}" successfully`);
+    } else {
+      // Supervisor security confirmation
+      setPendingDeleteAction({ id, type, title });
+      setIsDeletingConfirmOpen(true);
+    }
+  };
+
+  const confirmSupervisorDelete = () => {
+    if (!pendingDeleteAction) return;
+    const { id, type, title } = pendingDeleteAction;
+    dynamicStore.archiveItem(id, type, currentUser, "أرشفة من قبل المشرف مع إشعار الإدارة");
+    window.dispatchEvent(
+      new CustomEvent("foras:show-undo", {
+        detail: { itemIds: [id], count: 1, itemType: type, title },
+      })
+    );
+    toast.success(
+      isRtl
+        ? `تمت الأرشفة وإرسال إشعار فوري للمدير العام`
+        : `Item archived and Admin notified successfully`
+    );
+    setIsDeletingConfirmOpen(false);
+    setPendingDeleteAction(null);
+  };
+
+  // Bulk Archive Action (Video 1 & 2)
+  const handleBulkArchive = () => {
+    if (selectedIds.length === 0) return;
+    const count = selectedIds.length;
+    const type = activeTab === "scholarships" ? "scholarship" : "job";
+    
+    const items = selectedIds.map(id => ({ id, type }));
+    dynamicStore.archiveMultiple(items, currentUser);
+
+    window.dispatchEvent(
+      new CustomEvent("foras:show-undo", {
+        detail: { itemIds: selectedIds, count, itemType: type },
+      })
+    );
+
+    setSelectedIds([]);
+    toast.success(
+      isRtl
+        ? `تمت أرشفة ${count} ${count === 1 ? "عنصر" : "عناصر"} ونقلها إلى سلة المحذوفات`
+        : `Archived ${count} item(s) to vault`
+    );
+  };
+
+  // Bulk Restore from Archive
+  const handleBulkRestore = () => {
+    if (selectedIds.length === 0) return;
+    const count = dynamicStore.restoreMultiple(selectedIds);
+    setSelectedIds([]);
+    toast.success(isRtl ? `تمت استعادة ${count} عنصر بنجاح` : `Restored ${count} item(s)`);
+  };
+
+  // Empty Archive Danger Zone
+  const handleEmptyArchive = () => {
+    if (!currentUser || currentUser.role !== "super_admin") {
+      toast.error(isRtl ? "تفريغ الأرشيف مقتصر على المدير العام فقط" : "Admin only action");
+      return;
+    }
+    const cleanConfirm = emptyArchiveConfirmText.trim().toUpperCase();
+    if (cleanConfirm !== "DELETE" && cleanConfirm !== "تأكيد" && cleanConfirm !== "مسح") {
+      toast.error(isRtl ? "يرجى كتابة كلمة DELETE أو تأكيد لإتمام المسح النهائي" : "Please type DELETE to confirm");
+      return;
+    }
+
+    const count = dynamicStore.emptyArchive(currentUser);
+    setEmptyArchiveConfirmText("");
+    toast.success(isRtl ? `تم تفريغ الأرشيف ومسح ${count} عنصر نهائياً` : `Vault emptied (${count} items)`);
+  };
+
+  // Sidebar Menu Items grouped by Task (Video 5)
+  const menuGroups = [
+    {
+      groupTitleAr: "إدارة المحتوى والفرص",
+      groupTitleEn: "Content & Opportunities",
+      items: [
+        { id: "scholarships" as const, labelAr: "المنح الدراسية", labelEn: "Scholarships", icon: GraduationCap, badge: scholarships.length },
+        { id: "jobs" as const, labelAr: "وظائف العمل الحر $", labelEn: "Remote Freelance Jobs", icon: Briefcase, badge: jobs.length },
+        { id: "url_parser" as const, labelAr: "محرر الروابط الذكي AI", labelEn: "AI URL Parser", icon: Sparkles },
+      ],
+    },
+    {
+      groupTitleAr: "الأرشيف وسلة المحذوفات",
+      groupTitleEn: "Vault & Soft Deletions",
+      items: [
+        { id: "archive" as const, labelAr: "سلة المحذوفات والأرشيف", labelEn: "Archive Vault", icon: Archive, badge: archivedItems.length, badgeColor: "bg-destructive/20 text-destructive border-destructive/40" },
+      ],
+    },
+    {
+      groupTitleAr: "فريق الإشراف وسجل الأمان",
+      groupTitleEn: "Team & Security Audit",
+      items: [
+        { id: "pending_reviews" as const, labelAr: "طلبات المراجعة", labelEn: "Pending Submissions", icon: FileCheck2, badge: pendingItems.length },
+        { id: "team" as const, labelAr: "إدارة المشرفين", labelEn: "Moderators & Team", icon: Users, badge: teamMembers.length },
+        { id: "audit_logs" as const, labelAr: "سجل التدقيق والنشاطات", labelEn: "Security Audit Logs", icon: History, badge: auditLogs.length },
+      ],
+    },
+    {
+      groupTitleAr: "الإعدادات والنسخ الاحتياطي",
+      groupTitleEn: "Settings & Backups",
+      items: [
+        { id: "backup" as const, labelAr: "تصدير / استيراد البيانات", labelEn: "Data Backup & Restore", icon: Download },
+        { id: "security" as const, labelAr: "تغيير كلمة المرور", labelEn: "Admin Password", icon: KeyRound },
+      ],
+    },
+  ];
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      dir={dir}
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/85 backdrop-blur-md overflow-hidden"
+    >
+      {/* Backdrop Click Dismiss */}
+      <div className="fixed inset-0" onClick={onClose} />
+
+      {/* Main Slide-Sidebar Dashboard Window */}
+      <motion.div
+        initial={{ scale: 0.94, opacity: 0, y: 15 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.94, opacity: 0, y: 15 }}
+        transition={{ type: "spring", damping: 28, stiffness: 320 }}
+        className="relative w-full max-w-6xl h-[92vh] max-h-[900px] bg-card/95 border-2 border-primary/40 rounded-3xl shadow-[0_0_60px_-10px_hsl(43_74%_49%/0.35)] backdrop-blur-2xl overflow-hidden z-10 flex flex-col"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Top Header Bar */}
+        <header className="relative flex items-center justify-between px-5 sm:px-7 py-4 border-b border-primary/20 bg-background/50 flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSidebarOpen(prev => !prev)}
+              className="p-2 rounded-xl bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20 transition-all cursor-pointer"
+              aria-label="Toggle Sidebar"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+
+            <div className="w-10 h-10 rounded-2xl bg-gold-gradient flex items-center justify-center shadow-gold flex-shrink-0">
+              <ShieldCheck className="w-6 h-6 text-primary-foreground" />
+            </div>
+
+            <div>
+              <h2
+                className="font-bold text-base sm:text-xl text-gold-gradient leading-tight"
+                style={{ fontFamily: "'Tajawal', sans-serif" }}
+              >
+                {isRtl ? "لوحة تحكم إدارة منصة الفُرَص 👑" : "Al-Foras Control Center"}
+              </h2>
+              <span className="text-xs font-semibold text-gray-200 block">
+                {currentUser
+                  ? isRtl
+                    ? `الجلسة نشطة: ${currentUser.name} (${currentUser.role === "super_admin" ? "المدير العام" : "مشرف محتوى"})`
+                    : `Active: ${currentUser.name} (${currentUser.role})`
+                  : isRtl
+                  ? "سجّل الدخول للوصول إلى صلاحيات التحرير والإشراف"
+                  : "Sign in to manage opportunities & review submissions"}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {currentUser && (
+              <button
+                onClick={handleLogout}
+                className="px-3.5 py-1.5 rounded-xl bg-destructive/15 border border-destructive/30 text-destructive text-xs sm:text-sm font-bold hover:bg-destructive/25 transition-all cursor-pointer"
+              >
+                {isRtl ? "قفل وخروج" : "Lock / Logout"}
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="w-9 h-9 rounded-full bg-primary/15 border border-primary/30 hover:bg-primary/25 text-gray-200 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </header>
+
+        {/* Content Area: Login Screen OR Slide Sidebar Layout */}
+        {!currentUser ? (
+          <div className="flex-1 overflow-y-auto p-6 flex items-center justify-center">
+            <div className="w-full max-w-md p-6 sm:p-8 rounded-3xl bg-card border-2 border-primary/40 shadow-gold">
+              <div className="text-center mb-6">
+                <div className="w-14 h-14 rounded-2xl bg-gold-gradient flex items-center justify-center mx-auto mb-3 shadow-gold">
+                  <Lock className="w-7 h-7 text-primary-foreground" />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-1" style={{ fontFamily: "'Tajawal', sans-serif" }}>
+                  {isRtl ? "تسجيل دخول الإدارة والمشرفين" : "Admin & Moderator Access"}
+                </h3>
+                <p className="text-xs sm:text-sm text-gray-200">
+                  {isRtl ? "أدخل البريد الإلكتروني وكلمة المرور المشفرة للمتابعة" : "Enter verified email and password to proceed"}
+                </p>
+              </div>
+
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-200 mb-1">
+                    {isRtl ? "البريد الإلكتروني أو اسم المستخدم" : "Email or Username"}
+                  </label>
+                  <input
+                    type="text"
+                    value={identifierInput}
+                    onChange={e => setIdentifierInput(e.target.value)}
+                    placeholder="alforas.one@gmail.com"
+                    className="w-full px-4 py-3 rounded-xl bg-background border-2 border-primary/30 text-white text-sm focus:border-primary outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-200 mb-1">
+                    {isRtl ? "كلمة المرور / الرمز السريع" : "Password / PIN"}
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={passwordInput}
+                      onChange={e => setPasswordInput(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full px-4 py-3 rounded-xl bg-background border-2 border-primary/30 text-white text-sm focus:border-primary outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(p => !p)}
+                      className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? "left-3" : "right-3"} text-gray-400 hover:text-white cursor-pointer`}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4 text-primary" />}
+                    </button>
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  variant="luxe"
+                  size="lg"
+                  className="w-full py-3.5 rounded-xl shadow-gold font-bold text-base cursor-pointer"
+                >
+                  {isRtl ? "دخول لوحة التحكم" : "Unlock Control Panel"}
+                </Button>
+              </form>
+            </div>
+          </div>
+        ) : (
+          <div className="flex-1 flex overflow-hidden relative">
+            {/* Slide-in Sidebar (Video 5) */}
+            <AnimatePresence initial={false}>
+              {sidebarOpen && (
+                <motion.aside
+                  initial={{ width: 0, opacity: 0 }}
+                  animate={{ width: isRtl ? 280 : 280, opacity: 1 }}
+                  exit={{ width: 0, opacity: 0 }}
+                  transition={{ duration: 0.25, ease: "easeInOut" }}
+                  className="h-full bg-card/90 border-l border-primary/20 flex-shrink-0 flex flex-col overflow-hidden border-r sm:border-r-0"
+                >
+                  {/* Sidebar Search */}
+                  <div className="p-3 border-b border-primary/20">
+                    <div className="relative">
+                      <Search className={`w-4 h-4 absolute top-1/2 -translate-y-1/2 ${isRtl ? "right-3" : "left-3"} text-gray-400`} />
+                      <input
+                        type="text"
+                        value={sidebarSearch}
+                        onChange={e => setSidebarSearch(e.target.value)}
+                        placeholder={isRtl ? "بحث في أركان الإدارة..." : "Search menu..."}
+                        className={`w-full py-2 ${isRtl ? "pr-9 pl-3" : "pl-9 pr-3"} rounded-xl bg-background border border-primary/30 text-xs text-white focus:border-primary outline-none`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Sidebar Task Groups */}
+                  <div className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-thin scrollbar-thumb-primary/20">
+                    {menuGroups.map((grp, gIdx) => {
+                      const filteredItems = grp.items.filter(
+                        it =>
+                          !sidebarSearch.trim() ||
+                          it.labelAr.toLowerCase().includes(sidebarSearch.toLowerCase()) ||
+                          it.labelEn.toLowerCase().includes(sidebarSearch.toLowerCase())
+                      );
+
+                      if (filteredItems.length === 0) return null;
+
+                      return (
+                        <div key={gIdx} className="space-y-1">
+                          <span className="text-[11px] font-bold text-gray-400 px-3 uppercase tracking-wider block mb-1">
+                            {isRtl ? grp.groupTitleAr : grp.groupTitleEn}
+                          </span>
+
+                          {filteredItems.map(item => {
+                            const Icon = item.icon;
+                            const isActive = activeTab === item.id;
+                            return (
+                              <button
+                                key={item.id}
+                                onClick={() => {
+                                  setActiveTab(item.id);
+                                  if (window.innerWidth < 768) setSidebarOpen(false);
+                                }}
+                                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+                                  isActive
+                                    ? "bg-primary text-primary-foreground shadow-gold font-bold"
+                                    : "text-gray-300 hover:text-white hover:bg-primary/10 border border-transparent hover:border-primary/25"
+                                }`}
+                              >
+                                <div className="flex items-center gap-2.5">
+                                  <Icon className={`w-4 h-4 ${isActive ? "text-primary-foreground" : "text-primary"}`} />
+                                  <span>{isRtl ? item.labelAr : item.labelEn}</span>
+                                </div>
+
+                                {item.badge !== undefined && (
+                                  <span
+                                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                      item.badgeColor || (isActive ? "bg-black/30 text-white" : "bg-primary/20 text-primary")
+                                    }`}
+                                  >
+                                    {item.badge}
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </motion.aside>
+              )}
+            </AnimatePresence>
+
+            {/* Main Active Tab Content View */}
+            <main className="flex-1 flex flex-col overflow-hidden bg-background/30">
+              {/* Active Tab Sub-Header & Search Filter Bar */}
+              <div className="p-4 border-b border-primary/20 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-card/40 flex-shrink-0">
+                <div className="flex items-center gap-3">
+                  {/* Tri-state Header Checkbox for Lists (Video 1) */}
+                  {(activeTab === "scholarships" || activeTab === "jobs" || activeTab === "archive") && (
+                    <button
+                      onClick={handleToggleSelectAll}
+                      className="flex items-center gap-2 p-2 rounded-xl bg-card border border-primary/30 hover:border-primary text-xs font-bold text-gray-200 hover:text-white transition-all cursor-pointer"
+                      title={isRtl ? "تحديد / إلغاء تحديد الكل" : "Select / Deselect All"}
+                    >
+                      {isAllSelected ? (
+                        <CheckSquare className="w-5 h-5 text-primary" />
+                      ) : isPartiallySelected ? (
+                        <MinusSquare className="w-5 h-5 text-amber-400" />
+                      ) : (
+                        <Square className="w-5 h-5 text-gray-400" />
+                      )}
+                      <span className="hidden sm:inline">
+                        {isRtl ? "تحديد الكل" : "Select All"}
+                      </span>
+                    </button>
+                  )}
+
+                  <div className="relative flex-1 sm:w-80">
+                    <Search className={`w-4 h-4 absolute top-1/2 -translate-y-1/2 ${isRtl ? "right-3" : "left-3"} text-gray-400`} />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      placeholder={
+                        isRtl
+                          ? `بحث في ${
+                              activeTab === "scholarships"
+                                ? "المنح..."
+                                : activeTab === "jobs"
+                                ? "الوظائف..."
+                                : activeTab === "archive"
+                                ? "الأرشيف..."
+                                : "السجلات..."
+                            }`
+                          : "Search listings..."
+                      }
+                      className={`w-full py-2 ${isRtl ? "pr-9 pl-3" : "pl-9 pr-3"} rounded-xl bg-background border border-primary/30 text-xs sm:text-sm text-white focus:border-primary outline-none`}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {activeTab === "scholarships" && (
+                    <Button
+                      variant="luxe"
+                      size="sm"
+                      onClick={() =>
+                        setEditingScholarship({
+                          id: `sch_${Date.now()}`,
+                          title_ar: "منحة جديدة ممولة بالكامل",
+                          title_en: "New Fully Funded Scholarship",
+                          university: "جامعة دولية معتمدة",
+                          country: "عالمي",
+                          flag: "🌍",
+                          degree: "bachelor_master",
+                          coverage: "full" as any,
+                          deadline: new Date(Date.now() + 45 * 86400000).toISOString().split("T")[0],
+                          majors: ["الهندسة والتقنية", "الطب والعلوم"],
+                          apply_url: "https://example.com",
+                          official_website: "https://example.com",
+                          description_ar: "وصف المنحة وتفاصيل الدعم المالي والرسوم والتذاكر.",
+                          description_en: "Scholarship description and financial coverage.",
+                          benefits_ar: ["إعفاء كامل من المصروفات", "راتب شهري", "سكن مجاني"],
+                          benefits_en: ["Full tuition waiver", "Monthly stipend"],
+                        })
+                      }
+                      className="flex items-center gap-1.5 rounded-xl text-xs sm:text-sm font-bold shadow-gold cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>{isRtl ? "إضافة منحة جديدة" : "Add Scholarship"}</span>
+                    </Button>
+                  )}
+
+                  {activeTab === "jobs" && (
+                    <Button
+                      variant="luxe"
+                      size="sm"
+                      onClick={() =>
+                        setEditingJob({
+                          id: `job_${Date.now()}`,
+                          title_ar: "وظيفة عمل حر جديدة بالدولار",
+                          title_en: "New Remote USD Job",
+                          company: "Global Tech Inc.",
+                          category: "tech",
+                          type: "remote_freelance",
+                          salary: "$2,000 - $3,500",
+                          apply_url: "https://example.com",
+                          description_ar: "تفاصيل العمل والمهام المطلوبة والراتب بالدولار.",
+                          description_en: "Job details and qualifications.",
+                          skills: ["React", "TypeScript", "UI/UX"],
+                          benefits_ar: ["دخل بالدولار", "ساعات عمل مرنة"],
+                        } as any)
+                      }
+                      className="flex items-center gap-1.5 rounded-xl text-xs sm:text-sm font-bold shadow-gold cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>{isRtl ? "إضافة فرصة عمل" : "Add Job"}</span>
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Tab Views */}
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 scrollbar-thin scrollbar-thumb-primary/20">
+                {/* 1. Scholarships Management */}
+                {activeTab === "scholarships" && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-xs text-gray-300 mb-2">
+                      <span>{isRtl ? `إجمالي المنح النشطة: ${filteredScholarships.length}` : `Active Scholarships: ${filteredScholarships.length}`}</span>
+                      <span className="text-primary font-semibold">
+                        {isRtl ? "💡 يمكنك الضغط مع Shift لتحديد نطاق كامل دفعة واحدة" : "Shift+Click for range selection"}
+                      </span>
+                    </div>
+
+                    {filteredScholarships.length === 0 ? (
+                      <div className="text-center py-16 p-6 rounded-2xl bg-card/60 border border-primary/20">
+                        <GraduationCap className="w-12 h-12 text-primary mx-auto mb-3 opacity-60" />
+                        <h4 className="text-base font-bold text-white mb-1">
+                          {isRtl ? "لا توجد منح مطابقة للبحث" : "No scholarships found"}
+                        </h4>
+                        <p className="text-xs text-gray-300">
+                          {isRtl ? "أضف منحة جديدة أو غيّر كلمات البحث" : "Add a new scholarship or clear search"}
+                        </p>
+                      </div>
+                    ) : (
+                      filteredScholarships.map((s, idx) => {
+                        const isSelected = selectedIds.includes(s.id);
+                        return (
+                          <div
+                            key={s.id}
+                            onClick={e => handleToggleSelectItem(s.id, idx, e)}
+                            className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
+                              isSelected
+                                ? "bg-primary/15 border-primary shadow-gold"
+                                : "bg-card/70 border-primary/20 hover:border-primary/50 hover:bg-card"
+                            }`}
+                          >
+                            <div className="flex items-start sm:items-center gap-3">
+                              <div className="pt-1 sm:pt-0">
+                                {isSelected ? (
+                                  <CheckSquare className="w-5 h-5 text-primary flex-shrink-0" />
+                                ) : (
+                                  <Square className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                                )}
+                              </div>
+
+                              <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center text-primary flex-shrink-0">
+                                <GraduationCap className="w-5 h-5" />
+                              </div>
+
+                              <div>
+                                <h4 className="text-sm sm:text-base font-bold text-white leading-tight">
+                                  {isRtl ? s.title || (s as any).title_ar : (s as any).title_en || s.title}
+                                </h4>
+                                <div className="flex items-center gap-2 flex-wrap text-xs text-gray-300 mt-1">
+                                  <span>{s.university || s.org}</span>
+                                  <span>•</span>
+                                  <span>{s.country}</span>
+                                  <span>•</span>
+                                  <span className="text-amber-300">{s.coverage === "full" ? (isRtl ? "ممولة بالكامل" : "Full") : s.coverage}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 self-end sm:self-center" onClick={e => e.stopPropagation()}>
+                              <button
+                                onClick={() => setEditingScholarship(s)}
+                                className="p-2 rounded-xl bg-primary/10 border border-primary/30 hover:bg-primary/20 text-primary transition-all cursor-pointer"
+                                title={isRtl ? "تعديل المنحة" : "Edit"}
+                              >
+                                <Edit3 className="w-4 h-4" />
+                              </button>
+
+                              <button
+                                onClick={() => requestDelete(s.id, "scholarship", s.title || (s as any).title_ar)}
+                                className="p-2 rounded-xl bg-destructive/15 border border-destructive/30 hover:bg-destructive/25 text-destructive transition-all cursor-pointer"
+                                title={isRtl ? "أرشفة ونقل لسلة المحذوفات" : "Archive"}
+                              >
+                                <Archive className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+
+                {/* 2. Jobs Management */}
+                {activeTab === "jobs" && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-xs text-gray-300 mb-2">
+                      <span>{isRtl ? `إجمالي فرص العمل النشطة: ${filteredJobs.length}` : `Active Remote Jobs: ${filteredJobs.length}`}</span>
+                    </div>
+
+                    {filteredJobs.length === 0 ? (
+                      <div className="text-center py-16 p-6 rounded-2xl bg-card/60 border border-primary/20">
+                        <Briefcase className="w-12 h-12 text-primary mx-auto mb-3 opacity-60" />
+                        <h4 className="text-base font-bold text-white mb-1">
+                          {isRtl ? "لا توجد فرص عمل مطابقة" : "No remote jobs found"}
+                        </h4>
+                      </div>
+                    ) : (
+                      filteredJobs.map((j, idx) => {
+                        const isSelected = selectedIds.includes(j.id);
+                        return (
+                          <div
+                            key={j.id}
+                            onClick={e => handleToggleSelectItem(j.id, idx, e)}
+                            className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
+                              isSelected
+                                ? "bg-primary/15 border-primary shadow-gold"
+                                : "bg-card/70 border-primary/20 hover:border-primary/50 hover:bg-card"
+                            }`}
+                          >
+                            <div className="flex items-start sm:items-center gap-3">
+                              <div className="pt-1 sm:pt-0">
+                                {isSelected ? (
+                                  <CheckSquare className="w-5 h-5 text-primary flex-shrink-0" />
+                                ) : (
+                                  <Square className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                                )}
+                              </div>
+
+                              <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 flex-shrink-0">
+                                <Briefcase className="w-5 h-5" />
+                              </div>
+
+                              <div>
+                                <h4 className="text-sm sm:text-base font-bold text-white leading-tight">
+                                  {isRtl ? j.title_ar : j.title_en || j.title_ar}
+                                </h4>
+                                <div className="flex items-center gap-2 flex-wrap text-xs text-gray-300 mt-1">
+                                  <span>{j.company}</span>
+                                  <span>•</span>
+                                  <span className="text-emerald-400 font-semibold">{j.salary || "بالدولار $"}</span>
+                                  <span>•</span>
+                                  <span className="text-primary">{j.category}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 self-end sm:self-center" onClick={e => e.stopPropagation()}>
+                              <button
+                                onClick={() => setEditingJob(j)}
+                                className="p-2 rounded-xl bg-primary/10 border border-primary/30 hover:bg-primary/20 text-primary transition-all cursor-pointer"
+                              >
+                                <Edit3 className="w-4 h-4" />
+                              </button>
+
+                              <button
+                                onClick={() => requestDelete(j.id, "job", j.title_ar)}
+                                className="p-2 rounded-xl bg-destructive/15 border border-destructive/30 hover:bg-destructive/25 text-destructive transition-all cursor-pointer"
+                              >
+                                <Archive className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+
+                {/* 3. Archive Vault (Soft Delete View & Danger Zone) */}
+                {activeTab === "archive" && (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between p-4 rounded-2xl bg-destructive/10 border border-destructive/30 text-xs sm:text-sm">
+                      <div className="flex items-center gap-2 text-destructive">
+                        <Archive className="w-5 h-5 flex-shrink-0" />
+                        <span className="font-bold">
+                          {isRtl
+                            ? `سلة المحذوفات والأرشيف (${archivedItems.length} عنصر محفوظ بأمان)`
+                            : `Archive Vault (${archivedItems.length} saved)`}
+                        </span>
+                      </div>
+                      <span className="text-gray-300">
+                        {isRtl ? "يمكنك استعادة أي عنصر في أي وقت" : "Restore anytime"}
+                      </span>
+                    </div>
+
+                    {filteredArchive.length === 0 ? (
+                      <div className="text-center py-16 p-6 rounded-2xl bg-card/60 border border-primary/20">
+                        <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto mb-3 opacity-80" />
+                        <h4 className="text-base font-bold text-white mb-1">
+                          {isRtl ? "الأرشيف نظيف وفارغ حالياً" : "Vault is empty"}
+                        </h4>
+                        <p className="text-xs text-gray-300">
+                          {isRtl ? "العناصر المحذوفة ستظهر هنا مع إمكانية استعادتها فوراً" : "Deleted items will appear here"}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {filteredArchive.map((a, idx) => {
+                          const isSelected = selectedIds.includes(a.id);
+                          const title = a.itemData?.title_ar || a.itemData?.title || a.itemData?.titleEn || a.id;
+                          return (
+                            <div
+                              key={a.id}
+                              onClick={e => handleToggleSelectItem(a.id, idx, e)}
+                              className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
+                                isSelected
+                                  ? "bg-primary/15 border-primary shadow-gold"
+                                  : "bg-card/70 border-primary/20 hover:border-primary/50"
+                              }`}
+                            >
+                              <div className="flex items-start sm:items-center gap-3">
+                                <div className="pt-1 sm:pt-0">
+                                  {isSelected ? (
+                                    <CheckSquare className="w-5 h-5 text-primary flex-shrink-0" />
+                                  ) : (
+                                    <Square className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                                  )}
+                                </div>
+
+                                <div className="w-10 h-10 rounded-xl bg-destructive/15 border border-destructive/30 flex items-center justify-center text-destructive flex-shrink-0">
+                                  <Archive className="w-5 h-5" />
+                                </div>
+
+                                <div>
+                                  <h4 className="text-sm sm:text-base font-bold text-white line-through opacity-80 leading-tight">
+                                    {title}
+                                  </h4>
+                                  <div className="flex items-center gap-2 flex-wrap text-xs text-gray-400 mt-1">
+                                    <span className="text-primary font-semibold">{a.type === "scholarship" ? (isRtl ? "منحة" : "Scholarship") : (isRtl ? "وظيفة" : "Job")}</span>
+                                    <span>•</span>
+                                    <span>{isRtl ? `أرشف بواسطة: ${a.deletedBy?.name}` : `Deleted by: ${a.deletedBy?.name}`}</span>
+                                    <span>•</span>
+                                    <span>{new Date(a.deletedAt).toLocaleDateString(isRtl ? "ar-EG" : "en-US")}</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 self-end sm:self-center" onClick={e => e.stopPropagation()}>
+                                <button
+                                  onClick={() => {
+                                    dynamicStore.restoreArchivedItem(a.id);
+                                    toast.success(isRtl ? `تمت استعادة "${title}" بنجاح` : `Restored successfully`);
+                                  }}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 hover:bg-emerald-500/25 text-emerald-400 text-xs font-bold transition-all cursor-pointer"
+                                >
+                                  <RotateCcw className="w-3.5 h-3.5" />
+                                  <span>{isRtl ? "استعادة" : "Restore"}</span>
+                                </button>
+
+                                {currentUser?.role === "super_admin" && (
+                                  <button
+                                    onClick={() => {
+                                      dynamicStore.permanentlyDeleteArchivedItem(a.id, currentUser);
+                                      toast.success(isRtl ? "تم الحذف النهائي" : "Permanently deleted");
+                                    }}
+                                    className="p-1.5 rounded-xl bg-destructive/15 border border-destructive/30 hover:bg-destructive/25 text-destructive transition-all cursor-pointer"
+                                    title={isRtl ? "حذف نهائي لا رجعة فيه" : "Delete permanently"}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* DANGER ZONE (Video 4) */}
+                    {currentUser?.role === "super_admin" && archivedItems.length > 0 && (
+                      <div className="mt-8 p-5 rounded-3xl bg-destructive/5 border-2 border-destructive/40 shadow-inner">
+                        <div className="flex items-center gap-2 text-destructive font-bold text-sm sm:text-base mb-2">
+                          <AlertTriangle className="w-5 h-5" />
+                          <span>{isRtl ? "منطقة الخطر (المدير العام فقط) — Danger Zone" : "Danger Zone (Super Admin Only)"}</span>
+                        </div>
+                        <p className="text-xs sm:text-sm text-gray-300 mb-4">
+                          {isRtl
+                            ? "تفريغ الأرشيف سيؤدي إلى مسح كافة العناصر المؤرشفة نهائياً من الذاكرة دون أي إمكانية للاسترجاع. اكتب 'DELETE' أو 'تأكيد' في الحقل أدناه لتأكيد المسح."
+                            : "Emptying the vault will permanently destroy all archived items forever. Type DELETE to confirm."}
+                        </p>
+
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                          <input
+                            type="text"
+                            value={emptyArchiveConfirmText}
+                            onChange={e => setEmptyArchiveConfirmText(e.target.value)}
+                            placeholder={isRtl ? "اكتب DELETE أو تأكيد" : "Type DELETE to confirm"}
+                            className="px-4 py-2.5 rounded-xl bg-background border-2 border-destructive/40 text-white text-xs sm:text-sm focus:border-destructive outline-none"
+                          />
+                          <Button
+                            variant="destructive"
+                            size="default"
+                            onClick={handleEmptyArchive}
+                            disabled={
+                              emptyArchiveConfirmText.trim().toUpperCase() !== "DELETE" &&
+                              emptyArchiveConfirmText.trim() !== "تأكيد" &&
+                              emptyArchiveConfirmText.trim() !== "مسح"
+                            }
+                            className="font-bold text-xs sm:text-sm cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4 mr-1.5 ml-1.5" />
+                            <span>{isRtl ? "تفريغ الأرشيف بالكامل نهائياً" : "Empty Vault Forever"}</span>
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 4. AI URL Smart Parser */}
+                {activeTab === "url_parser" && (
+                  <div className="space-y-4 max-w-3xl mx-auto">
+                    <div className="p-5 rounded-2xl bg-card border-2 border-primary/30">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="w-10 h-10 rounded-xl bg-gold-gradient flex items-center justify-center shadow-gold">
+                          <Sparkles className="w-6 h-6 text-primary-foreground" />
+                        </div>
+                        <div>
+                          <h4 className="text-base font-bold text-white">{isRtl ? "استخراج البيانات الذكي عبر الرابط" : "AI URL Data Extractor"}</h4>
+                          <p className="text-xs text-gray-300">{isRtl ? "الصق رابط المنحة أو الوظيفة وسيقوم المستشار الذكي بملء كافة التفاصيل" : "Paste link to auto-fill"}</p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setUrlType("scholarship")}
+                            className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                              urlType === "scholarship" ? "bg-primary text-primary-foreground shadow-gold" : "bg-card border border-primary/20 text-gray-300"
+                            }`}
+                          >
+                            {isRtl ? "منحة دراسية" : "Scholarship"}
+                          </button>
+                          <button
+                            onClick={() => setUrlType("job")}
+                            className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                              urlType === "job" ? "bg-primary text-primary-foreground shadow-gold" : "bg-card border border-primary/20 text-gray-300"
+                            }`}
+                          >
+                            {isRtl ? "فرصة عمل عن بعد" : "Remote Job"}
+                          </button>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <input
+                            type="url"
+                            value={urlInput}
+                            onChange={e => setUrlInput(e.target.value)}
+                            placeholder="https://turkiyeburslari.gov.tr or https://daad.de..."
+                            className="flex-1 px-4 py-2.5 rounded-xl bg-background border border-primary/30 text-white text-xs sm:text-sm focus:border-primary outline-none"
+                          />
+                          <Button
+                            variant="luxe"
+                            disabled={isParsing || !urlInput.trim()}
+                            onClick={async () => {
+                              setIsParsing(true);
+                              try {
+                                const parsed = await dynamicStore.parseFromUrl(urlInput, urlType);
+                                setParsedPreview(parsed);
+                                toast.success(isRtl ? "تم استخراج ومعالجة بيانات الرابط بنجاح" : "Parsed successfully");
+                              } catch {
+                                toast.error(isRtl ? "تعذر الاستخراج من الرابط" : "Failed to parse");
+                              } finally {
+                                setIsParsing(false);
+                              }
+                            }}
+                            className="font-bold text-xs sm:text-sm shadow-gold cursor-pointer"
+                          >
+                            {isParsing ? <RefreshCw className="w-4 h-4 animate-spin" /> : isRtl ? "استخراج فوري" : "Extract"}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {parsedPreview && (
+                      <div className="p-5 rounded-2xl bg-card/80 border-2 border-emerald-500/40 space-y-4">
+                        <div className="flex items-center justify-between border-b border-emerald-500/20 pb-3">
+                          <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                            <CheckCircle2 className="w-4 h-4" />
+                            {isRtl ? "تم تجهيز البيانات المستخرجة للمراجعة والنشر" : "Extracted Ready for Publish"}
+                          </span>
+                          <Button
+                            variant="luxe"
+                            size="sm"
+                            onClick={() => {
+                              if (urlType === "scholarship") {
+                                dynamicStore.saveScholarship(parsedPreview);
+                              } else {
+                                dynamicStore.saveJob(parsedPreview);
+                              }
+                              toast.success(isRtl ? "تم النشر والتحديث في المنصة فوراً" : "Published successfully");
+                              setParsedPreview(null);
+                              setUrlInput("");
+                              setActiveTab(urlType === "scholarship" ? "scholarships" : "jobs");
+                            }}
+                            className="font-bold text-xs shadow-gold cursor-pointer"
+                          >
+                            {isRtl ? "اعتماد ونشر في التطبيق فوراً" : "Approve & Publish Live"}
+                          </Button>
+                        </div>
+
+                        <div className="space-y-2 text-xs sm:text-sm">
+                          <h4 className="font-bold text-white text-base">{parsedPreview.title_ar || parsedPreview.title}</h4>
+                          <p className="text-gray-300">{parsedPreview.description_ar}</p>
+                          <div className="flex gap-2 flex-wrap text-primary">
+                            <span>{parsedPreview.country}</span>
+                            <span>•</span>
+                            <span>{parsedPreview.stipend || parsedPreview.salary}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 5. Team & Moderators Management */}
+                {activeTab === "team" && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs sm:text-sm font-bold text-white">{isRtl ? "أعضاء فريق الإدارة والمشرفين" : "Moderator Team"}</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {teamMembers.map(m => (
+                        <div key={m.id} className="p-4 rounded-2xl bg-card border-2 border-primary/30 flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-primary/20 border border-primary/40 flex items-center justify-center text-primary font-bold">
+                              {m.name.charAt(0)}
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-bold text-white leading-tight">{m.name}</h4>
+                              <span className="text-xs text-gray-300 block">{m.email}</span>
+                              <span className="text-[10px] font-bold text-amber-400 mt-0.5 block">
+                                {m.role === "super_admin" ? "المدير العام 👑" : m.role === "editor" ? "محرر محتوى" : "مشرف"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 6. Security Audit Logs */}
+                {activeTab === "audit_logs" && (
+                  <div className="space-y-3">
+                    <div className="text-xs text-gray-300 mb-2">
+                      {isRtl ? `سجل التوثيق الأمني المباشر (آخر ${auditLogs.length} عملية)` : `Audit Log (${auditLogs.length} entries)`}
+                    </div>
+
+                    <div className="space-y-2">
+                      {auditLogs.map(log => (
+                        <div key={log.id} className="p-3.5 rounded-xl bg-card/70 border border-primary/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />
+                            <span className="font-bold text-white">{log.actionAr || log.action}</span>
+                            <span className="text-gray-400">({log.userName})</span>
+                          </div>
+                          <div className="flex items-center gap-3 text-gray-300">
+                            <span className="text-[11px]">{log.details}</span>
+                            <span className="text-[10px] text-gray-400">{new Date(log.timestamp).toLocaleTimeString(isRtl ? "ar-EG" : "en-US")}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 7. Pending Reviews */}
+                {activeTab === "pending_reviews" && (
+                  <div className="space-y-3">
+                    <div className="text-xs text-gray-300 mb-2">
+                      {isRtl ? `العناصر المقدمة وبانتظار موافقة المدير العام (${pendingItems.length})` : `Pending Submissions (${pendingItems.length})`}
+                    </div>
+
+                    {pendingItems.length === 0 ? (
+                      <div className="text-center py-16 p-6 rounded-2xl bg-card/60 border border-primary/20">
+                        <FileCheck2 className="w-12 h-12 text-primary mx-auto mb-3 opacity-60" />
+                        <h4 className="text-base font-bold text-white mb-1">{isRtl ? "لا توجد عناصر معلقة حالياً" : "No pending items"}</h4>
+                      </div>
+                    ) : (
+                      pendingItems.map(p => (
+                        <div key={p.id} className="p-4 rounded-2xl bg-card border-2 border-primary/30 flex items-center justify-between gap-3">
+                          <div>
+                            <h4 className="text-sm font-bold text-white">{p.itemData?.title_ar || p.itemData?.title}</h4>
+                            <span className="text-xs text-gray-300">{isRtl ? `مقدم بواسطة: ${p.submittedBy.name}` : `By: ${p.submittedBy.name}`}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="luxe"
+                              size="sm"
+                              onClick={() => {
+                                adminAuthStore.approvePending(p.id, currentUser!);
+                                if (p.type === "scholarship") dynamicStore.saveScholarship(p.itemData);
+                                else dynamicStore.saveJob(p.itemData);
+                                toast.success(isRtl ? "تمت الموافقة والنشر" : "Approved & Published");
+                              }}
+                              className="font-bold text-xs cursor-pointer"
+                            >
+                              {isRtl ? "موافقة ونشر" : "Approve"}
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {/* 8. Backup & Restore */}
+                {activeTab === "backup" && (
+                  <div className="p-6 rounded-2xl bg-card border-2 border-primary/30 max-w-xl mx-auto space-y-4">
+                    <h4 className="text-base font-bold text-white">{isRtl ? "النسخ الاحتياطي وتصدير البيانات" : "Data Backup & Export"}</h4>
+                    <p className="text-xs text-gray-300">
+                      {isRtl ? "تصدير نسخة JSON شاملة لكافة المنح والوظائف والأرشيف وسجل التدقيق" : "Export full JSON backup"}
+                    </p>
+                    <Button
+                      variant="luxe"
+                      onClick={() => {
+                        const data = {
+                          scholarships: dynamicStore.getScholarships(),
+                          jobs: dynamicStore.getJobs(),
+                          archive: dynamicStore.getArchivedItems(),
+                          auditLogs: adminAuthStore.getAuditLogs(),
+                          exportedAt: new Date().toISOString(),
+                        };
+                        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = `alforas_backup_${Date.now()}.json`;
+                        a.click();
+                        toast.success(isRtl ? "تم تصدير ملف النسخة الاحتياطية بنجاح" : "Backup exported");
+                      }}
+                      className="w-full font-bold shadow-gold cursor-pointer"
+                    >
+                      <Download className="w-4 h-4 mr-2 ml-2" />
+                      <span>{isRtl ? "تحميل نسخة JSON الآن" : "Download JSON Backup"}</span>
+                    </Button>
+                  </div>
+                )}
+
+                {/* 9. Password Change with 2FA Email OTP Verification */}
+                {activeTab === "security" && (
+                  <SecurityPasswordManager
+                    currentUserId={currentUser.id}
+                    userEmail={currentUser.email || "alforas.one@gmail.com"}
+                    isRtl={isRtl}
+                    onSuccess={() => {
+                      toast.success(isRtl ? "تم تأكيد وتحديث بيانات الأمان" : "Security credentials refreshed");
+                    }}
+                  />
+                )}
+              </div>
+
+              {/* FLOATING SELECTION ACTION BAR (Selection is a System - Video 1) */}
+              <AnimatePresence>
+                {selectedIds.length > 0 && (
+                  <motion.div
+                    initial={{ y: 80, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: 80, opacity: 0 }}
+                    transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                    className="p-3 sm:p-4 bg-card/95 border-t-2 border-primary/50 shadow-2xl flex flex-wrap items-center justify-between gap-3 z-30 flex-shrink-0"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="px-3.5 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs sm:text-sm font-bold shadow-md">
+                        {isRtl ? `تم تحديد ${selectedIds.length} عنصر` : `${selectedIds.length} selected`}
+                      </span>
+
+                      <button
+                        onClick={() => setSelectedIds([])}
+                        className="text-xs font-semibold text-gray-300 hover:text-white underline cursor-pointer"
+                      >
+                        {isRtl ? "إلغاء التحديد" : "Clear selection"}
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {activeTab === "archive" ? (
+                        <Button
+                          variant="luxe"
+                          size="sm"
+                          onClick={handleBulkRestore}
+                          className="font-bold text-xs sm:text-sm shadow-gold cursor-pointer"
+                        >
+                          <RotateCcw className="w-4 h-4 mr-1.5 ml-1.5" />
+                          <span>{isRtl ? `استعادة المحددة (${selectedIds.length})` : `Restore (${selectedIds.length})`}</span>
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={handleBulkArchive}
+                          className="font-bold text-xs sm:text-sm cursor-pointer"
+                        >
+                          <Archive className="w-4 h-4 mr-1.5 ml-1.5" />
+                          <span>{isRtl ? `أرشفة المحددة (${selectedIds.length})` : `Archive (${selectedIds.length})`}</span>
+                        </Button>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </main>
+          </div>
+        )}
+      </motion.div>
+
+      {/* Supervisor Security Deletion Modal */}
+      <AnimatePresence>
+        {isDeletingConfirmOpen && pendingDeleteAction && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-md p-6 rounded-3xl bg-card border-2 border-destructive/50 shadow-2xl space-y-4"
+              dir={dir}
+            >
+              <div className="flex items-center gap-3 text-destructive">
+                <ShieldAlert className="w-7 h-7" />
+                <h4 className="text-base sm:text-lg font-bold text-white">{isRtl ? "تأكيد أمني لنقل العنصر للأرشيف" : "Security Deletion Confirmation"}</h4>
+              </div>
+
+              <p className="text-xs sm:text-sm text-gray-300 leading-relaxed">
+                {isRtl
+                  ? `أنت على وشك أرشفة "${pendingDeleteAction.title}". سيتم نقلها للأرشيف فوراً وإرسال إشعار رسمي للمدير العام بالإجراء.`
+                  : `You are about to archive "${pendingDeleteAction.title}". Admin will receive an official notification.`}
+              </p>
+
+              <div className="flex gap-2 justify-end pt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsDeletingConfirmOpen(false)}
+                  className="border-primary/40 text-gray-200 cursor-pointer"
+                >
+                  {isRtl ? "إلغاء" : "Cancel"}
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={confirmSupervisorDelete}
+                  className="font-bold cursor-pointer"
+                >
+                  {isRtl ? "تأكيد الأرشفة والإشعار" : "Confirm Archive"}
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Editing Scholarship Modal with Full Fields & Dynamic Custom Fields */}
+      {editingScholarship && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+          <div className="w-full max-w-3xl max-h-[90vh] p-6 rounded-3xl bg-card border-2 border-primary/40 shadow-2xl space-y-4 my-auto overflow-y-auto scrollbar-thin scrollbar-thumb-primary/30" dir={dir}>
+            <div className="flex items-center justify-between border-b border-primary/20 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-primary/20 flex items-center justify-center text-primary">
+                  <GraduationCap className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-base sm:text-lg font-bold text-white">{isRtl ? "إضافة / تحرير بيانات المنحة الشاملة" : "Edit Scholarship Details"}</h4>
+                  <p className="text-[11px] text-gray-400">{isRtl ? "إضافة وتعديل كافة الحقول وشروط القبول والملاحظات الإضافية" : "Configure all scholarship details & dynamic fields"}</p>
+                </div>
+              </div>
+              <button onClick={() => setEditingScholarship(null)} className="text-gray-400 hover:text-white p-1 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs sm:text-sm">
+              <div>
+                <label className="block font-bold text-gray-200 mb-1">{isRtl ? "عنوان المنحة (بالعربية)" : "Title (Arabic)"} <span className="text-destructive">*</span></label>
+                <input
+                  type="text"
+                  value={(editingScholarship as any).title_ar || editingScholarship.title}
+                  onChange={e => setEditingScholarship({ ...editingScholarship, title: e.target.value, title_ar: e.target.value } as any)}
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-gray-200 mb-1">{isRtl ? "عنوان المنحة (بالإنجليزية)" : "Title (English)"}</label>
+                <input
+                  type="text"
+                  value={(editingScholarship as any).title_en || (editingScholarship as any).titleEn || ""}
+                  onChange={e => setEditingScholarship({ ...editingScholarship, title_en: e.target.value, titleEn: e.target.value } as any)}
+                  placeholder="e.g. Fully Funded Oxford Scholarship"
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-gray-200 mb-1">{isRtl ? "الدولة المستضيفة والجامعة" : "Country & University"}</label>
+                <input
+                  type="text"
+                  value={editingScholarship.country}
+                  onChange={e => setEditingScholarship({ ...editingScholarship, country: e.target.value })}
+                  placeholder="بريطانيا - جامعة أكسفورد"
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-gray-200 mb-1">{isRtl ? "المرحلة الدراسية" : "Degree Level"}</label>
+                <select
+                  value={editingScholarship.degree || "all"}
+                  onChange={e => setEditingScholarship({ ...editingScholarship, degree: e.target.value as any })}
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
+                >
+                  <option value="bachelor">{isRtl ? "بكالوريوس" : "Bachelor's"}</option>
+                  <option value="master">{isRtl ? "ماجستير" : "Master's"}</option>
+                  <option value="phd">{isRtl ? "دكتوراه / أبحاث" : "PhD / Research"}</option>
+                  <option value="bachelor_master">{isRtl ? "بكالوريوس + ماجستير" : "Bachelor + Master"}</option>
+                  <option value="all">{isRtl ? "كافة المراحل (شامل)" : "All Levels"}</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-gray-200 mb-1">{isRtl ? "نوع التمويل والدعم" : "Funding Coverage"}</label>
+                <select
+                  value={editingScholarship.coverage || "full"}
+                  onChange={e => setEditingScholarship({ ...editingScholarship, coverage: e.target.value as any })}
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
+                >
+                  <option value="full">{isRtl ? "ممولة بالكامل (رسوم + راتب + سكن + طيران)" : "Fully Funded"}</option>
+                  <option value="partial">{isRtl ? "تمويل جزئي (رسوم دراسية فقط)" : "Partial Funded"}</option>
+                  <option value="tuition_only">{isRtl ? "إعفاء من الرسوم" : "Tuition Waiver Only"}</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-gray-200 mb-1">{isRtl ? "الموعد النهائي للتقديم" : "Application Deadline"}</label>
+                <input
+                  type="date"
+                  value={editingScholarship.deadline}
+                  onChange={e => setEditingScholarship({ ...editingScholarship, deadline: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-gray-200 mb-1">{isRtl ? "رابط التقديم الرسمي" : "Official Apply URL"}</label>
+                <input
+                  type="url"
+                  value={editingScholarship.apply_url}
+                  onChange={e => setEditingScholarship({ ...editingScholarship, apply_url: e.target.value })}
+                  placeholder="https://..."
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-gray-200 mb-1">{isRtl ? "متطلبات اللغة (آيلتس / توفل)" : "Language Requirement"}</label>
+                <input
+                  type="text"
+                  value={(editingScholarship as any).language_req || ""}
+                  onChange={e => setEditingScholarship({ ...editingScholarship, language_req: e.target.value } as any)}
+                  placeholder={isRtl ? "مثال: IELTS 6.5 أو بدون شرط لغة" : "e.g. IELTS 6.5 or No Language Req"}
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block font-bold text-gray-200 mb-1">{isRtl ? "وصف ومزايا المنحة والتخصصات" : "Description & Benefits"}</label>
+              <textarea
+                rows={3}
+                value={(editingScholarship as any).description_ar || editingScholarship.description}
+                onChange={e => setEditingScholarship({ ...editingScholarship, description: e.target.value, description_ar: e.target.value } as any)}
+                className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary text-xs sm:text-sm"
+              />
+            </div>
+
+            {/* DYNAMIC CUSTOM FIELDS BUILDER */}
+            <div className="p-4 rounded-2xl bg-card/60 border border-primary/30 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Plus className="w-4 h-4 text-primary" />
+                  <span className="text-xs sm:text-sm font-bold text-white">{isRtl ? "حقول وشروط وملاحظات إضافية مخصصة" : "Dynamic Custom Fields"}</span>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const currentFields = (editingScholarship as any).custom_fields || [];
+                    setEditingScholarship({
+                      ...editingScholarship,
+                      custom_fields: [...currentFields, { label: "", value: "" }],
+                    } as any);
+                  }}
+                  className="text-xs border-primary/40 text-primary cursor-pointer hover:bg-primary/10"
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1 ml-1" />
+                  <span>{isRtl ? "إضافة حقل جديد" : "Add New Field"}</span>
+                </Button>
+              </div>
+
+              {((editingScholarship as any).custom_fields || []).map((f: any, fIdx: number) => (
+                <div key={fIdx} className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder={isRtl ? "اسم الحقل (مثال: شروط السن)" : "Field Label"}
+                    value={f.label}
+                    onChange={e => {
+                      const updated = [...((editingScholarship as any).custom_fields || [])];
+                      updated[fIdx].label = e.target.value;
+                      setEditingScholarship({ ...editingScholarship, custom_fields: updated } as any);
+                    }}
+                    className="w-1/3 px-3 py-1.5 rounded-xl bg-background border border-primary/30 text-white text-xs outline-none focus:border-primary"
+                  />
+                  <input
+                    type="text"
+                    placeholder={isRtl ? "القيمة أو الملاحظة المطلوبة" : "Field Value"}
+                    value={f.value}
+                    onChange={e => {
+                      const updated = [...((editingScholarship as any).custom_fields || [])];
+                      updated[fIdx].value = e.target.value;
+                      setEditingScholarship({ ...editingScholarship, custom_fields: updated } as any);
+                    }}
+                    className="flex-1 px-3 py-1.5 rounded-xl bg-background border border-primary/30 text-white text-xs outline-none focus:border-primary"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const updated = ((editingScholarship as any).custom_fields || []).filter((_: any, i: number) => i !== fIdx);
+                      setEditingScholarship({ ...editingScholarship, custom_fields: updated } as any);
+                    }}
+                    className="p-1.5 text-destructive hover:bg-destructive/10 rounded-lg cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-2 justify-end pt-3 border-t border-primary/20">
+              <Button variant="outline" size="sm" onClick={() => setEditingScholarship(null)} className="cursor-pointer">
+                {isRtl ? "إلغاء" : "Cancel"}
+              </Button>
+              <Button
+                variant="luxe"
+                size="sm"
+                onClick={() => {
+                  dynamicStore.saveScholarship(editingScholarship);
+                  setEditingScholarship(null);
+                  toast.success(isRtl ? "تم حفظ وتحديث بيانات المنحة بنجاح" : "Scholarship saved successfully");
+                }}
+                className="font-bold shadow-gold cursor-pointer"
+              >
+                {isRtl ? "حفظ ونشر المنحة" : "Save & Publish"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Editing Job Modal with Full Details & Dynamic Custom Fields */}
+      {editingJob && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+          <div className="w-full max-w-3xl max-h-[90vh] p-6 rounded-3xl bg-card border-2 border-primary/40 shadow-2xl space-y-4 my-auto overflow-y-auto scrollbar-thin scrollbar-thumb-primary/30" dir={dir}>
+            <div className="flex items-center justify-between border-b border-primary/20 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-primary/20 flex items-center justify-center text-primary">
+                  <Briefcase className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-base sm:text-lg font-bold text-white">{isRtl ? "إضافة / تحرير فرصة العمل الشاملة" : "Edit Job Opportunity"}</h4>
+                  <p className="text-[11px] text-gray-400">{isRtl ? "تفاصيل الوظيفة والراتب بالدولار وطريقة الدفع والحقول المخصصة" : "Set job specs, USD salary, payment terms & custom fields"}</p>
+                </div>
+              </div>
+              <button onClick={() => setEditingJob(null)} className="text-gray-400 hover:text-white p-1 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs sm:text-sm">
+              <div>
+                <label className="block font-bold text-gray-200 mb-1">{isRtl ? "المسمى الوظيفي (بالعربية)" : "Job Title (Arabic)"} <span className="text-destructive">*</span></label>
+                <input
+                  type="text"
+                  value={editingJob.title_ar}
+                  onChange={e => setEditingJob({ ...editingJob, title_ar: e.target.value })}
+                  placeholder="مطور واجهات ومواقع عن بُعد"
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-gray-200 mb-1">{isRtl ? "المسمى الوظيفي (بالإنجليزية)" : "Job Title (English)"}</label>
+                <input
+                  type="text"
+                  value={editingJob.title_en || ""}
+                  onChange={e => setEditingJob({ ...editingJob, title_en: e.target.value })}
+                  placeholder="Remote Frontend Engineer"
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-gray-200 mb-1">{isRtl ? "اسم الشركة / المنصة العالمية" : "Company / Platform"}</label>
+                <input
+                  type="text"
+                  value={editingJob.company}
+                  onChange={e => setEditingJob({ ...editingJob, company: e.target.value })}
+                  placeholder="Upwork / Toptal / Global Remote"
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-gray-200 mb-1">{isRtl ? "الراتب / الدخل المتوقع بالدولار" : "Estimated Salary ($)"}</label>
+                <input
+                  type="text"
+                  value={editingJob.salary || ""}
+                  onChange={e => setEditingJob({ ...editingJob, salary: e.target.value })}
+                  placeholder="$2,500 - $4,500 / month"
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-gray-200 mb-1">{isRtl ? "نوع العمل وموقعه" : "Job Type & Location"}</label>
+                <select
+                  value={editingJob.type || "remote_freelance"}
+                  onChange={e => setEditingJob({ ...editingJob, type: e.target.value as any })}
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
+                >
+                  <option value="remote_freelance">{isRtl ? "عن بُعد بالكامل (Remote Freelance)" : "100% Remote Freelance"}</option>
+                  <option value="full_time">{isRtl ? "دوام كامل عن بُعد (Full-Time Remote)" : "Full-Time Remote"}</option>
+                  <option value="part_time">{isRtl ? "دوام جزئي مرن (Part-Time)" : "Part-Time Flexible"}</option>
+                  <option value="contract">{isRtl ? "عقد مشروع محدد (Project Contract)" : "Project Contract"}</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-gray-200 mb-1">{isRtl ? "طريقة استلام الأرباح والتحويل" : "Payout Method"}</label>
+                <input
+                  type="text"
+                  value={(editingJob as any).payout_method || ""}
+                  onChange={e => setEditingJob({ ...editingJob, payout_method: e.target.value } as any)}
+                  placeholder={isRtl ? "بايبال، بايونير، تحويل بنكي دولي" : "PayPal, Payoneer, Wire Transfer"}
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-gray-200 mb-1">{isRtl ? "رابط التقديم المباشر" : "Apply URL"}</label>
+                <input
+                  type="url"
+                  value={editingJob.apply_url}
+                  onChange={e => setEditingJob({ ...editingJob, apply_url: e.target.value })}
+                  placeholder="https://..."
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-gray-200 mb-1">{isRtl ? "المهارات والخبرات المطلوبة" : "Required Skills"}</label>
+                <input
+                  type="text"
+                  value={(editingJob.skills || []).join(", ")}
+                  onChange={e => setEditingJob({ ...editingJob, skills: e.target.value.split(",").map(s => s.trim()).filter(Boolean) })}
+                  placeholder="React, English B2, Node.js"
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block font-bold text-gray-200 mb-1">{isRtl ? "تفاصيل الوصف الوظيفي والمسؤوليات" : "Job Description"}</label>
+              <textarea
+                rows={3}
+                value={editingJob.description_ar}
+                onChange={e => setEditingJob({ ...editingJob, description_ar: e.target.value })}
+                className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary text-xs sm:text-sm"
+              />
+            </div>
+
+            {/* DYNAMIC CUSTOM FIELDS BUILDER FOR JOBS */}
+            <div className="p-4 rounded-2xl bg-card/60 border border-primary/30 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Plus className="w-4 h-4 text-primary" />
+                  <span className="text-xs sm:text-sm font-bold text-white">{isRtl ? "حقول وشروط وملاحظات إضافية مخصصة" : "Dynamic Custom Fields"}</span>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const currentFields = (editingJob as any).custom_fields || [];
+                    setEditingJob({
+                      ...editingJob,
+                      custom_fields: [...currentFields, { label: "", value: "" }],
+                    } as any);
+                  }}
+                  className="text-xs border-primary/40 text-primary cursor-pointer hover:bg-primary/10"
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1 ml-1" />
+                  <span>{isRtl ? "إضافة حقل جديد" : "Add New Field"}</span>
+                </Button>
+              </div>
+
+              {((editingJob as any).custom_fields || []).map((f: any, fIdx: number) => (
+                <div key={fIdx} className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder={isRtl ? "اسم الحقل (مثال: عدد ساعات العمل)" : "Field Label"}
+                    value={f.label}
+                    onChange={e => {
+                      const updated = [...((editingJob as any).custom_fields || [])];
+                      updated[fIdx].label = e.target.value;
+                      setEditingJob({ ...editingJob, custom_fields: updated } as any);
+                    }}
+                    className="w-1/3 px-3 py-1.5 rounded-xl bg-background border border-primary/30 text-white text-xs outline-none focus:border-primary"
+                  />
+                  <input
+                    type="text"
+                    placeholder={isRtl ? "القيمة أو الملاحظة المطلوبة" : "Field Value"}
+                    value={f.value}
+                    onChange={e => {
+                      const updated = [...((editingJob as any).custom_fields || [])];
+                      updated[fIdx].value = e.target.value;
+                      setEditingJob({ ...editingJob, custom_fields: updated } as any);
+                    }}
+                    className="flex-1 px-3 py-1.5 rounded-xl bg-background border border-primary/30 text-white text-xs outline-none focus:border-primary"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const updated = ((editingJob as any).custom_fields || []).filter((_: any, i: number) => i !== fIdx);
+                      setEditingJob({ ...editingJob, custom_fields: updated } as any);
+                    }}
+                    className="p-1.5 text-destructive hover:bg-destructive/10 rounded-lg cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-2 justify-end pt-3 border-t border-primary/20">
+              <Button variant="outline" size="sm" onClick={() => setEditingJob(null)} className="cursor-pointer">
+                {isRtl ? "إلغاء" : "Cancel"}
+              </Button>
+              <Button
+                variant="luxe"
+                size="sm"
+                onClick={() => {
+                  dynamicStore.saveJob(editingJob);
+                  setEditingJob(null);
+                  toast.success(isRtl ? "تم حفظ ونشر فرصة العمل بنجاح" : "Job saved successfully");
+                }}
+                className="font-bold shadow-gold cursor-pointer"
+              >
+                {isRtl ? "حفظ ونشر الوظيفة" : "Save & Publish"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};

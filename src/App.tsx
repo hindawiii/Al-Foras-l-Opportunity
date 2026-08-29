@@ -12,32 +12,40 @@ import ResetPassword from "./pages/auth/ResetPassword";
 import Landing from "./pages/Landing";
 import NotFound from "./pages/NotFound";
 import { AIAdvisor } from "@/components/foras/AIAdvisor";
+import { ErrorBoundary } from "@/components/foras/ErrorBoundary";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <LanguageProvider>
-      <SettingsProvider>
-        <AuthProvider>
-          <TooltipProvider>
-            <Sonner position="top-center" richColors closeButton />
-            <BrowserRouter>
-              <Routes>
-                <Route path="/" element={<Landing />} />
-                <Route path="/app" element={<Index />} />
-                <Route path="/dashboard" element={<Index />} />
-                <Route path="/landing" element={<Landing />} />
-                <Route path="/auth" element={<AuthPage />} />
-                <Route path="/auth/callback" element={<AuthCallback />} />
-                <Route path="/reset-password" element={<ResetPassword />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </BrowserRouter>
-          </TooltipProvider>
-        </AuthProvider>
-      </SettingsProvider>
-    </LanguageProvider>
+    <ErrorBoundary>
+      <LanguageProvider>
+        <SettingsProvider>
+          <AuthProvider>
+            <TooltipProvider>
+              <Sonner position="top-center" richColors closeButton />
+              <BrowserRouter
+                future={{
+                  v7_startTransition: true,
+                  v7_relativeSplatPath: true,
+                }}
+              >
+                <Routes>
+                  <Route path="/" element={<Landing />} />
+                  <Route path="/app" element={<Index />} />
+                  <Route path="/dashboard" element={<Index />} />
+                  <Route path="/landing" element={<Landing />} />
+                  <Route path="/auth" element={<AuthPage />} />
+                  <Route path="/auth/callback" element={<AuthCallback />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </BrowserRouter>
+            </TooltipProvider>
+          </AuthProvider>
+        </SettingsProvider>
+      </LanguageProvider>
+    </ErrorBoundary>
   </QueryClientProvider>
 );
 

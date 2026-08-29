@@ -376,28 +376,39 @@ const STRINGS: Record<Lang, Record<string, string>> = {
     aboutVersion: "الفُرَص — الإصدار 1.0",
     // Landing
     landingTagline: "بوابتك الذهبية للفرص العالمية",
-    landingHeadline: "اكتشف، تقدّم، وحقق طموحك الأكاديمي",
-    landingSubheadline: "منصة الفُرَص تجمع لك أفضل المنح الدراسية العربية والعالمية، مع مطابقة ذكية تبني على ملفك الشخصي.",
+    landingHeadline: "اكتشف، تقدّم، وحقق طموحك الأكاديمي والعملي",
+    landingSubheadline: "منصة الفُرَص تجمع لك أفضل المنح الدراسية العربية والعالمية، وفرص العمل اون لاين، مع مطابقة ذكية تبني على ملفك الشخصي.",
     landingCtaPrimary: "ابدأ الآن مجاناً",
     landingCtaSecondary: "تسجيل الدخول",
     landingFeaturesTitle: "لماذا منصة الفُرَص؟",
-    landingFeature1Title: "مطابقة ذكية",
-    landingFeature1Body: "خوارزمية AI تربط مهاراتك بالفرص الأنسب فوراً.",
-    landingFeature2Title: "مصادر موثوقة",
-    landingFeature2Body: "جميع المنح من جهات رسمية ومحدثة لحظياً.",
-    landingFeature3Title: "تجربة فاخرة",
-    landingFeature3Body: "تصميم زجاجي عصري بهوية ذهبية أنيقة.",
+    landingFeature1Title: "مصادر موثوقة ومطابقة ذكية",
+    landingFeature1Body: "لجميع المنح الدراسية العربية والعالمية من جهات رسمية وخوارزمية AI تربط مهاراتك واهتماماتك بالفرص الأنسب لك فوراً.",
+    landingFeature2Title: "دليل الجامعات العربية",
+    landingFeature2Body: "لاستكشاف الجامعات الحكومية والخاصة عبر 20 دولة عربية مع مطابقة المؤهلات ونسب القبول.",
+    landingFeature3Title: "وظائف دولية وعمل عن بعد",
+    landingFeature3Body: "لفرص مهنية احترافية بالدولار تناسب مختلف المهارات من شركات عالمية.",
+    landingFeature4Title: "منشئ السيرة الذاتية الاحترافية (CV Builder)",
+    landingFeature4Body: "لبناء سيرة ذاتية بتنسيقات متوافقة مع أنظمة الفرز الآلي (ATS) وتحميلها بصيغة PDF.",
+    landingFeature5Title: "الأخبار والعملات الرقمية",
+    landingFeature5Body: "كل الأخبار العربية والعالمية مع متابعة حية لأسعار العملات والذهب والعملات الرقمية.",
     landingWhyTitle: "رسالتنا ورؤيتنا",
     landingWhy1Title: "طموح بلا حدود",
-    landingWhy1Body: "رؤيتنا هي تمكين كل طالب عربي من الوصول لأرقى الجامعات العالمية.",
-    landingWhy2Title: "مطابقة ذكية",
-    landingWhy2Body: "نستخدم تقنيات متطورة لربط ملفك الشخصي بالمنحة المثالية لك.",
-    landingWhy3Title: "مصادر موثوقة",
-    landingWhy3Body: "نضمن لك الوصول إلى بيانات دقيقة ومحدثة من الجهات الرسمية مباشرة.",
+    landingWhy1Body: "رؤيتنا هي تمكين كل طالب وخريج عربي من الوصول لأرقى الجامعات العالمية وأفضل فرص العمل.",
+    landingWhy2Title: "مطابقة ذكية بالذكاء الاصطناعي",
+    landingWhy2Body: "نستخدم تقنيات متطورة لربط ملفك الشخصي بالمنحة المثالية والوظيفة المناسبة لك.",
+    landingWhy3Title: "مصادر موثوقة 100%",
+    landingWhy3Body: "نضمن لك الوصول إلى بيانات دقيقة ومحدثة من الجهات والجامعات الرسمية مباشرة.",
     landingContactSupport: "تواصل مع فريق الدعم",
-    landingScholarshipsTitle: "أحدث المنح",
-    landingScholarshipsSubtitle: "نظرة سريعة على فرص متاحة الآن",
-    landingViewAll: "استعرض جميع المنح",
+    landingScholarshipsTitle: "أقوى وأحدث المنح المعتمدة",
+    landingScholarshipsSubtitle: "محدثة تلقائياً وتزامناً مع أحدث الفرص الموثقة في المنصة",
+    landingFreelanceTitle: "أحدث فرص العمل الحر وعن بُعد",
+    landingFreelanceSubtitle: "مشاريع ووظائف عالمية موثوقة بدخل بالدولار تناسب البرمجة، التصميم، الترجمة، والمهام الرقمية",
+    landingFreelanceViewAll: "استكشف كافة وظائف العمل الحر",
+    landingArabHubTitle: "أركان الدول ودليل الجامعات العربية",
+    landingArabHubSubtitle: "استكشف الجامعات والمؤسسات المعتمدة عبر 20 دولة عربية مع نسب القبول والمنح",
+    landingArabHubViewAll: "تصفح الدليل الأكاديمي الكامل",
+    landingExploreHub: "دخول ركن الدولة",
+    landingViewAll: "استعرض جميع المنح وفرص العمل",
     landingFooter: "© 2026 الفُرَص — جميع الحقوق محفوظة",
   },
   en: {
@@ -764,28 +775,39 @@ const STRINGS: Record<Lang, Record<string, string>> = {
     aboutVersion: "Al-Foras — Version 1.0",
     // Landing
     landingTagline: "Your golden gateway to global opportunities",
-    landingHeadline: "Discover, apply, and achieve your academic dream",
-    landingSubheadline: "Al-Foras curates the best Arab and global scholarships with AI-powered matching tailored to your profile.",
+    landingHeadline: "Discover, Apply, and Achieve Your Academic & Career Ambitions",
+    landingSubheadline: "Al-Foras platform brings you the finest Arab & global scholarships and online job opportunities, with smart AI matching tailored to your profile.",
     landingCtaPrimary: "Get Started — It's Free",
     landingCtaSecondary: "Sign In",
     landingFeaturesTitle: "Why Al-Foras Platform?",
-    landingFeature1Title: "Smart Matching",
-    landingFeature1Body: "AI algorithm connects your skills to the best-fit opportunities instantly.",
-    landingFeature2Title: "Trusted Sources",
-    landingFeature2Body: "Every scholarship is from an official, real-time updated source.",
-    landingFeature3Title: "Premium Experience",
-    landingFeature3Body: "Modern glassmorphism design with an elegant gold identity.",
+    landingFeature1Title: "Verified Sources & Smart Matching",
+    landingFeature1Body: "All Arab & international scholarships from official sources, with an AI algorithm connecting your skills and interests to the best opportunities instantly.",
+    landingFeature2Title: "Arab Universities Guide",
+    landingFeature2Body: "Explore public and private universities across 20 Arab nations with intelligent matching for qualifications and admission criteria.",
+    landingFeature3Title: "Global Jobs & Remote Work",
+    landingFeature3Body: "Access professional career opportunities paid in USD matching diverse skillsets from international employers.",
+    landingFeature4Title: "Professional CV Builder (ATS-Compliant)",
+    landingFeature4Body: "Build modern, ATS-compatible resumes formatted for global standards and download them instantly as PDF.",
+    landingFeature5Title: "News & Live Crypto & Currencies",
+    landingFeature5Body: "Comprehensive Arab and global news coverage along with real-time exchange rates, gold, and cryptocurrency prices.",
     landingWhyTitle: "Our Mission & Vision",
     landingWhy1Title: "Limitless Ambition",
-    landingWhy1Body: "Our vision is to empower every Arab student to reach the world's top universities.",
-    landingWhy2Title: "Smart Matching",
-    landingWhy2Body: "Advanced technology connects your profile to the scholarship that fits you best.",
-    landingWhy3Title: "Trusted Sources",
-    landingWhy3Body: "We guarantee access to accurate, real-time data straight from official authorities.",
+    landingWhy1Body: "Our vision is to empower every Arab student and graduate to reach top universities and top careers.",
+    landingWhy2Title: "AI Smart Matching",
+    landingWhy2Body: "Advanced technology connects your profile to the scholarship and career path that fits you best.",
+    landingWhy3Title: "100% Verified Sources",
+    landingWhy3Body: "We guarantee access to accurate, real-time data straight from official institutions.",
     landingContactSupport: "Contact Support Team",
-    landingScholarshipsTitle: "Latest Scholarships",
-    landingScholarshipsSubtitle: "A quick look at opportunities available now",
-    landingViewAll: "Browse all scholarships",
+    landingScholarshipsTitle: "Top Verified Opportunities",
+    landingScholarshipsSubtitle: "Automatically synced in real time with the verified listings in the app",
+    landingFreelanceTitle: "Top Freelance & Remote Work Opportunities",
+    landingFreelanceSubtitle: "Verified global projects and remote jobs paid in USD across tech, design, translation, and digital skills",
+    landingFreelanceViewAll: "Explore All Freelance Jobs",
+    landingArabHubTitle: "Arab Countries Hub & Universities",
+    landingArabHubSubtitle: "Explore accredited institutions across 20 Arab nations with admission criteria and scholarships",
+    landingArabHubViewAll: "Browse Full Academic Directory",
+    landingExploreHub: "Explore Country Hub",
+    landingViewAll: "Browse All Opportunities & Jobs",
     landingFooter: "© 2026 Al-Foras — All rights reserved",
   },
 };
@@ -795,17 +817,17 @@ const ARABIC_COUNTRY_CODES = new Set(
 );
 
 const detectInitialLang = (): Lang => {
-  // If user has explicitly and manually switched language in settings/navbar, respect it
-  if (localStorage.getItem("foras-lang-manual") === "true") {
-    const stored = localStorage.getItem("foras-lang") as Lang | null;
-    if (stored === "ar" || stored === "en") return stored;
-  }
+  if (typeof window === "undefined") return "ar";
 
-  // 1. Check Country Code from previous geo-sync
+  // 1. Primary: Check if language was explicitly saved
+  const stored = localStorage.getItem("foras-lang") as Lang | null;
+  if (stored === "ar" || stored === "en") return stored;
+
+  // 2. Check Country Code from previous geo-sync
   const cc = localStorage.getItem("foras-countrycode");
   if (cc && ARABIC_COUNTRY_CODES.has(cc.toUpperCase())) return "ar";
 
-  // 2. Check Browser Languages (device preferences array)
+  // 3. Check Browser Languages
   try {
     const langs = (navigator.languages && navigator.languages.length > 0)
       ? navigator.languages
@@ -813,13 +835,13 @@ const detectInitialLang = (): Lang => {
     const hasArabic = langs.some((l) => l && l.toLowerCase().startsWith("ar"));
     if (hasArabic) return "ar";
 
-    // If English is explicitly the first preference
+    // If English is explicitly the primary preference
     const primary = (langs[0] || "").toLowerCase();
     if (primary.startsWith("en")) return "en";
     if (primary.startsWith("ar")) return "ar";
   } catch {}
 
-  // 3. Check Device Timezone (Arab region timezones default to Arabic)
+  // 4. Check Device Timezone (Arab region timezones default to Arabic)
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone.toLowerCase();
     if (
@@ -835,9 +857,8 @@ const detectInitialLang = (): Lang => {
     }
   } catch {}
 
-  // Fallback to device language or Arabic default
-  const browser = (navigator.language || "ar").toLowerCase();
-  return browser.startsWith("en") ? "en" : "ar";
+  // Fallback default
+  return "ar";
 };
 
 const Ctx = createContext<LanguageCtx>({
@@ -853,27 +874,54 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     document.documentElement.lang = lang;
     document.documentElement.dir = dir;
-    localStorage.setItem("foras-lang", lang);
+    try {
+      localStorage.setItem("foras-lang", lang);
+    } catch {}
   }, [lang, dir]);
 
-  // If country code becomes known later and user hasn't manually picked, refine.
+  // Bidirectional listener across tabs / storage events / custom dispatches
   useEffect(() => {
-    const onCountry = (e: Event) => {
-      if (localStorage.getItem("foras-lang-manual")) return;
-      const code = (e as CustomEvent).detail?.code as string | undefined;
-      if (!code) return;
-      setLangState(ARABIC_COUNTRY_CODES.has(code.toUpperCase()) ? "ar" : "en");
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === "foras-lang" && (e.newValue === "ar" || e.newValue === "en")) {
+        setLangState(e.newValue as Lang);
+      }
     };
-    window.addEventListener("foras:countrychange", onCountry as EventListener);
-    return () => window.removeEventListener("foras:countrychange", onCountry as EventListener);
+    const handleCustomLang = (e: Event) => {
+      const targetLang = (e as CustomEvent).detail?.lang as Lang | undefined;
+      if (targetLang === "ar" || targetLang === "en") {
+        setLangState(targetLang);
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener("foras:langchange", handleCustomLang as EventListener);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("foras:langchange", handleCustomLang as EventListener);
+    };
   }, []);
 
   const setLang = useCallback((l: Lang) => {
     setLangState(l);
-    localStorage.setItem("foras-lang-manual", "true");
+    try {
+      localStorage.setItem("foras-lang", l);
+      localStorage.setItem("foras-lang-manual", "true");
+      window.dispatchEvent(new CustomEvent("foras:langchange", { detail: { lang: l } }));
+    } catch {}
   }, []);
-  const toggleLang = useCallback(() => setLang(lang === "ar" ? "en" : "ar"), [lang, setLang]);
-  const t = useCallback((key: string) => STRINGS[lang][key] ?? key, [lang]);
+
+  const toggleLang = useCallback(() => {
+    setLangState((prev) => {
+      const next: Lang = prev === "ar" ? "en" : "ar";
+      try {
+        localStorage.setItem("foras-lang", next);
+        localStorage.setItem("foras-lang-manual", "true");
+        window.dispatchEvent(new CustomEvent("foras:langchange", { detail: { lang: next } }));
+      } catch {}
+      return next;
+    });
+  }, []);
+
+  const t = useCallback((key: string) => STRINGS[lang]?.[key] ?? key, [lang]);
 
   // touch COUNTRIES so tree-shaker keeps the import side-effect-free
   void COUNTRIES;

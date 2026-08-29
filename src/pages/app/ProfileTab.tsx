@@ -4,7 +4,7 @@ import {
   Save, Plus, X, GraduationCap, MapPin, Mail, Phone, User as UserIcon,
   Edit3, Sparkles, Check, Camera, Loader2, Link as LinkIcon, Trash2,
   Star, Briefcase, ChevronDown, Maximize2, Compass, HelpCircle, CheckCircle2,
-  ExternalLink, Award, Globe, BookOpen, Clock, Building
+  ExternalLink, Award, Globe, BookOpen, Clock, Building, ShieldCheck
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +19,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { guestStorage } from "@/lib/guestStorage";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { AdminDashboardModal } from "@/components/foras/AdminDashboardModal";
 import {
   profileExtras, defaultExtras, type ProfileExtras, type PersonalLink,
   type LinkType, type SkillEntry,
@@ -27,6 +28,7 @@ import { PHONE_COUNTRIES, findPhoneCountry, validatePhone } from "@/lib/phoneCou
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { LuxeAvatar } from "@/components/foras/LuxeAvatar";
 
 interface ProfileState {
   full_name: string; bio: string; education: string; location: string; avatar_url: string; phone: string;
@@ -94,6 +96,7 @@ export const ProfileTab = () => {
   const [uploading, setUploading] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [geoHelpOpen, setGeoHelpOpen] = useState(false);
+  const [adminDashboardOpen, setAdminDashboardOpen] = useState(false);
 
   // Load extras from storage
   useEffect(() => {
@@ -345,51 +348,44 @@ export const ProfileTab = () => {
           </button>
 
           <div className="relative px-6 pt-10 pb-6 flex flex-col items-center text-center">
-            {/* Integrated Squircle Avatar & Integrated Completion Bar */}
+            {/* Integrated Avatar with Progress Ring following Video Guidelines */}
             <div className="relative group flex flex-col items-center">
-              {/* Outer Golden Aura Glow */}
-              <div className="absolute -inset-1.5 bg-gradient-to-tr from-[hsl(var(--primary))] via-[hsl(var(--primary-glow))] to-[hsl(var(--primary-deep))] rounded-[30px] blur-md opacity-60 group-hover:opacity-90 transition-opacity" />
+              {/* Outer Glow */}
+              <div className="absolute -inset-2 bg-gradient-to-tr from-[hsl(var(--primary))] via-[hsl(var(--primary-glow))] to-[hsl(var(--primary-deep))] rounded-[36px] blur-lg opacity-40 group-hover:opacity-75 transition-opacity pointer-events-none" />
 
-              {/* Squircle Image Container */}
+              {/* Modern Avatar with Full Fallback Chain + Progress Ring */}
               <div
                 onClick={() => setPreviewOpen(true)}
-                className="relative w-32 h-32 sm:w-36 sm:h-36 rounded-[26px] bg-card overflow-hidden border-2 border-primary/60 shadow-[0_10px_30px_-5px_hsl(var(--primary)/0.4)] cursor-pointer flex items-center justify-center transition-all duration-300 group-hover:scale-[1.02]"
+                className="relative cursor-pointer transition-transform duration-300 group-hover:scale-[1.02]"
                 title={ar ? "اضغط للمعاينة بالحجم الكامل" : "Click to preview full size"}
               >
-                {profile.avatar_url && !hideProfile ? (
-                  <img
-                    src={profile.avatar_url}
-                    alt="avatar"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gold-gradient flex flex-col items-center justify-center font-display text-4xl text-primary-foreground font-bold">
-                    {hideProfile ? "•" : initial}
-                  </div>
-                )}
+                <LuxeAvatar
+                  src={profile.avatar_url && !hideProfile ? profile.avatar_url : null}
+                  name={hideProfile ? "•" : (profile.full_name || user?.email || "User")}
+                  size="hero"
+                  shape="squircle"
+                  showRing={true}
+                  ringProgress={completion}
+                  ringStatus="gold"
+                />
 
-                {/* Hover overlay */}
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
+                {/* Hover overlay hint */}
+                <div className="absolute inset-2.5 rounded-[26px] bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px] pointer-events-none">
                   <Maximize2 className="w-6 h-6 text-white drop-shadow-md" />
                 </div>
+              </div>
 
-                {/* Integrated Progress Pill AT BOTTOM OF AVATAR SQUARE */}
-                <div className="absolute inset-x-2 bottom-2 z-10 bg-black/75 backdrop-blur-md rounded-xl p-1 px-2 border border-primary/40 flex items-center gap-1.5 shadow-sm">
-                  <div className="flex-1 h-1.5 rounded-full bg-muted/60 overflow-hidden">
-                    <div
-                      className="h-full bg-gold-gradient rounded-full transition-all duration-500"
-                      style={{ width: `${completion}%` }}
-                    />
-                  </div>
-                  <span className="text-[10px] font-bold text-primary font-mono leading-none">
-                    {completion}%
-                  </span>
-                </div>
+              {/* Completion Percentage Badge integrated under the Ring */}
+              <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-background/80 border border-primary/40 backdrop-blur-md shadow-sm">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-[11px] font-bold text-foreground font-mono">
+                  {ar ? `اكتمال الملف ${completion}%` : `Profile ${completion}%`}
+                </span>
               </div>
 
               {/* Smaller, refined camera button on the squircle corner */}
               <label
-                className="absolute -bottom-1 -end-1 w-8 h-8 rounded-xl bg-gold-gradient border-2 border-background flex items-center justify-center shadow-gold cursor-pointer hover:scale-110 active:scale-95 transition-transform z-20"
+                className="absolute bottom-6 -end-1 w-8 h-8 rounded-xl bg-gold-gradient border-2 border-background flex items-center justify-center shadow-gold cursor-pointer hover:scale-110 active:scale-95 transition-transform z-20"
                 title={ar ? "تغيير الصورة الشخصية" : "Change photo"}
               >
                 {uploading
@@ -653,6 +649,34 @@ export const ProfileTab = () => {
             </div>
           </div>
         )}
+
+        {/* === ADMIN MANAGEMENT SHORTCUT === */}
+        <div className="p-4 rounded-3xl bg-gradient-to-r from-primary/15 via-primary/5 to-transparent border-2 border-primary/30 shadow-md flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-gold-gradient text-primary-foreground flex items-center justify-center shadow-gold flex-shrink-0">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-xs sm:text-sm font-bold text-foreground flex items-center gap-1.5 flex-wrap">
+                {ar ? "بوابة إدارة المنح والمشرفين" : "Admin & Moderation Portal"}
+                <span className="px-2 py-0.5 rounded-full bg-primary/20 text-primary text-2xs font-semibold">
+                  alforas.one@gmail.com
+                </span>
+              </h4>
+              <p className="text-2xs text-muted-foreground mt-0.5">
+                {ar ? "إدارة الفرص، مراجعة المحتوى، وإدارة صلاحيات المشرفين" : "Manage listings, review submissions, and moderator roles"}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setAdminDashboardOpen(true)}
+            className="px-3.5 py-2 rounded-xl bg-gold-gradient text-primary-foreground text-xs font-bold shadow hover:opacity-90 flex-shrink-0"
+          >
+            {ar ? "فتح اللوحة" : "Open"}
+          </button>
+        </div>
+
+        <AdminDashboardModal isOpen={adminDashboardOpen} onClose={() => setAdminDashboardOpen(false)} />
       </div>
     );
   }
@@ -677,6 +701,31 @@ export const ProfileTab = () => {
 
       {/* 1. PERSONAL INFORMATION */}
       <Section title={ar ? "المعلومات الشخصية وبيانات التواصل" : "Personal Information & Contact"} alignClass={alignClass}>
+        {/* Avatar Photo Edit Widget */}
+        <div className="flex items-center gap-4 p-3 rounded-2xl bg-background/50 border border-primary/20">
+          <LuxeAvatar
+            src={draft.avatar_url || null}
+            name={draft.full_name || user?.email || "User"}
+            size="lg"
+            shape="squircle"
+            showRing={true}
+            ringStatus="gold"
+          />
+          <div className={`flex-1 ${alignClass}`}>
+            <p className="text-xs font-bold text-foreground">
+              {ar ? "الصورة الشخصية" : "Profile Picture"}
+            </p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              {ar ? "انقر لرفع صورة شخصية أو تغييرها" : "Click to upload or replace your photo"}
+            </p>
+            <label className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gold-gradient text-primary-foreground text-xs font-bold shadow-sm cursor-pointer hover:brightness-105 transition-all">
+              {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
+              <span>{uploading ? (ar ? "جاري الرفع..." : "Uploading...") : (ar ? "تغيير الصورة" : "Change Photo")}</span>
+              <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} disabled={uploading} />
+            </label>
+          </div>
+        </div>
+
         <Field icon={UserIcon} label={t("fullName")}>
           <Input
             value={draft.full_name}

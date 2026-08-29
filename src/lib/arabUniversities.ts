@@ -392,7 +392,11 @@ export const ARAB_COUNTRIES = Array.from(
   new Map(
     ARAB_UNIVERSITIES.map((u) => [u.country, { country: u.country, countryEn: u.countryEn, flag: u.flag }])
   ).values()
-);
+).sort((a, b) => {
+  if (a.country === "السودان" || a.countryEn === "Sudan") return -1;
+  if (b.country === "السودان" || b.countryEn === "Sudan") return 1;
+  return 0;
+});
 
 export const ARAB_FACULTIES = Array.from(
   new Set(ARAB_UNIVERSITIES.flatMap((u) => u.faculties))

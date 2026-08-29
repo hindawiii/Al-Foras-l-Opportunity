@@ -62,12 +62,20 @@ export const ScholarshipCard = ({ scholarship, onSwipe, onTap, active, index, ma
     else if (info.offset.x < -100) onSwipe("left");
   };
 
-  const titleText = ar ? scholarship.title : (scholarship.titleEn || scholarship.title);
-  const orgText = ar ? scholarship.org : (scholarship.orgEn || scholarship.org);
+  const titleText = ar
+    ? (scholarship.title || (scholarship as any).title_ar || "")
+    : (scholarship.titleEn || (scholarship as any).title_en || scholarship.title || "");
+  const orgText = ar
+    ? (scholarship.org || (scholarship as any).university || "")
+    : (scholarship.orgEn || (scholarship as any).university || scholarship.org || "");
   const countryText = ar ? scholarship.country : (scholarship.countryEn || scholarship.country);
-  const amountText = ar ? scholarship.amount : (scholarship.amountEn || scholarship.amount);
-  const levelText = ar ? scholarship.level : (scholarship.levelEn || scholarship.level);
-  const descText = ar ? scholarship.description : (scholarship.descriptionEn || scholarship.description);
+  const amountText = ar
+    ? (scholarship.amount || (scholarship as any).stipend || (scholarship.coverage === "full" ? "ممولة بالكامل" : ""))
+    : (scholarship.amountEn || (scholarship as any).stipend || (scholarship.coverage === "full" ? "Fully Funded" : ""));
+  const levelText = ar ? scholarship.level : (scholarship.levelEn || scholarship.level || "بكالوريوس / ماجستير");
+  const descText = ar
+    ? (scholarship.description || (scholarship as any).description_ar || "")
+    : (scholarship.descriptionEn || (scholarship as any).description_en || scholarship.description || "");
 
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -182,16 +190,18 @@ export const ScholarshipCard = ({ scholarship, onSwipe, onTap, active, index, ma
             {descText}
           </p>
 
-          {/* Detail rows */}
+          {/* Detail rows - only render if value exists and is non-empty */}
           <div className="space-y-2 mb-4">
-            <Row icon={MapPin} label={t("country")} value={countryText} />
-            <Row icon={Award} label={t("amount")} value={amountText} />
-            <Row icon={GraduationCap} label={t("level")} value={levelText} />
-            <Row
-              icon={Clock}
-              label={t("deadline")}
-              value={new Date(scholarship.deadline).toLocaleDateString(isRtl ? "ar-EG" : "en-US")}
-            />
+            {countryText && <Row icon={MapPin} label={t("country")} value={countryText} />}
+            {amountText && <Row icon={Award} label={t("amount")} value={amountText} />}
+            {levelText && <Row icon={GraduationCap} label={t("level")} value={levelText} />}
+            {scholarship.deadline && (
+              <Row
+                icon={Clock}
+                label={t("deadline")}
+                value={new Date(scholarship.deadline).toLocaleDateString(isRtl ? "ar-EG" : "en-US")}
+              />
+            )}
           </div>
 
           {/* Tags + study language */}

@@ -4,7 +4,8 @@ import {
   Sparkles, X, Send, Loader2, Trash2, Bot, GraduationCap, Calculator,
   University, FileText, Mic, MicOff, Volume2, VolumeX, Upload, Download,
   CheckCircle2, AlertTriangle, ArrowRight, RefreshCw, Star, Search, ShieldCheck,
-  Maximize2, Minimize2
+  Maximize2, Minimize2, Phone, PhoneOff, Briefcase, Languages, HelpCircle, Info,
+  ChevronDown, ChevronUp
 } from "lucide-react";
 import { chatStorage, type ChatMessage } from "@/lib/aiChatStorage";
 import { guestStorage } from "@/lib/guestStorage";
@@ -88,12 +89,29 @@ export const AIAdvisor = () => {
     return () => window.removeEventListener("open-ai-advisor", handler as EventListener);
   }, []);
 
-  // Voice Interview Mode States
+  // Voice Interview & Live Call Mode States
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voiceMuted, setVoiceMuted] = useState(false);
   const [speechTranscript, setSpeechTranscript] = useState("");
+  const [isLiveCallActive, setIsLiveCallActive] = useState(false);
+  const [callSeconds, setCallSeconds] = useState(0);
+  const [selectedInterviewTrack, setSelectedInterviewTrack] = useState<"scholarship" | "job" | "english">("scholarship");
+  const [showStarGuide, setShowStarGuide] = useState(false);
   const speechRecognitionRef = useRef<any>(null);
+  const isLiveCallActiveRef = useRef(false);
+  isLiveCallActiveRef.current = isLiveCallActive;
+
+  // Call Timer
+  useEffect(() => {
+    let interval: any = null;
+    if (isLiveCallActive) {
+      interval = setInterval(() => setCallSeconds(s => s + 1), 1000);
+    } else {
+      setCallSeconds(0);
+    }
+    return () => { if (interval) clearInterval(interval); };
+  }, [isLiveCallActive]);
 
   // CV Review & ATS States
   const [cvText, setCvText] = useState("");
@@ -189,27 +207,111 @@ export const AIAdvisor = () => {
     } else {
       setSpeechTranscript("");
       speechRecognitionRef.current.lang = lang === "ar" ? "ar-SA" : "en-US";
-      speechRecognitionRef.current.start();
-      setIsListening(true);
+      try {
+        speechRecognitionRef.current.start();
+        setIsListening(true);
+      } catch {
+        setIsListening(false);
+      }
     }
   };
 
+  // Calm, deep, clear male voice synthesis with auto turn-taking
   const speakText = (text: string) => {
     if (voiceMuted || typeof window === "undefined" || !("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
-    const cleanText = text.replace(/[*_#`[\]()]/g, "").slice(0, 300);
+    const cleanText = text.replace(/[*_#`[\]()]/g, "").slice(0, 450);
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.lang = lang === "ar" ? "ar-SA" : "en-US";
-    utterance.rate = 1.0;
+
+    const voices = window.speechSynthesis.getVoices();
+    if (voices && voices.length > 0) {
+      if (lang === "ar") {
+        // Look for calm male voices (Maged, Tariq, Naif, Mehdi, Google Arabic Male)
+        const arMale = voices.find(v => (v.lang.startsWith("ar") || v.name.toLowerCase().includes("arabic")) &&
+          (v.name.toLowerCase().includes("male") || v.name.toLowerCase().includes("maged") || v.name.toLowerCase().includes("tariq") || v.name.toLowerCase().includes("naif") || v.name.toLowerCase().includes("google")));
+        const anyAr = voices.find(v => v.lang.startsWith("ar"));
+        if (arMale) utterance.voice = arMale;
+        else if (anyAr) utterance.voice = anyAr;
+      } else {
+        // Look for calm English male voices (Guy, George, David, Daniel, Google US English Male)
+        const enMale = voices.find(v => (v.lang.startsWith("en") || v.name.toLowerCase().includes("english")) &&
+          (v.name.toLowerCase().includes("natural") || v.name.toLowerCase().includes("guy") || v.name.toLowerCase().includes("george") || v.name.toLowerCase().includes("david") || v.name.toLowerCase().includes("daniel") || v.name.toLowerCase().includes("male")));
+        const anyEn = voices.find(v => v.lang.startsWith("en"));
+        if (enMale) utterance.voice = enMale;
+        else if (anyEn) utterance.voice = anyEn;
+      }
+    }
+
+    // Set acoustic qualities: calm, resonant, articulate
+    utterance.pitch = 0.88; // Deep calm male pitch
+    utterance.rate = 0.93; // Composed, comfortable pacing
+
     utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      // Auto-resume microphone in Continuous Live Call Mode
+      if (isLiveCallActiveRef.current && speechRecognitionRef.current) {
+        setTimeout(() => {
+          if (isLiveCallActiveRef.current) {
+            setSpeechTranscript("");
+            speechRecognitionRef.current.lang = lang === "ar" ? "ar-SA" : "en-US";
+            try {
+              speechRecognitionRef.current.start();
+              setIsListening(true);
+            } catch { /* already running */ }
+          }
+        }, 500);
+      }
+    };
+    utterance.onerror = () => {
+      setIsSpeaking(false);
+      if (isLiveCallActiveRef.current && speechRecognitionRef.current) {
+        setTimeout(() => {
+          if (isLiveCallActiveRef.current) {
+            try {
+              speechRecognitionRef.current.start();
+              setIsListening(true);
+            } catch { /* ignore */ }
+          }
+        }, 500);
+      }
+    };
     window.speechSynthesis.speak(utterance);
   };
 
   const getProfile = () => {
     if (isGuest) return guestStorage.get("profile") ?? null;
     return null;
+  };
+
+  const startLiveCall = (track: "scholarship" | "job" | "english" = selectedInterviewTrack) => {
+    setIsLiveCallActive(true);
+    let prompt = "";
+    if (track === "scholarship") {
+      prompt = lang === "en"
+        ? "Start a mock scholarship interview now. Ask one question and wait for my response."
+        : "ابدأ الآن محاكاة مقابلة منحة دراسية رسمية. اطرح سؤالًا واحدًا وانتظر إجابتي.";
+    } else if (track === "job") {
+      prompt = lang === "en"
+        ? "Start a remote job & career interview now. Ask one question about my technical skills and experience."
+        : "ابدأ الآن محاكاة مقابلة عمل عن بعد ووظيفة تقنية. اطرح سؤالًا واحدًا عن خبراتي ومشاريعي.";
+    } else {
+      prompt = "Let's start an English fluency conversation and interview practice. Please greet me and ask your first question.";
+    }
+    send(prompt);
+  };
+
+  const endLiveCall = () => {
+    setIsLiveCallActive(false);
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+    if (speechRecognitionRef.current && isListening) {
+      speechRecognitionRef.current.stop();
+      setIsListening(false);
+    }
+    toast.success(isRtl ? "تم إنهاء المكالمة بنجاح، يمكنك قراءة التقييم في المحادثة" : "Call ended. You can review your assessment in the chat.");
   };
 
   const send = async (text: string) => {
@@ -227,7 +329,7 @@ export const AIAdvisor = () => {
 
     try {
       if (!FUNCTION_URL || !ANON) {
-        const reply = generateLocalAIResponse(content, nextMsgs, getProfile());
+        const reply = generateLocalAIResponse(content, nextMsgs, getProfile(), lang);
         let currentText = "";
         const words = reply.split(" ");
         for (let i = 0; i < words.length; i++) {
@@ -236,7 +338,7 @@ export const AIAdvisor = () => {
           setMessages(prev => prev.map(m => m.id === assistantMsg.id ? { ...m, content: currentText } : m));
           await new Promise(r => setTimeout(r, 18));
         }
-        if (mode === "voice") speakText(reply);
+        if (mode === "voice" || isLiveCallActiveRef.current) speakText(reply);
         setBusy(false);
         return;
       }
@@ -246,6 +348,7 @@ export const AIAdvisor = () => {
           .filter(m => m.id !== assistantMsg.id && m.content.trim())
           .map(m => ({ role: m.role, content: m.content })),
         profile: getProfile(),
+        lang,
       };
 
       const res = await fetch(FUNCTION_URL, {
@@ -260,9 +363,9 @@ export const AIAdvisor = () => {
       });
 
       if (!res.ok || !res.body) {
-        const reply = generateLocalAIResponse(content, nextMsgs, getProfile());
+        const reply = generateLocalAIResponse(content, nextMsgs, getProfile(), lang);
         setMessages(prev => prev.map(m => m.id === assistantMsg.id ? { ...m, content: reply } : m));
-        if (mode === "voice") speakText(reply);
+        if (mode === "voice" || isLiveCallActiveRef.current) speakText(reply);
         setBusy(false);
         return;
       }
@@ -295,17 +398,17 @@ export const AIAdvisor = () => {
       }
 
       if (!acc.trim()) {
-        const reply = generateLocalAIResponse(content, nextMsgs, getProfile());
+        const reply = generateLocalAIResponse(content, nextMsgs, getProfile(), lang);
         setMessages(prev => prev.map(m => m.id === assistantMsg.id ? { ...m, content: reply } : m));
-        if (mode === "voice") speakText(reply);
-      } else if (mode === "voice") {
+        if (mode === "voice" || isLiveCallActiveRef.current) speakText(reply);
+      } else if (mode === "voice" || isLiveCallActiveRef.current) {
         speakText(acc);
       }
     } catch (e: any) {
       if (e.name !== "AbortError") {
-        const reply = generateLocalAIResponse(content, nextMsgs, getProfile());
+        const reply = generateLocalAIResponse(content, nextMsgs, getProfile(), lang);
         setMessages(prev => prev.map(m => m.id === assistantMsg.id ? { ...m, content: reply } : m));
-        if (mode === "voice") speakText(reply);
+        if (mode === "voice" || isLiveCallActiveRef.current) speakText(reply);
       }
     } finally {
       setBusy(false);
@@ -398,6 +501,38 @@ export const AIAdvisor = () => {
     toast.success(isRtl ? "تم حفظ الفرصة في قائمة طلباتي!" : "Opportunity saved to your applications!");
   };
 
+  const [tipSide, setTipSide] = useState<"right" | "left">("right");
+  const fabContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // Update tooltip side dynamically based on position to avoid cutting off screen
+  const updateTooltipPosition = () => {
+    if (!fabContainerRef.current) return;
+    const rect = fabContainerRef.current.getBoundingClientRect();
+    const screenWidth = window.innerWidth;
+    // If the FAB is in the left 45% of the screen or close to left edge, show tooltip towards the right
+    if (rect.left < screenWidth * 0.45) {
+      setTipSide("left");
+    } else {
+      setTipSide("right");
+    }
+  };
+
+  const hoverTimeoutRef = useRef<any>(null);
+
+  const handleFabMouseEnter = () => {
+    updateTooltipPosition();
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    hoverTimeoutRef.current = setTimeout(() => {
+      setIsHovered(true);
+    }, 280);
+  };
+
+  const handleFabMouseLeave = () => {
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    setIsHovered(false);
+    setShowTip(false);
+  };
+
   const dragConstraints = useMemo(() => {
     if (typeof window === "undefined") return undefined;
     return { left: -window.innerWidth + 80, right: 10, top: -window.innerHeight + 140, bottom: 10 };
@@ -407,46 +542,63 @@ export const AIAdvisor = () => {
     <>
       {/* Sleek, Professional Resized Floating Action Button with Pulsing Glow & Hover Note */}
       <motion.div
+        ref={fabContainerRef}
         drag
         dragMomentum={false}
         dragConstraints={dragConstraints}
         style={{ x, y }}
-        onDragEnd={() => chatStorage.saveFabPosition({ x: x.get(), y: y.get() })}
+        onDragStart={() => {
+          setIsHovered(false);
+          setShowTip(false);
+        }}
+        onDragEnd={() => {
+          chatStorage.saveFabPosition({ x: x.get(), y: y.get() });
+          updateTooltipPosition();
+        }}
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: visible ? 1 : 0, scale: visible ? 1 : 0.6, pointerEvents: visible ? "auto" : "none" }}
         transition={{ type: "spring", stiffness: 300, damping: 24 }}
         className="fixed bottom-24 right-4 z-40 cursor-grab active:cursor-grabbing select-none"
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-        onTouchStart={() => setIsHovered(true)}
+        onMouseEnter={handleFabMouseEnter}
+        onMouseLeave={handleFabMouseLeave}
+        onTouchStart={() => {
+          updateTooltipPosition();
+          setIsHovered(true);
+        }}
       >
         <div className="relative flex items-center justify-center">
-          {/* Hover / Hint Tooltip Note */}
+          {/* Hover / Hint Tooltip Note with Viewport Edge Collision Detection & Smart Flipping */}
           <AnimatePresence>
             {(showTip || isHovered) && !open && (
               <motion.div
-                initial={{ opacity: 0, y: 8, scale: 0.92 }}
+                initial={{ opacity: 0, y: 6, scale: 0.94 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 8, scale: 0.92 }}
-                transition={{ type: "spring", stiffness: 360, damping: 24 }}
-                className="absolute bottom-full right-0 mb-3.5 whitespace-nowrap px-3.5 py-2 rounded-2xl bg-gradient-to-br from-[#0c2411] via-[#103017] to-[#1c4824] border border-primary/55 text-foreground text-xs shadow-[0_10px_30px_-5px_rgba(0,0,0,0.8),0_0_20px_rgba(212,175,55,0.35)] backdrop-blur-xl z-50 pointer-events-none"
+                exit={{ opacity: 0, y: 4, scale: 0.94 }}
+                transition={{ duration: 0.18, ease: "easeOut" }}
+                className={`absolute bottom-full mb-3.5 whitespace-nowrap px-3.5 py-2 rounded-2xl bg-gradient-to-br from-[#0c2411] via-[#103017] to-[#1c4824] border border-primary/55 text-foreground text-xs shadow-[0_10px_30px_-5px_rgba(0,0,0,0.8),0_0_20px_rgba(212,175,55,0.35)] backdrop-blur-xl z-50 pointer-events-none max-w-[290px] sm:max-w-[320px] ${
+                  tipSide === "left" ? "left-0" : "right-0"
+                }`}
                 dir={dir}
               >
                 <div className="flex items-center gap-2.5">
                   <div className="w-6 h-6 rounded-lg bg-gold-gradient flex items-center justify-center shadow-gold p-0.5 flex-shrink-0">
                     <img src="/al-foras-icon.png" alt="logo" className="w-full h-full object-contain drop-shadow" />
                   </div>
-                  <div>
-                    <p className="font-bold text-gold-gradient text-xs leading-tight">
+                  <div className="truncate">
+                    <p className="font-bold text-gold-gradient text-xs leading-tight truncate">
                       {isRtl ? "مستشار الفُرص والذكاء الاصطناعي ✨" : "AI Opportunities Advisor ✨"}
                     </p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight font-medium">
+                    <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight font-medium truncate">
                       {isRtl ? "فحص السيرة الذاتية • خطابات التقديم • محاكاة المقابلات" : "ATS Resume • SOP Letter • Interview Simulation"}
                     </p>
                   </div>
                 </div>
-                {/* Pointer Caret */}
-                <div className="absolute -bottom-1.5 right-6 w-3 h-3 bg-[#103017] border-r border-b border-primary/50 rotate-45" />
+                {/* Pointer Caret with dynamic alignment */}
+                <div
+                  className={`absolute -bottom-1.5 w-3 h-3 bg-[#103017] border-r border-b border-primary/50 rotate-45 ${
+                    tipSide === "left" ? "left-5" : "right-5"
+                  }`}
+                />
               </motion.div>
             )}
           </AnimatePresence>
@@ -596,8 +748,8 @@ export const AIAdvisor = () => {
                 <div ref={listRef} className="flex-1 overflow-y-auto px-3 py-4 space-y-3">
                   {messages.length === 0 && (
                     <div className="text-center px-4 py-4">
-                      <div className="w-12 h-12 rounded-2xl bg-gold-gradient mx-auto flex items-center justify-center mb-2.5 shadow-gold">
-                        <Sparkles className="w-6 h-6 text-primary-foreground" />
+                      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#123816] via-[#1B5E20] to-[#B8860B] border border-primary/60 mx-auto flex items-center justify-center mb-2.5 shadow-gold p-2">
+                        <img src="/al-foras-icon.png" alt="Advisor Logo" className="w-full h-full object-contain drop-shadow" />
                       </div>
                       <p className="text-foreground text-sm font-bold mb-1">
                         {isRtl ? "مستشارك الأكاديمي والمهني 👋" : "Your Academic & Career Advisor 👋"}
@@ -632,14 +784,19 @@ export const AIAdvisor = () => {
                   {messages.map(m => (
                     <div
                       key={m.id}
-                      className={`flex ${
+                      className={`flex items-end gap-2 ${
                         m.role === "user"
-                          ? isRtl ? "justify-start" : "justify-end"
-                          : isRtl ? "justify-end" : "justify-start"
+                          ? isRtl ? "justify-start flex-row" : "justify-end flex-row"
+                          : isRtl ? "justify-end flex-row-reverse" : "justify-start flex-row"
                       }`}
                     >
+                      {m.role === "assistant" && (
+                        <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-[#123816] via-[#1B5E20] to-[#B8860B] border border-primary/40 flex items-center justify-center p-0.5 flex-shrink-0 shadow-sm">
+                          <img src="/al-foras-icon.png" alt="AI" className="w-full h-full object-contain" />
+                        </div>
+                      )}
                       <div
-                        className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed whitespace-pre-wrap ${
+                        className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed whitespace-pre-wrap ${
                           m.role === "user"
                             ? "bg-gold-gradient text-primary-foreground shadow-md font-medium"
                             : "bg-card/90 text-foreground border border-primary/30"
@@ -651,7 +808,10 @@ export const AIAdvisor = () => {
                   ))}
 
                   {busy && messages[messages.length - 1]?.content === "" && (
-                    <div className={`flex ${isRtl ? "justify-end" : "justify-start"}`}>
+                    <div className={`flex items-end gap-2 ${isRtl ? "justify-end flex-row-reverse" : "justify-start flex-row"}`}>
+                      <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-[#123816] via-[#1B5E20] to-[#B8860B] border border-primary/40 flex items-center justify-center p-0.5 flex-shrink-0 shadow-sm">
+                        <img src="/al-foras-icon.png" alt="AI" className="w-full h-full object-contain" />
+                      </div>
                       <div className="bg-card/90 border border-primary/30 rounded-2xl px-3 py-2 flex items-center gap-1.5">
                         <span className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0ms" }} />
                         <span className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "120ms" }} />
@@ -690,62 +850,279 @@ export const AIAdvisor = () => {
 
             {/* TAB CONTENT: 2. VOICE INTERVIEW MODE */}
             {mode === "voice" && (
-              <div className="flex-1 flex flex-col justify-between p-4 overflow-y-auto">
-                <div className="text-center space-y-2">
+              <div className="flex-1 flex flex-col justify-between p-3 sm:p-4 overflow-y-auto space-y-4">
+                {/* Header & Mode Intro */}
+                <div className="text-center space-y-1.5">
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/30 text-primary text-xs font-semibold">
                     <Mic className="w-3.5 h-3.5" />
-                    {isRtl ? "محاكاة المقابلة بالصوت الحي" : "Live Voice Interview Simulation"}
+                    {isRtl ? "محاكي المقابلات الصوتية الذكي" : "AI Voice Mock Interviewer"}
                   </div>
-                  <h3 className="text-foreground text-base font-bold">
-                    {isRtl ? "تحدث مع المستشار الذكي مباشرة" : "Speak directly with your AI Interviewer"}
+                  <h3 className="text-foreground text-sm sm:text-base font-bold">
+                    {isRtl ? "تدرب على المقابلات بصوت رجل هادئ ومتقن" : "Practice Interviews with a Calm, Clear Voice"}
                   </h3>
-                  <p className="text-muted-foreground text-xs max-w-xs mx-auto">
+                  <p className="text-muted-foreground text-2xs sm:text-xs max-w-sm mx-auto">
                     {isRtl
-                      ? "اضغط على المايك وتحدث لإجراء محاكاة مقابلة حقيقية لمنح الدراسة والوظائف عن بعد."
-                      : "Tap the mic and practice real interview questions for scholarships and remote jobs."}
+                      ? "نظام تفاعلي متقدم يدعم اللهجة السودانية والمصرية والعربية البيضاء، مع ميزة المكالمة الحية المستمرة ونموذج STAR."
+                      : "Interactive simulation supporting Arabic dialects & English, featuring continuous live calls and STAR framework guidance."}
                   </p>
                 </div>
 
-                {/* Animated Voice Waveform Sphere */}
-                <div className="py-6 flex flex-col items-center justify-center">
-                  <div className="relative flex items-center justify-center">
-                    {(isListening || isSpeaking) && (
-                      <motion.div
-                        animate={{ scale: [1, 1.35, 1], opacity: [0.3, 0.7, 0.3] }}
-                        transition={{ repeat: Infinity, duration: 1.8 }}
-                        className="absolute w-32 h-32 rounded-full bg-primary/20"
-                      />
-                    )}
-                    <button
-                      onClick={toggleListening}
-                      className={`relative w-24 h-24 rounded-full flex items-center justify-center border-2 shadow-2xl transition-all ${
-                        isListening
-                          ? "bg-destructive border-destructive text-white scale-105 animate-pulse"
-                          : "bg-gold-gradient border-primary text-primary-foreground hover:scale-105"
-                      }`}
-                    >
-                      {isListening ? (
-                        <MicOff className="w-9 h-9 animate-bounce" />
-                      ) : (
-                        <Mic className="w-9 h-9" />
-                      )}
-                    </button>
-                  </div>
+                {/* Track Selector */}
+                <div className="grid grid-cols-3 gap-1.5 p-1 rounded-2xl bg-card/80 border border-primary/20">
+                  {[
+                    { id: "scholarship", icon: GraduationCap, labelAr: "منح دراسية", labelEn: "Scholarships" },
+                    { id: "job", icon: Briefcase, labelAr: "وظائف وعمل", labelEn: "Job & Remote" },
+                    { id: "english", icon: Languages, labelAr: "English Fluency", labelEn: "English" },
+                  ].map((track) => {
+                    const Icon = track.icon;
+                    const active = selectedInterviewTrack === track.id;
+                    return (
+                      <button
+                        key={track.id}
+                        onClick={() => setSelectedInterviewTrack(track.id as any)}
+                        className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl text-2xs font-bold transition-all ${
+                          active
+                            ? "bg-primary/20 border border-primary/50 text-primary shadow-sm"
+                            : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                        }`}
+                      >
+                        <Icon className="w-3.5 h-3.5" />
+                        <span className="truncate">{isRtl ? track.labelAr : track.labelEn}</span>
+                      </button>
+                    );
+                  })}
+                </div>
 
-                  <p className="mt-4 text-xs font-semibold text-primary">
-                    {isListening
-                      ? isRtl ? "🎙️ جاري الاستماع إلى إجابتك..." : "🎙️ Listening to your response..."
-                      : isSpeaking
-                      ? isRtl ? "🔊 المستشار يتحدث الآن..." : "🔊 Advisor is speaking..."
-                      : isRtl ? "اضغط للبدء في التحدث" : "Tap to start speaking"}
-                  </p>
-
-                  {speechTranscript && (
-                    <div className="mt-3 px-3 py-2 rounded-xl bg-card border border-primary/30 text-xs text-foreground max-w-xs text-center">
-                      "{speechTranscript}"
+                {/* LIVE CALL OR SINGLE TALK CARD */}
+                {isLiveCallActive ? (
+                  /* Active Live Call UI */
+                  <div className="p-4 rounded-2xl bg-card/90 border-2 border-emerald-500/40 shadow-xl flex flex-col items-center justify-center relative overflow-hidden space-y-4">
+                    {/* Live Call Pulsing Header */}
+                    <div className="flex items-center justify-between w-full border-b border-primary/20 pb-2.5">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+                        <span className="text-xs font-bold text-emerald-400">
+                          {isRtl ? "مكالمة مقابلة حية مستمرة" : "Continuous Live Mock Call"}
+                        </span>
+                      </div>
+                      <div className="px-2.5 py-0.5 rounded-full bg-black/40 border border-primary/30 text-xs font-mono text-primary font-bold">
+                        {String(Math.floor(callSeconds / 60)).padStart(2, "0")}:{String(callSeconds % 60).padStart(2, "0")}
+                      </div>
                     </div>
-                  )}
-                </div>
+
+                    {/* Animated Avatar Sphere with Dynamic Rings */}
+                    <div className="relative flex items-center justify-center py-2">
+                      {(isListening || isSpeaking) && (
+                        <motion.div
+                          animate={{ scale: [1, 1.4, 1], opacity: [0.3, 0.7, 0.3] }}
+                          transition={{ repeat: Infinity, duration: 1.6 }}
+                          className="absolute w-32 h-32 rounded-full bg-emerald-500/20"
+                        />
+                      )}
+                      <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#164319] via-[#1B5E20] to-[#B8860B] border-2 border-primary/60 flex items-center justify-center p-3 shadow-gold">
+                        <img src="/al-foras-icon.png" alt="Interviewer" className="w-full h-full object-contain" />
+                      </div>
+                    </div>
+
+                    {/* Status Badge */}
+                    <div className="text-center space-y-1">
+                      <p className="text-xs font-bold text-foreground">
+                        {isSpeaking
+                          ? (isRtl ? "🔊 المستشار يتحدث بصوت هادئ وموزون..." : "🔊 Advisor is speaking...")
+                          : isListening
+                          ? (isRtl ? "🎙️ يستمع لإجابتك الآن (تحدث بحرية)..." : "🎙️ Listening to your answer...")
+                          : (isRtl ? "⏳ جاري التفكير وتحليل الإجابة..." : "⏳ Analyzing response...")}
+                      </p>
+                      {speechTranscript && (
+                        <p className="text-2xs text-muted-foreground bg-black/30 px-3 py-1.5 rounded-xl max-w-xs mx-auto line-clamp-2">
+                          "{speechTranscript}"
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Live Call Actions */}
+                    <div className="flex items-center gap-3 pt-2">
+                      <button
+                        onClick={toggleListening}
+                        className={`p-3 rounded-full border transition-all ${
+                          isListening
+                            ? "bg-destructive text-white border-destructive animate-pulse"
+                            : "bg-card border-primary/30 text-muted-foreground hover:text-foreground"
+                        }`}
+                        title={isListening ? (isRtl ? "كتم المايك" : "Mute Mic") : (isRtl ? "تشغيل المايك" : "Unmute Mic")}
+                      >
+                        {isListening ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
+                      </button>
+
+                      <button
+                        onClick={endLiveCall}
+                        className="px-4 py-2.5 rounded-full bg-destructive text-white font-bold text-xs flex items-center gap-2 hover:bg-destructive/90 shadow-lg active:scale-95 transition-all"
+                      >
+                        <PhoneOff className="w-4 h-4" />
+                        <span>{isRtl ? "إنهاء المكالمة" : "End Call"}</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          const prompt = isRtl
+                            ? "اطرح عليّ السؤال التالي في المقابلة مع تقييم إجابتي السابقة بنموذج STAR باختصار."
+                            : "Ask the next interview question and briefly evaluate my previous answer using STAR.";
+                          send(prompt);
+                        }}
+                        className="p-3 rounded-full bg-card border border-primary/30 text-primary hover:bg-primary/10 transition-colors"
+                        title={isRtl ? "السؤال التالي" : "Next Question"}
+                      >
+                        <RefreshCw className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  /* Idle Screen: Start Call & Quick Qs */
+                  <div className="space-y-3">
+                    {/* Big Call Button */}
+                    <div className="p-4 rounded-2xl bg-card/90 border border-primary/30 text-center space-y-3 shadow-md">
+                      <div className="flex justify-center">
+                        <button
+                          onClick={() => startLiveCall(selectedInterviewTrack)}
+                          className="w-16 h-16 rounded-full bg-gold-gradient border-2 border-primary text-primary-foreground flex items-center justify-center shadow-gold hover:scale-105 active:scale-95 transition-transform"
+                        >
+                          <Phone className="w-7 h-7 animate-pulse" />
+                        </button>
+                      </div>
+                      <div>
+                        <h4 className="text-foreground text-xs font-bold">
+                          {isRtl ? "بدء مكالمة مقابلة تفاعلية حية" : "Start Live Voice Interview Call"}
+                        </h4>
+                        <p className="text-muted-foreground text-2xs">
+                          {isRtl ? "محادثة صوتية متصلة تسألك وتستمع لإجاباتك وتقيمك فوريًا" : "Continuous audio call that asks, listens, and evaluates in real-time"}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => startLiveCall(selectedInterviewTrack)}
+                        className="w-full py-2 px-3 rounded-xl bg-gold-gradient text-primary-foreground text-xs font-bold shadow hover:opacity-90 transition-opacity flex items-center justify-center gap-1.5"
+                      >
+                        <Phone className="w-3.5 h-3.5" />
+                        {isRtl ? "اتصال بالمستشار الآن" : "Call Advisor Now"}
+                      </button>
+                    </div>
+
+                    {/* STAR Framework Helper Accordion */}
+                    <div className="rounded-xl border border-primary/20 bg-card/60 overflow-hidden text-2xs">
+                      <button
+                        onClick={() => setShowStarGuide(!showStarGuide)}
+                        className="w-full px-3 py-2 flex items-center justify-between text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <span className="flex items-center gap-1.5 font-bold text-primary">
+                          <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                          {isRtl ? "كيف تجيب باحترافية؟ دليل نموذج STAR" : "How to answer: STAR Framework Guide"}
+                        </span>
+                        {showStarGuide ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                      </button>
+                      {showStarGuide && (
+                        <div className="px-3 pb-3 pt-1 border-t border-primary/15 grid grid-cols-2 gap-2 text-2xs">
+                          <div className="p-2 rounded-lg bg-black/20 border border-primary/10">
+                            <span className="font-bold text-amber-400">S (Situation)</span>: {isRtl ? "صف الموقف والتحدي باختصار." : "Describe the situation/challenge."}
+                          </div>
+                          <div className="p-2 rounded-lg bg-black/20 border border-primary/10">
+                            <span className="font-bold text-emerald-400">T (Task)</span>: {isRtl ? "ما هو دورك ومسؤوليتك المحددة؟" : "What was your specific goal/task?"}
+                          </div>
+                          <div className="p-2 rounded-lg bg-black/20 border border-primary/10">
+                            <span className="font-bold text-blue-400">A (Action)</span>: {isRtl ? "الخطوات العملية التي اتخذتها." : "The concrete steps you took."}
+                          </div>
+                          <div className="p-2 rounded-lg bg-black/20 border border-primary/10">
+                            <span className="font-bold text-purple-400">R (Result)</span>: {isRtl ? "النتائج القابلة للقياس والأثر." : "The measurable outcome & impact."}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Common Practice Questions Grid */}
+                    <div className="space-y-1.5">
+                      <p className="text-2xs font-bold text-muted-foreground px-1 flex items-center gap-1">
+                        <HelpCircle className="w-3 h-3 text-primary" />
+                        {isRtl ? "أسئلة شائعة يمكنك التدرب عليها فورًا:" : "Common Questions for Quick Practice:"}
+                      </p>
+                      <div className="grid grid-cols-1 gap-1.5">
+                        {(selectedInterviewTrack === "scholarship"
+                          ? [
+                              {
+                                qAr: "لماذا اخترت هذه المنحة وهذه الجامعة بالتحديد؟",
+                                qEn: "Why did you choose this scholarship and university?",
+                                promptAr: "سؤال مقابلة منحة: لماذا اخترت هذه المنحة بالتحديد؟ اسمع إجابتي ثم قيّمها بنموذج STAR.",
+                                promptEn: "Scholarship Question: Why this scholarship specifically? Listen to my answer and evaluate with STAR."
+                              },
+                              {
+                                qAr: "كيف ستساهم في تنمية مجتمعك وبلدك بعد التخرج؟",
+                                qEn: "How will you contribute to your home country after graduation?",
+                                promptAr: "سؤال مقابلة منحة: كيف تخطط لخدمة مجتمعك بعد التخرج؟ اسمع إجابتي ثم قيّمها بنموذج STAR.",
+                                promptEn: "Scholarship Question: How will you give back to your community after graduation? Evaluate with STAR."
+                              },
+                              {
+                                qAr: "حدثني عن أكبر تحدٍ أكاديمي واجهته وكيف تغلبت عليه؟",
+                                qEn: "Tell me about a major academic challenge and how you overcame it?",
+                                promptAr: "سؤال مقابلة: حدثني عن تحدٍ أكاديمي كبير وكيف تعاملت معه. اسمع إجابتي ثم قيّمها.",
+                                promptEn: "Interview Question: Tell me about an academic challenge you solved. Evaluate with STAR."
+                              },
+                            ]
+                          : selectedInterviewTrack === "job"
+                          ? [
+                              {
+                                qAr: "حدثني عن نفسك وعن أبرز إنجاز حققته في مسارك المهني",
+                                qEn: "Tell me about yourself and your proudest career achievement",
+                                promptAr: "سؤال مقابلة عمل: حدثني عن نفسك وأبرز إنجازاتك المهنية. اسمع إجابتي ثم قيّمها.",
+                                promptEn: "Job Question: Tell me about yourself and key achievements. Evaluate with STAR."
+                              },
+                              {
+                                qAr: "كيف تنظم وقتك وتلتزم بالمواعيد في بيئة العمل عن بعد؟",
+                                qEn: "How do you manage your time and deadlines in remote work?",
+                                promptAr: "سؤال مقابلة عمل عن بعد: كيف تنظم وقتك وتسلم مهامك في الوقت المحدد؟ اسمع إجابتي.",
+                                promptEn: "Remote Job Question: How do you manage your time and meet deadlines? Evaluate with STAR."
+                              },
+                              {
+                                qAr: "ما هو موقف واجهت فيه ضغطاً أو خلافاً وكيف قمت بحله؟",
+                                qEn: "Describe a high-pressure situation or team conflict and how you handled it",
+                                promptAr: "سؤال سلوكي للمقابلة: كيف تتعامل مع ضغط العمل أو خلافات الفريق؟ اسمع إجابتي.",
+                                promptEn: "Behavioral Question: How do you handle workplace conflict or tight deadlines? Evaluate with STAR."
+                              },
+                            ]
+                          : [
+                              {
+                                qAr: "Introduce yourself and describe your primary career ambition.",
+                                qEn: "Introduce yourself and describe your primary career ambition.",
+                                promptAr: "English practice: Can you introduce yourself and describe your career ambition? Provide feedback on my grammar and confidence.",
+                                promptEn: "English practice: Can you introduce yourself and describe your career ambition? Provide feedback on my grammar and confidence."
+                              },
+                              {
+                                qAr: "What are your top strengths and how do you handle weaknesses?",
+                                qEn: "What are your top strengths and how do you handle weaknesses?",
+                                promptAr: "English interview: What are your greatest strengths and how do you work on your weaknesses? Evaluate my fluency.",
+                                promptEn: "English interview: What are your greatest strengths and how do you work on your weaknesses? Evaluate my fluency."
+                              },
+                              {
+                                qAr: "Describe a project where you demonstrated leadership.",
+                                qEn: "Describe a project where you demonstrated leadership.",
+                                promptAr: "English interview: Describe a project where you demonstrated leadership or initiative. Evaluate using STAR.",
+                                promptEn: "English interview: Describe a project where you demonstrated leadership or initiative. Evaluate using STAR."
+                              },
+                            ]
+                        ).map((item, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => {
+                              const p = isRtl ? item.promptAr : item.promptEn;
+                              send(p);
+                              setIsLiveCallActive(true);
+                            }}
+                            className="p-2 rounded-xl bg-card/70 border border-primary/20 hover:border-primary/50 text-left rtl:text-right text-2xs text-foreground hover:bg-white/5 transition-all flex items-center justify-between group"
+                          >
+                            <span className="line-clamp-1">{isRtl ? item.qAr : item.qEn}</span>
+                            <ArrowRight className={`w-3 h-3 text-primary opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ${isRtl ? "rotate-180" : ""}`} />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Voice Controls Bar */}
                 <div className="pt-2 border-t border-primary/20 flex items-center justify-between text-xs">
@@ -756,10 +1133,10 @@ export const AIAdvisor = () => {
                         : "Start a mock scholarship interview now. Ask one question and wait for my answer.";
                       send(prompt);
                     }}
-                    className="px-3 py-2 rounded-xl bg-primary/15 border border-primary/30 text-primary font-semibold hover:bg-primary/25 transition-colors flex items-center gap-1.5"
+                    className="px-3 py-1.5 rounded-xl bg-primary/15 border border-primary/30 text-primary text-2xs font-semibold hover:bg-primary/25 transition-colors flex items-center gap-1.5"
                   >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    {isRtl ? "بدء مقابلة جديدة" : "Start New Mock Interview"}
+                    <RefreshCw className="w-3 h-3" />
+                    {isRtl ? "إعادة بدء المقابلة" : "Restart Interview"}
                   </button>
 
                   <button

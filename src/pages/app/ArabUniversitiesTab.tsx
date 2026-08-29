@@ -1,38 +1,65 @@
-import { useMemo, useState } from "react";
-import { motion } from "framer-motion";
+import { useMemo, useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   GraduationCap, Search, ExternalLink, MapPin, Languages as LangIcon,
-  Award, CheckCircle2, SlidersHorizontal, Building2, ChevronRight,
-  Wallet, Home, CalendarDays, FileText, ListChecks, Map, Scale, X,
+  Award, SlidersHorizontal, Building2, ChevronRight, Sparkles, Target, Filter,
+  Wallet, Home, CalendarDays, FileText, ListChecks, Map as MapIcon, Scale, X,
+  Info, Users, Quote, CheckCircle2,
 } from "lucide-react";
 import {
   ARAB_UNIVERSITIES, ARAB_COUNTRY_STATS, ARAB_FACULTIES,
   getUniDetails, getFacultyLabel, getCityLabel, type ArabUniversity,
+  type ArabUniType,
 } from "@/lib/arabUniversities";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 const PCT_KEY = "foras-student-percentage";
 
+const typeBadgeClass: Record<ArabUniType, string> = {
+  government: "bg-primary/15 text-primary border-primary/40",
+  private: "bg-amber-500/15 text-amber-500 border-amber-500/40",
+  technical: "bg-blue-500/15 text-blue-400 border-blue-500/40",
+};
+
 export const ArabUniversitiesTab = () => {
-  const { lang, t } = useLanguage();
+  const { lang, t, dir } = useLanguage();
   const { countryCode } = useSettings();
   const ar = lang === "ar";
+  const isRtl = dir === "rtl";
+  const alignClass = isRtl ? "text-right" : "text-left";
+
   const [query, setQuery] = useState("");
   const [country, setCountry] = useState<string | null>(null);
+  const [cityFilter, setCityFilter] = useState<string>("");
   const [faculty, setFaculty] = useState<string | null>(null);
-  const [pct, setPct] = useState(() => localStorage.getItem(PCT_KEY) ?? "");
-  const [eligibleOnly, setEligibleOnly] = useState(false);
+  const [typeFilter, setTypeFilter] = useState<ArabUniType | "">("");
+  const [scholarshipOnly, setScholarshipOnly] = useState(false);
+  const [pct, setPct] = useState(() => (typeof window !== "undefined" ? localStorage.getItem(PCT_KEY) ?? "" : ""));
+  const [eligibleOnly, setOnlyEligible] = useState(false);
   const [selected, setSelected] = useState<ArabUniversity | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [compare, setCompare] = useState<string[]>([]);
   const [compareOpen, setCompareOpen] = useState(false);
 
-  const percentage = Number(pct);
-  const hasPct = pct !== "" && !Number.isNaN(percentage);
+  const effectivePct = useMemo(() => {
+    const n = parseFloat(pct);
+    if (Number.isFinite(n) && n > 0 && n <= 100) return n;
+    return undefined;
+  }, [pct]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (pct) localStorage.setItem(PCT_KEY, pct);
+  }, [pct]);
+
   const searching = query.trim().length > 0;
   const showCountries = !country && !searching;
 
+  // Countries sorted with user's geolocation country first
   const countries = useMemo(() => {
     const mine = countryCode?.toUpperCase();
     return [...ARAB_COUNTRY_STATS].sort((a, b) => {
@@ -42,117 +69,194 @@ export const ArabUniversitiesTab = () => {
     });
   }, [countryCode]);
 
+  // Dynamic available cities for current country
+  const availableCities = useMemo(() => {
+    const pool = country ? ARAB_UNIVERSITIES.filter((u) => u.country === country) : ARAB_UNIVERSITIES;
+    const set = new Set<string>();
+    pool.forEach((u) => { if (u.city) set.add(u.city); });
+    return Array.from(set);
+  }, [country]);
+
   const list = useMemo(() => {
     const q = query.trim().toLowerCase();
     let items = ARAB_UNIVERSITIES.filter((u) => {
       if (country && u.country !== country) return false;
+      if (cityFilter && u.city !== cityFilter) return false;
       if (faculty && !u.faculties.includes(faculty)) return false;
-      if (
-        q &&
-        !`${u.name} ${u.nameEn} ${u.city} ${u.cityEn ?? ""} ${u.country} ${u.countryEn} ${u.faculties.join(" ")}`
-          .toLowerCase()
-          .includes(q)
-      ) {
-        return false;
-      }
-      if (eligibleOnly && hasPct && percentage < u.minPercentage) return false;
-      return true;
+      if (typeFilter && u.type !== typeFilter) return false;
+      if (scholarshipOnly && !u.scholarships) return false;
+      if (eligibleOnly && effectivePct !== undefined && effectivePct < u.minPercentage) return false;
+      if (!q) return true;
+
+      const hay = `${u.name} ${u.nameEn} ${u.city} ${u.cityEn ?? ""} ${u.country} ${u.countryEn} ${u.faculties.join(" ")}`.toLowerCase();
+      return hay.includes(q);
     });
-    if (hasPct) {
+
+    if (effectivePct !== undefined) {
       items = [...items].sort((a, b) => {
-        const ea = percentage >= a.minPercentage ? 0 : 1;
-        const eb = percentage >= b.minPercentage ? 0 : 1;
-        return ea - eb || b.minPercentage - a.minPercentage;
+        const ea = effectivePct >= a.minPercentage ? 0 : 1;
+        const eb = effectivePct >= b.minPercentage ? 0 : 1;
+        if (ea !== eb) return ea - eb;
+        return b.minPercentage - a.minPercentage;
       });
     }
-    return items;
-  }, [query, country, faculty, eligibleOnly, hasPct, percentage]);
 
-  const eligibleCount = hasPct
-    ? ARAB_UNIVERSITIES.filter((u) => percentage >= u.minPercentage).length
-    : 0;
+    return items;
+  }, [query, country, cityFilter, faculty, typeFilter, scholarshipOnly, eligibleOnly, effectivePct]);
+
+  const eligibleCount = useMemo(() => {
+    if (effectivePct === undefined) return 0;
+    const pool = country ? ARAB_UNIVERSITIES.filter((u) => u.country === country) : ARAB_UNIVERSITIES;
+    return pool.filter((u) => effectivePct >= u.minPercentage).length;
+  }, [effectivePct, country]);
+
+  const totalInScope = country ? ARAB_UNIVERSITIES.filter((u) => u.country === country).length : ARAB_UNIVERSITIES.length;
 
   const langLabel = (l: ArabUniversity["language"]) =>
     l === "ar" ? (ar ? "عربي" : "Arabic") : l === "en" ? (ar ? "إنجليزي" : "English") : (ar ? "عربي/إنجليزي" : "Arabic/English");
 
   const typeLabel = (tp: ArabUniversity["type"]) => {
-    if (tp === "government") return t("arabUniGov");
+    if (tp === "government") return ar ? "حكومية" : "Public";
     if (tp === "technical") return ar ? "تقنية" : "Technical";
-    return t("arabUniPrivate");
+    return ar ? "خاصة" : "Private";
   };
 
-  const toggleCompare = (id: string) =>
+  const toggleCompare = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     setCompare((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : prev.length >= 3 ? prev : [...prev, id]
     );
+  };
 
   const compareUnis = ARAB_UNIVERSITIES.filter((u) => compare.includes(u.id));
   const mapUrl = (u: ArabUniversity) =>
-    `https://www.google.com/maps/search/${encodeURIComponent(`${u.nameEn || u.name} ${u.cityEn || u.city}`)}`;
+    `https://www.google.com/maps/search/${encodeURIComponent(`${u.nameEn || u.name} ${u.cityEn || u.city} ${u.countryEn}`)}`;
+
+  const clearAllFilters = () => {
+    setQuery("");
+    setCityFilter("");
+    setFaculty(null);
+    setTypeFilter("");
+    setScholarshipOnly(false);
+    setOnlyEligible(false);
+  };
+
+  const hasActiveFilters = query || cityFilter || faculty || typeFilter || scholarshipOnly || eligibleOnly;
 
   return (
-    <div className="space-y-4 w-full">
-      <div className="rounded-2xl border border-primary/20 bg-card/60 backdrop-blur-md p-4">
-        <div className="flex items-center gap-2 mb-1">
-          <GraduationCap className="w-5 h-5 text-primary" />
-          <h1 className="text-lg font-bold text-foreground">{t("arabUniTitle")}</h1>
+    <div className="space-y-4 w-full" dir={dir}>
+      {/* Header Banner - Matching UniversitiesGuide Gold/Luxe Theme */}
+      <div className="rounded-3xl border border-primary/30 bg-card/70 backdrop-blur-xl p-4 sm:p-5 shadow-sm">
+        <div className={`flex items-center gap-3 ${isRtl ? "" : "flex-row-reverse"}`}>
+          <div className="w-12 h-12 rounded-2xl bg-gold-gradient flex items-center justify-center shadow-gold flex-shrink-0">
+            <GraduationCap className="w-6 h-6 text-primary-foreground" strokeWidth={2} />
+          </div>
+          <div className={`flex-1 ${alignClass}`}>
+            <h1 className="text-lg sm:text-xl font-bold font-display text-gold-gradient leading-tight">
+              {t("arabUniTitle")}
+            </h1>
+            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+              {isRtl
+                ? `${ARAB_UNIVERSITIES.length} جامعة في 20 دولة عربية — شروط القبول، الرسوم، والمنح الرسمية`
+                : `${ARAB_UNIVERSITIES.length} universities across 20 Arab countries with admission criteria, fees & scholarships`}
+            </p>
+          </div>
         </div>
-        <p className="text-xs text-muted-foreground">{t("arabUniSubtitle")}</p>
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute top-1/2 -translate-y-1/2 start-3 w-4 h-4 text-muted-foreground" />
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={t("arabUniSearch")}
-          className="w-full h-11 ps-9 pe-3 rounded-xl bg-card border border-primary/20 focus:border-primary outline-none text-sm text-foreground"
-        />
-      </div>
-
-      {/* Smart matching */}
-      <div className="rounded-2xl border border-primary/20 bg-card/60 backdrop-blur-md p-4 space-y-3">
-        <div className="flex items-center gap-2">
-          <SlidersHorizontal className="w-4 h-4 text-primary" />
-          <span className="text-sm font-bold text-foreground">{t("arabUniMatchTitle")}</span>
+      {/* Smart Percentage Match Component (Unified from Sudanese Guide) */}
+      <div className="rounded-2xl border border-primary/30 bg-primary/5 p-3.5 space-y-2.5">
+        <div className={`flex items-center gap-2.5 ${isRtl ? "" : "flex-row-reverse"}`}>
+          <div className="w-8 h-8 rounded-xl bg-gold-gradient flex items-center justify-center shadow-gold flex-shrink-0">
+            <Target className="w-4 h-4 text-primary-foreground" strokeWidth={2.2} />
+          </div>
+          <div className={`flex-1 ${alignClass}`}>
+            <p className="text-xs font-bold text-gold-gradient leading-tight">
+              {isRtl ? "مطابقة ذكية بالنسبة للجامعات العربية" : "Smart Arab Universities Match"}
+            </p>
+            <p className="text-[10px] text-muted-foreground">
+              {isRtl ? "اكتب معدلك أو نسبتك لنعرض الجامعات التي تقبلك وتطابق مؤهلاتك" : "Enter your high school score to instantly see eligible universities"}
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <input
-            type="number"
-            min={0}
-            max={100}
-            inputMode="decimal"
-            value={pct}
-            onChange={(e) => {
-              setPct(e.target.value);
-              localStorage.setItem(PCT_KEY, e.target.value);
-            }}
-            placeholder={t("arabUniPctPlaceholder")}
-            className="w-28 h-10 px-3 rounded-xl bg-background border border-primary/20 focus:border-primary outline-none text-sm text-foreground"
-          />
-          <button
-            onClick={() => setEligibleOnly((v) => !v)}
-            disabled={!hasPct}
-            className={`h-10 px-3 rounded-xl text-xs font-bold border transition-all disabled:opacity-40 ${
-              eligibleOnly ? "bg-primary/20 border-primary text-primary" : "bg-background border-primary/20 text-muted-foreground"
-            }`}
+
+        <div className={`flex items-center gap-2 ${isRtl ? "" : "flex-row-reverse"}`}>
+          <div className="relative flex-1">
+            <Input
+              type="number"
+              inputMode="decimal"
+              min={0}
+              max={100}
+              step={0.1}
+              value={pct}
+              onChange={(e) => setPct(e.target.value)}
+              placeholder={isRtl ? "مثال: 85.0" : "e.g. 85.0"}
+              className={`bg-background/70 border-border text-sm h-10 ${alignClass}`}
+              dir={dir}
+            />
+          </div>
+          <span className="text-primary font-bold text-base px-1">%</span>
+          {effectivePct !== undefined && (
+            <button
+              onClick={() => setOnlyEligible((v) => !v)}
+              className={`text-[11px] font-bold px-3 py-2 rounded-xl border transition-all ${
+                eligibleOnly
+                  ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400 shadow-sm"
+                  : "bg-background/60 border-border text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {isRtl ? "المؤهلة فقط" : "Eligible only"}
+            </button>
+          )}
+        </div>
+
+        {effectivePct !== undefined && (
+          <motion.p
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`text-[11px] text-emerald-400 font-medium flex items-center gap-1.5 pt-1 ${isRtl ? "" : "flex-row-reverse"}`}
           >
-            {t("arabUniEligibleOnly")}
-          </button>
-        </div>
-        {hasPct && (
-          <p className="text-xs text-primary flex items-center gap-1.5">
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            {t("arabUniEligibleCount").replace("{n}", String(eligibleCount))}
-          </p>
+            <Sparkles className="w-3.5 h-3.5 flex-shrink-0" />
+            {isRtl
+              ? `بنسبة ${effectivePct}% أنت مؤهل لـ ${eligibleCount} من ${totalInScope} جامعة ${country ? `في ${country}` : "عربية"}`
+              : `With ${effectivePct}%, you qualify for ${eligibleCount} of ${totalInScope} universities ${country ? `in ${country}` : "across Arab nations"}`}
+          </motion.p>
         )}
       </div>
 
-      {/* Countries grid */}
+      {/* Global Search Bar */}
+      <div className="relative">
+        <Search className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? "right-3.5" : "left-3.5"} w-4 h-4 text-muted-foreground pointer-events-none`} />
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={isRtl ? "ابحث باسم الجامعة، الدولة، المدينة، أو التخصص…" : "Search university, country, city, or major..."}
+          className={`h-11 ${isRtl ? "pr-10 pl-4" : "pl-10 pr-4"} ${alignClass} bg-card/60 border-primary/20 focus:border-primary rounded-2xl text-sm`}
+          dir={dir}
+        />
+        {query && (
+          <button
+            onClick={() => setQuery("")}
+            className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? "left-3" : "right-3"} text-muted-foreground hover:text-foreground p-1`}
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+
+      {/* Countries Grid (When not filtering by specific country and not searching) */}
       {showCountries ? (
-        <>
-          <p className="text-sm font-bold text-foreground">{t("arabUniCountriesTitle")}</p>
+        <div className="space-y-3">
+          <div className={`flex items-center justify-between ${isRtl ? "" : "flex-row-reverse"}`}>
+            <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
+              <Building2 className="w-4 h-4 text-primary" />
+              {t("arabUniCountriesTitle")}
+            </p>
+            <span className="text-[11px] text-muted-foreground">
+              {countries.length} {isRtl ? "دولة" : "countries"}
+            </span>
+          </div>
+
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             {countries.map((c, i) => {
               const mine = c.code === countryCode?.toUpperCase();
@@ -163,26 +267,28 @@ export const ArabUniversitiesTab = () => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: Math.min(i * 0.02, 0.3) }}
                   onClick={() => setCountry(c.country)}
-                  className={`relative text-start rounded-2xl border p-3 bg-card/60 backdrop-blur-md transition-all hover:-translate-y-0.5 hover:border-primary/60 ${
-                    mine ? "border-primary shadow-[0_0_18px_-6px_hsl(var(--primary))]" : "border-primary/20"
+                  className={`relative text-start rounded-2xl border p-3.5 bg-card/60 backdrop-blur-md transition-all hover:-translate-y-0.5 hover:border-primary/60 hover:bg-primary/5 ${
+                    mine ? "border-primary shadow-[0_0_18px_-6px_hsl(var(--primary)/0.6)]" : "border-primary/20"
                   }`}
                 >
                   {mine && (
-                    <span className="absolute top-2 end-2 text-[9px] px-1.5 py-0.5 rounded-full bg-primary/20 border border-primary text-primary">
+                    <span className={`absolute top-2.5 ${isRtl ? "left-2.5" : "right-2.5"} text-[9px] px-1.5 py-0.5 rounded-full bg-primary/20 border border-primary text-primary font-bold`}>
                       {t("arabUniYourCountry")}
                     </span>
                   )}
-                  <div className="text-2xl">{c.flag}</div>
-                  <p className="mt-1.5 text-sm font-bold text-primary truncate">{ar ? c.country : c.countryEn}</p>
-                  <p className="text-[11px] text-muted-foreground">
+                  <div className="text-2xl mb-1">{c.flag}</div>
+                  <p className="text-sm font-bold text-primary truncate leading-tight">
+                    {ar ? c.country : c.countryEn}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
                     {t("arabUniUnisCount").replace("{n}", String(c.count))}
                   </p>
-                  <div className="mt-1.5 flex items-center gap-1 flex-wrap">
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted/40 border border-primary/10 text-muted-foreground">
+                  <div className="mt-2 flex items-center gap-1 flex-wrap">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-background/80 border border-primary/20 text-muted-foreground font-medium">
                       {t("arabUniMin")} {c.minPercentage}%
                     </span>
                     {c.scholarships && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 border border-primary/30 text-primary">
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 border border-primary/30 text-primary font-medium">
                         {t("arabUniHasScholarships")}
                       </span>
                     )}
@@ -191,69 +297,131 @@ export const ArabUniversitiesTab = () => {
               );
             })}
           </div>
-        </>
+        </div>
       ) : (
-        <>
-          {/* Header row for the selected country / search */}
-          <div className="flex items-center justify-between gap-2">
+        /* Selected Country View or Search Mode */
+        <div className="space-y-3">
+          {/* Navigation & Controls Top Bar */}
+          <div className={`flex items-center justify-between gap-2 flex-wrap ${isRtl ? "" : "flex-row-reverse"}`}>
             {country ? (
               <button
                 onClick={() => {
                   setCountry(null);
+                  setCityFilter("");
                   setFaculty(null);
                 }}
-                className="h-9 px-3 rounded-full text-xs font-bold border border-primary/30 bg-card text-primary flex items-center gap-1.5"
+                className={`h-9 px-3.5 rounded-full text-xs font-bold border border-primary/30 bg-card/80 text-primary flex items-center gap-1.5 hover:bg-primary/10 transition-all ${
+                  isRtl ? "" : "flex-row-reverse"
+                }`}
               >
-                <ChevronRight className={`w-3.5 h-3.5 ${ar ? "" : "rotate-180"}`} />
-                {t("arabUniBack")}
+                <ChevronRight className={`w-3.5 h-3.5 ${isRtl ? "" : "rotate-180"}`} />
+                {isRtl ? `← العودة إلى قائمة الدول (${country})` : `← Back to Countries (${country})`}
               </button>
             ) : (
-              <span />
+              <span className="text-xs font-bold text-foreground">
+                {isRtl ? "نتائج البحث الشامل" : "Global Search Results"}
+              </span>
             )}
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground font-medium">
               {t("arabUniResults").replace("{n}", String(list.length))}
             </p>
           </div>
 
-          {/* Faculty chips */}
-          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-            <button
-              onClick={() => setFaculty(null)}
-              className={`shrink-0 h-8 px-3 rounded-full text-[11px] border ${
-                faculty === null
-                  ? "bg-primary/15 border-primary/60 text-primary"
-                  : "bg-card border-primary/15 text-muted-foreground"
-              }`}
-            >
-              {t("arabUniAllFaculties")}
-            </button>
-            {ARAB_FACULTIES.slice(0, 24).map((f) => (
-              <button
-                key={f}
-                onClick={() => setFaculty(faculty === f ? null : f)}
-                className={`shrink-0 h-8 px-3 rounded-full text-[11px] border ${
-                  faculty === f
-                    ? "bg-primary/15 border-primary/60 text-primary"
-                    : "bg-card border-primary/15 text-muted-foreground"
-                }`}
+          {/* Advanced Dropdown & Pill Filter Controls (Unified from Sudanese Guide) */}
+          <div className="space-y-2.5 rounded-2xl border border-primary/20 bg-card/60 backdrop-blur-md p-3">
+            <div className="flex flex-wrap gap-2">
+              {/* City Filter */}
+              {availableCities.length > 1 && (
+                <select
+                  value={cityFilter}
+                  onChange={(e) => setCityFilter(e.target.value)}
+                  className={`flex-1 min-w-[110px] h-9 rounded-xl bg-background/60 border border-border text-xs px-2.5 text-foreground ${alignClass}`}
+                  dir={dir}
+                >
+                  <option value="">{isRtl ? "كل المدن" : "All cities"}</option>
+                  {availableCities.map((c) => (
+                    <option key={c} value={c}>{getCityLabel(c, lang)}</option>
+                  ))}
+                </select>
+              )}
+
+              {/* Major / Faculty Dropdown Filter */}
+              <select
+                value={faculty || ""}
+                onChange={(e) => setFaculty(e.target.value ? e.target.value : null)}
+                className={`flex-1 min-w-[120px] h-9 rounded-xl bg-background/60 border border-border text-xs px-2.5 text-foreground ${alignClass}`}
+                dir={dir}
               >
-                {getFacultyLabel(f, lang)}
-              </button>
-            ))}
+                <option value="">{isRtl ? "كل التخصصات والكليات" : "All faculties & majors"}</option>
+                {ARAB_FACULTIES.map((f) => (
+                  <option key={f} value={f}>{getFacultyLabel(f, lang)}</option>
+                ))}
+              </select>
+
+              {/* Institution Type Filter */}
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value as ArabUniType | "")}
+                className={`flex-1 min-w-[100px] h-9 rounded-xl bg-background/60 border border-border text-xs px-2.5 text-foreground ${alignClass}`}
+                dir={dir}
+              >
+                <option value="">{isRtl ? "كل الأنواع" : "All types"}</option>
+                <option value="government">{isRtl ? "حكومية" : "Public"}</option>
+                <option value="private">{isRtl ? "خاصة" : "Private"}</option>
+                <option value="technical">{isRtl ? "تقنية" : "Technical"}</option>
+              </select>
+            </div>
+
+            {/* Quick Toggle Chips: Scholarships & Compare Status */}
+            <div className={`flex items-center justify-between gap-2 pt-1 flex-wrap ${isRtl ? "" : "flex-row-reverse"}`}>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setScholarshipOnly((v) => !v)}
+                  className={`h-7 px-2.5 rounded-full text-[11px] font-bold border transition-all flex items-center gap-1 ${
+                    scholarshipOnly
+                      ? "bg-primary/20 border-primary text-primary"
+                      : "bg-background/50 border-border text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Award className="w-3 h-3" />
+                  {t("arabUniHasScholarships")}
+                </button>
+              </div>
+
+              {hasActiveFilters && (
+                <button
+                  onClick={clearAllFilters}
+                  className="text-[11px] text-primary flex items-center gap-1 hover:underline"
+                >
+                  <Filter className="w-3 h-3" />
+                  {isRtl ? "مسح الفلاتر" : "Clear filters"}
+                </button>
+              )}
+            </div>
           </div>
 
-          <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-            <Scale className="w-3.5 h-3.5 text-primary" />
-            {t("arabUniCompareHint")}
-          </p>
+          {/* Compare Hint Banner */}
+          <div className={`flex items-center justify-between text-[11px] text-muted-foreground px-1 ${isRtl ? "" : "flex-row-reverse"}`}>
+            <span className="flex items-center gap-1.5">
+              <Scale className="w-3.5 h-3.5 text-primary" />
+              {t("arabUniCompareHint")}
+            </span>
+            {compare.length > 0 && (
+              <span className="text-primary font-bold">
+                {isRtl ? `تم تحديد ${compare.length} من 3` : `${compare.length}/3 selected`}
+              </span>
+            )}
+          </div>
 
-          {/* Cards */}
+          {/* Universities List with Full Ported Design & Inline Expandable Details */}
           <div className="space-y-3">
             {list.map((u, i) => {
-              const eligible = hasPct && percentage >= u.minPercentage;
-              const picked = compare.includes(u.id);
+              const qualifies = effectivePct !== undefined ? effectivePct >= u.minPercentage : null;
+              const isCompared = compare.includes(u.id);
+              const isExpanded = expandedId === u.id;
               const cityText = ar ? u.city : (u.cityEn || getCityLabel(u.city, lang));
               const countryText = ar ? u.country : u.countryEn;
+              const details = getUniDetails(u);
 
               return (
                 <motion.div
@@ -261,79 +429,254 @@ export const ArabUniversitiesTab = () => {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: Math.min(i * 0.03, 0.3) }}
-                  className={`rounded-2xl border bg-card/60 backdrop-blur-md p-4 transition-all hover:-translate-y-0.5 ${
-                    picked ? "border-primary shadow-[0_0_16px_-4px_hsl(var(--primary)/0.4)]" : "border-primary/20 hover:border-primary/60"
+                  className={`rounded-2xl border bg-card/60 backdrop-blur-md p-4 transition-all hover:border-primary/50 ${
+                    isCompared
+                      ? "border-primary shadow-[0_0_18px_-4px_hsl(var(--primary)/0.4)]"
+                      : "border-primary/20"
                   }`}
                 >
-                  <button onClick={() => setSelected(u)} className="w-full text-start">
-                    <div className="flex items-start gap-3">
-                      <div className="w-11 h-11 shrink-0 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-xl">
+                  {/* Card Header: Name, Country, Flag, Badge */}
+                  <div className={`flex items-start justify-between gap-3 mb-2.5 ${isRtl ? "" : "flex-row-reverse"}`}>
+                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                      <div className="w-10 h-10 shrink-0 rounded-2xl bg-primary/10 border border-primary/30 flex items-center justify-center text-xl shadow-sm">
                         {u.flag}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-base font-bold text-primary truncate">
+                      <div className={`flex-1 min-w-0 ${alignClass}`}>
+                        <h3 className="text-base font-bold font-display text-gold-gradient truncate leading-snug">
                           {ar ? u.name : (u.nameEn || u.name)}
                         </h3>
-                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                          <MapPin className="w-3 h-3" />
-                          {cityText} · {countryText}
+                        <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
+                          <MapPin className="w-3 h-3 text-primary flex-shrink-0" />
+                          <span>{cityText} · {countryText}</span>
                         </p>
-                        <div className="flex flex-wrap gap-1.5 mt-2">
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary">
-                            {typeLabel(u.type)}
-                          </span>
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted/40 border border-primary/10 text-muted-foreground flex items-center gap-1">
-                            <LangIcon className="w-3 h-3" />
-                            {langLabel(u.language)}
-                          </span>
-                          {u.scholarships && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 border border-primary/30 text-primary flex items-center gap-1">
-                              <Award className="w-3 h-3" />
-                              {t("arabUniHasScholarships")}
-                            </span>
-                          )}
-                          <span
-                            className={`text-[10px] px-2 py-0.5 rounded-full border ${
-                              eligible
-                                ? "bg-primary/20 border-primary text-primary font-semibold"
-                                : "bg-muted/30 border-primary/10 text-muted-foreground"
-                            }`}
-                          >
-                            {t("arabUniMin")} {u.minPercentage}%
-                          </span>
-                        </div>
                       </div>
                     </div>
-                  </button>
+
+                    <div className="flex flex-col items-end gap-1.5">
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full border font-bold ${typeBadgeClass[u.type]}`}>
+                        {typeLabel(u.type)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Highlights Summary */}
+                  <p className={`text-xs text-foreground/85 leading-relaxed mb-2.5 ${alignClass}`}>
+                    {ar ? u.highlights : (u.highlightsEn || u.highlights)}
+                  </p>
+
+                  {/* Meta Badges: Language, Scholarships, Faculties */}
+                  <div className="flex flex-wrap gap-1.5 mb-3">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted/40 border border-primary/10 text-muted-foreground flex items-center gap-1">
+                      <LangIcon className="w-3 h-3 text-primary" />
+                      {langLabel(u.language)}
+                    </span>
+                    {u.scholarships && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 border border-primary/30 text-primary font-medium flex items-center gap-1">
+                        <Award className="w-3 h-3" />
+                        {t("arabUniHasScholarships")}
+                      </span>
+                    )}
+                    {u.faculties.slice(0, 5).map((f) => (
+                      <span
+                        key={f}
+                        className="text-[10px] px-2 py-0.5 rounded-full bg-primary/5 border border-primary/20 text-foreground/80"
+                      >
+                        {getFacultyLabel(f, lang)}
+                      </span>
+                    ))}
+                    {u.faculties.length > 5 && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted/20 text-muted-foreground">
+                        +{u.faculties.length - 5}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Percentage & Admission Requirements Bar + Action Links */}
+                  <div className={`flex items-center justify-between gap-2 pt-2.5 border-t border-border/60 ${isRtl ? "" : "flex-row-reverse"}`}>
+                    <div className={alignClass}>
+                      <p className="text-[10px] text-muted-foreground">
+                        {isRtl ? "أقل نسبة قبول تقديرية" : "Approx. min. percentage"}
+                      </p>
+                      <p className={`text-sm font-bold ${
+                        qualifies === true ? "text-emerald-400"
+                        : qualifies === false ? "text-muted-foreground"
+                        : "text-primary"
+                      }`}>
+                        {u.minPercentage}%
+                        {qualifies === true && (
+                          <span className={`${isRtl ? "mr-1.5" : "ml-1.5"} inline-flex items-center gap-0.5 text-[10px] text-emerald-400 font-bold`}>
+                            <Sparkles className="w-3 h-3" /> {isRtl ? "مؤهل للقبول ✓" : "Eligible ✓"}
+                          </span>
+                        )}
+                        {qualifies === false && (
+                          <span className={`${isRtl ? "mr-1.5" : "ml-1.5"} inline-flex items-center text-[10px] text-muted-foreground`}>
+                            {isRtl ? "أعلى من نسبتك" : "Above score"}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={(e) => toggleCompare(u.id, e)}
+                        className={`h-8 px-2.5 rounded-xl text-[11px] font-bold border transition-all flex items-center gap-1 ${
+                          isCompared
+                            ? "bg-primary/20 border-primary text-primary"
+                            : "bg-background/60 border-primary/20 text-muted-foreground hover:text-foreground"
+                        }`}
+                        title={t("arabUniCompare")}
+                      >
+                        <Scale className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">{t("arabUniCompare")}</span>
+                      </button>
+
+                      <Button asChild size="sm" variant="luxe" className="h-8 rounded-xl text-[11px]">
+                        <a href={u.website} target="_blank" rel="noopener noreferrer">
+                          <ExternalLink className={`w-3 h-3 ${isRtl ? "ml-1" : "mr-1"}`} />
+                          {isRtl ? "الموقع" : "Website"}
+                        </a>
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Inline Full Details Accordion Button (Ported from Sudanese Guide) */}
                   <button
-                    onClick={() => toggleCompare(u.id)}
-                    className={`mt-3 h-8 px-3 rounded-full text-[11px] font-bold border flex items-center gap-1.5 ${
-                      picked ? "bg-primary/20 border-primary text-primary" : "bg-background border-primary/20 text-muted-foreground"
-                    }`}
+                    onClick={() => setExpandedId(isExpanded ? null : u.id)}
+                    className="mt-2.5 w-full h-9 rounded-xl border border-primary/25 bg-primary/5 text-primary text-[11px] font-bold flex items-center justify-center gap-1.5 hover:bg-primary/10 transition-colors"
                   >
-                    <Scale className="w-3.5 h-3.5" />
-                    {t("arabUniCompare")}
+                    <Info className="w-3.5 h-3.5" />
+                    {isExpanded
+                      ? (isRtl ? "إخفاء التفاصيل الشاملة" : "Hide Full Details")
+                      : (isRtl ? "تفاصيل كاملة: الرسوم، المعيشة، والتقديم" : "Full Details: Tuition, Living & Admission")}
                   </button>
+
+                  {/* Inline Expanded Panel (Tuition, Living, Admission, Docs, Steps, Map) */}
+                  <AnimatePresence>
+                    {isExpanded && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className={`mt-3 space-y-3 ${alignClass} border-t border-border/60 pt-3 overflow-hidden`}
+                      >
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <div className="rounded-xl border border-primary/15 bg-background/60 p-3">
+                            <p className={`text-[10px] text-muted-foreground flex items-center gap-1 ${isRtl ? "" : "flex-row-reverse"}`}>
+                              <Wallet className="w-3 h-3 text-primary flex-shrink-0" />
+                              <span>{t("arabUniTuition")}</span>
+                            </p>
+                            <p className="text-[11px] text-foreground/90 font-bold mt-1 leading-relaxed">
+                              {ar ? details.tuition : details.tuitionEn}
+                            </p>
+                          </div>
+
+                          <div className="rounded-xl border border-primary/15 bg-background/60 p-3">
+                            <p className={`text-[10px] text-muted-foreground flex items-center gap-1 ${isRtl ? "" : "flex-row-reverse"}`}>
+                              <Home className="w-3 h-3 text-primary flex-shrink-0" />
+                              <span>{t("arabUniLiving")}</span>
+                            </p>
+                            <p className="text-[11px] text-foreground/90 font-bold mt-1 leading-relaxed">
+                              {ar ? details.living : details.livingEn}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="rounded-xl border border-primary/15 bg-background/60 p-3">
+                          <p className={`text-[10px] text-muted-foreground flex items-center gap-1 mb-1 ${isRtl ? "" : "flex-row-reverse"}`}>
+                            <CalendarDays className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                            <span className="font-bold">{t("arabUniSeasons")}</span>
+                          </p>
+                          <p className="text-[11px] text-foreground/90 leading-relaxed">
+                            {ar ? details.seasons : details.seasonsEn}
+                          </p>
+                        </div>
+
+                        {/* Required Documents */}
+                        <div className="rounded-xl border border-primary/15 bg-background/50 p-3">
+                          <p className={`text-[11px] font-bold text-foreground flex items-center gap-1.5 mb-2 ${isRtl ? "" : "flex-row-reverse"}`}>
+                            <FileText className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                            <span>{t("arabUniDocs")}</span>
+                          </p>
+                          <ul className="space-y-1">
+                            {(ar ? details.docs : details.docsEn).map((doc) => (
+                              <li key={doc} className="text-[11px] text-muted-foreground flex items-start gap-1.5">
+                                <CheckCircle2 className="w-3 h-3 text-primary shrink-0 mt-0.5" />
+                                <span>{doc}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+
+                        {/* Application Steps */}
+                        <div className="rounded-xl border border-primary/15 bg-background/50 p-3">
+                          <p className={`text-[11px] font-bold text-foreground flex items-center gap-1.5 mb-2 ${isRtl ? "" : "flex-row-reverse"}`}>
+                            <ListChecks className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                            <span>{t("arabUniSteps")}</span>
+                          </p>
+                          <ol className="space-y-1.5">
+                            {(ar ? details.steps : details.stepsEn).map((step, sIdx) => (
+                              <li key={step} className="text-[11px] text-muted-foreground flex items-start gap-2">
+                                <span className="w-4 h-4 shrink-0 rounded-full bg-primary/15 border border-primary/30 text-primary text-[9px] font-bold flex items-center justify-center mt-0.5">
+                                  {sIdx + 1}
+                                </span>
+                                <span>{step}</span>
+                              </li>
+                            ))}
+                          </ol>
+                        </div>
+
+                        {/* Map Location & Quick Sheet Opener */}
+                        <div className="grid grid-cols-2 gap-2 pt-1">
+                          <a
+                            href={mapUrl(u)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="h-9 rounded-xl border border-primary/30 bg-background/60 text-primary text-[11px] font-bold flex items-center justify-center gap-1.5 hover:bg-primary/10 transition-colors"
+                          >
+                            <MapIcon className="w-3.5 h-3.5" />
+                            {t("arabUniMap")}
+                          </a>
+                          <button
+                            onClick={() => setSelected(u)}
+                            className="h-9 rounded-xl bg-gold-gradient text-primary-foreground text-[11px] font-bold flex items-center justify-center gap-1.5 shadow-sm hover:brightness-105 transition-all"
+                          >
+                            <Building2 className="w-3.5 h-3.5" />
+                            {isRtl ? "عرض في نافذة مستقلة" : "Open in Modal"}
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </motion.div>
               );
             })}
+
             {list.length === 0 && (
-              <div className="rounded-2xl border border-primary/15 bg-card/40 p-8 text-center text-sm text-muted-foreground">
-                {t("arabUniEmpty")}
+              <div className="rounded-2xl border border-primary/20 bg-card/40 p-8 text-center text-sm text-muted-foreground space-y-2">
+                <p>{t("arabUniEmpty")}</p>
+                {hasActiveFilters && (
+                  <button
+                    onClick={clearAllFilters}
+                    className="text-xs text-primary font-bold underline hover:no-underline"
+                  >
+                    {isRtl ? "إلغاء جميع الفلاتر للبدء من جديد" : "Reset all filters to start over"}
+                  </button>
+                )}
               </div>
             )}
           </div>
-        </>
+        </div>
       )}
 
-      {/* Compare bar */}
+      {/* Floating Comparison Bottom Bar */}
       {compare.length > 0 && (
         <div className="fixed bottom-20 inset-x-0 z-40 px-4">
-          <div className="mx-auto max-w-md rounded-2xl border border-primary/40 bg-card/90 backdrop-blur-xl p-2.5 flex items-center gap-2 shadow-2xl">
+          <div className="mx-auto max-w-md rounded-2xl border border-primary/40 bg-card/95 backdrop-blur-xl p-2.5 flex items-center gap-2 shadow-2xl">
             <button
               onClick={() => setCompareOpen(true)}
-              className="flex-1 h-10 rounded-xl bg-gold-gradient text-background text-xs font-bold shadow-md hover:brightness-105"
+              className="flex-1 h-10 rounded-xl bg-gold-gradient text-primary-foreground text-xs font-bold shadow-md hover:brightness-105 flex items-center justify-center gap-2"
             >
+              <Scale className="w-4 h-4" />
               {t("arabUniCompareOpen").replace("{n}", String(compare.length))}
             </button>
             <button
@@ -347,22 +690,22 @@ export const ArabUniversitiesTab = () => {
         </div>
       )}
 
-      {/* Comparison sheet */}
+      {/* Comparison Sheet Modal */}
       <Sheet open={compareOpen} onOpenChange={setCompareOpen}>
-        <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto bg-card/95 backdrop-blur-xl border-primary/20">
+        <SheetContent side="bottom" dir={dir} className="max-h-[85vh] overflow-y-auto bg-card/95 backdrop-blur-xl border-primary/20 rounded-t-3xl">
           <SheetHeader>
-            <SheetTitle className="text-primary text-start flex items-center gap-2">
+            <SheetTitle className={`text-primary flex items-center gap-2 ${alignClass}`}>
               <Scale className="w-5 h-5" />
               {t("arabUniCompare")}
             </SheetTitle>
           </SheetHeader>
           <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-xs text-start">
+            <table className={`w-full text-xs ${alignClass}`}>
               <thead>
                 <tr>
-                  <th className="text-start p-2 text-muted-foreground font-normal"> </th>
+                  <th className={`p-2 text-muted-foreground font-normal ${alignClass}`}> </th>
                   {compareUnis.map((u) => (
-                    <th key={u.id} className="p-2 text-start text-primary font-bold min-w-[120px]">
+                    <th key={u.id} className={`p-2 text-primary font-bold min-w-[130px] ${alignClass}`}>
                       {u.flag} {ar ? u.name : (u.nameEn || u.name)}
                     </th>
                   ))}
@@ -370,18 +713,18 @@ export const ArabUniversitiesTab = () => {
               </thead>
               <tbody className="text-foreground">
                 {[
-                  [t("arabUniCity"), (u: ArabUniversity) => (ar ? u.city : (u.cityEn || getCityLabel(u.city, lang)))],
+                  [t("arabUniCity"), (u: ArabUniversity) => `${ar ? u.city : (u.cityEn || getCityLabel(u.city, lang))} · ${ar ? u.country : u.countryEn}`],
                   [t("arabUniType"), (u: ArabUniversity) => typeLabel(u.type)],
                   [t("arabUniMin"), (u: ArabUniversity) => `${u.minPercentage}%`],
                   [t("arabUniLanguage"), (u: ArabUniversity) => langLabel(u.language)],
-                  [t("arabUniHasScholarships"), (u: ArabUniversity) => (u.scholarships ? "✓" : "—")],
+                  [t("arabUniHasScholarships"), (u: ArabUniversity) => (u.scholarships ? (isRtl ? "متاحة ✓" : "Available ✓") : "—")],
                   [t("arabUniTuition"), (u: ArabUniversity) => (ar ? getUniDetails(u).tuition : getUniDetails(u).tuitionEn)],
                   [t("arabUniLiving"), (u: ArabUniversity) => (ar ? getUniDetails(u).living : getUniDetails(u).livingEn)],
                 ].map(([label, fn], idx) => (
                   <tr key={idx} className="border-t border-primary/10">
-                    <td className="p-2 text-muted-foreground whitespace-nowrap">{label as string}</td>
+                    <td className="p-2 text-muted-foreground whitespace-nowrap font-medium">{label as string}</td>
                     {compareUnis.map((u) => (
-                      <td key={u.id} className="p-2">
+                      <td key={u.id} className="p-2 leading-relaxed">
                         {(fn as (x: ArabUniversity) => string)(u)}
                       </td>
                     ))}
@@ -393,9 +736,9 @@ export const ArabUniversitiesTab = () => {
         </SheetContent>
       </Sheet>
 
-      {/* Details sheet */}
+      {/* Standalone University Details Modal */}
       <Sheet open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto bg-card/95 backdrop-blur-xl border-primary/20">
+        <SheetContent side="bottom" dir={dir} className="max-h-[90vh] overflow-y-auto bg-card/95 backdrop-blur-xl border-primary/20 rounded-t-3xl">
           {selected && (() => {
             const d = getUniDetails(selected);
             const cityText = ar ? selected.city : (selected.cityEn || getCityLabel(selected.city, lang));
@@ -404,15 +747,26 @@ export const ArabUniversitiesTab = () => {
             return (
               <>
                 <SheetHeader>
-                  <SheetTitle className="text-primary text-start flex items-center gap-2">
-                    <span className="text-2xl">{selected.flag}</span>
-                    {ar ? selected.name : (selected.nameEn || selected.name)}
-                  </SheetTitle>
+                  <div className={`flex items-center gap-3 mb-2 ${isRtl ? "" : "flex-row-reverse"}`}>
+                    <div className="w-12 h-12 rounded-2xl bg-gold-gradient flex items-center justify-center text-2xl shadow-gold flex-shrink-0">
+                      {selected.flag}
+                    </div>
+                    <div className={`flex-1 ${alignClass}`}>
+                      <SheetTitle className="text-lg font-bold font-display text-gold-gradient">
+                        {ar ? selected.name : (selected.nameEn || selected.name)}
+                      </SheetTitle>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {cityText} · {countryText}
+                      </p>
+                    </div>
+                  </div>
                 </SheetHeader>
-                <div className="space-y-4 mt-4 text-start">
-                  <p className="text-sm text-muted-foreground leading-relaxed">
+
+                <div className={`space-y-4 mt-4 ${alignClass}`}>
+                  <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
                     {ar ? selected.highlights : (selected.highlightsEn || selected.highlights)}
                   </p>
+
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div className="rounded-xl border border-primary/15 bg-background/60 p-3">
                       <p className="text-muted-foreground">{t("arabUniCity")}</p>
@@ -420,7 +774,7 @@ export const ArabUniversitiesTab = () => {
                     </div>
                     <div className="rounded-xl border border-primary/15 bg-background/60 p-3">
                       <p className="text-muted-foreground">{t("arabUniMin")}</p>
-                      <p className="text-foreground font-bold mt-1">{selected.minPercentage}%</p>
+                      <p className="text-foreground font-bold mt-1 text-primary">{selected.minPercentage}%</p>
                     </div>
                     <div className="rounded-xl border border-primary/15 bg-background/60 p-3">
                       <p className="text-muted-foreground">{t("arabUniType")}</p>
@@ -430,14 +784,14 @@ export const ArabUniversitiesTab = () => {
                       <p className="text-muted-foreground">{t("arabUniLanguage")}</p>
                       <p className="text-foreground font-bold mt-1">{langLabel(selected.language)}</p>
                     </div>
-                    <div className="rounded-xl border border-primary/15 bg-background/60 p-3">
+                    <div className="rounded-xl border border-primary/15 bg-background/60 p-3 col-span-2 sm:col-span-1">
                       <p className="text-muted-foreground flex items-center gap-1">
                         <Wallet className="w-3 h-3 text-primary" />
                         {t("arabUniTuition")}
                       </p>
                       <p className="text-foreground font-bold mt-1">{ar ? d.tuition : d.tuitionEn}</p>
                     </div>
-                    <div className="rounded-xl border border-primary/15 bg-background/60 p-3">
+                    <div className="rounded-xl border border-primary/15 bg-background/60 p-3 col-span-2 sm:col-span-1">
                       <p className="text-muted-foreground flex items-center gap-1">
                         <Home className="w-3 h-3 text-primary" />
                         {t("arabUniLiving")}
@@ -461,7 +815,7 @@ export const ArabUniversitiesTab = () => {
                     </p>
                     <div className="flex flex-wrap gap-1.5">
                       {selected.faculties.map((f) => (
-                        <span key={f} className="text-[11px] px-2 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary">
+                        <span key={f} className="text-[11px] px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary">
                           {getFacultyLabel(f, lang)}
                         </span>
                       ))}
@@ -477,7 +831,7 @@ export const ArabUniversitiesTab = () => {
                       {(ar ? d.docs : d.docsEn).map((doc) => (
                         <li key={doc} className="text-xs text-muted-foreground flex items-start gap-1.5">
                           <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
-                          {doc}
+                          <span>{doc}</span>
                         </li>
                       ))}
                     </ul>
@@ -494,27 +848,27 @@ export const ArabUniversitiesTab = () => {
                           <span className="w-4 h-4 shrink-0 rounded-full bg-primary/15 border border-primary/30 text-primary text-[9px] font-bold flex items-center justify-center mt-0.5">
                             {i + 1}
                           </span>
-                          {s}
+                          <span>{s}</span>
                         </li>
                       ))}
                     </ol>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2 pt-2">
                     <a
                       href={mapUrl(selected)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="h-12 rounded-xl border border-primary/30 bg-background/60 text-primary text-xs font-bold flex items-center justify-center gap-2 hover:bg-primary/10"
+                      className="h-11 rounded-xl border border-primary/30 bg-background/60 text-primary text-xs font-bold flex items-center justify-center gap-2 hover:bg-primary/10 transition-colors"
                     >
-                      <Map className="w-4 h-4" />
+                      <MapIcon className="w-4 h-4" />
                       {t("arabUniMap")}
                     </a>
                     <a
                       href={selected.website}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="h-12 rounded-xl bg-gold-gradient text-background text-xs font-bold flex items-center justify-center gap-2 hover:brightness-105"
+                      className="h-11 rounded-xl bg-gold-gradient text-primary-foreground text-xs font-bold flex items-center justify-center gap-2 hover:brightness-105 shadow-sm transition-all"
                     >
                       <ExternalLink className="w-4 h-4" />
                       {t("arabUniVisit")}

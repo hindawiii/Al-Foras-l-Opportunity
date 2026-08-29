@@ -12,10 +12,11 @@ export default {
         display: ['Amiri', 'Tajawal', 'Cairo', 'serif'],
       },
       fontSize: {
-        '2xs': ['0.75rem', { lineHeight: '1.1rem' }],    /* 12px instead of 10px */
-        xs: ['0.8125rem', { lineHeight: '1.25rem' }],     /* 13px instead of 12px */
-        sm: ['0.9375rem', { lineHeight: '1.375rem' }],    /* 15px instead of 14px */
-        base: ['1.0625rem', { lineHeight: '1.625rem' }],  /* 17px instead of 16px */
+        '2xs': ['0.8125rem', { lineHeight: '1.25rem' }],   /* 13px */
+        xs: ['0.875rem', { lineHeight: '1.375rem' }],       /* 14px */
+        sm: ['1rem', { lineHeight: '1.5rem' }],            /* 16px */
+        base: ['1.125rem', { lineHeight: '1.75rem' }],     /* 18px */
+        lg: ['1.25rem', { lineHeight: '1.875rem' }],       /* 20px */
       },
       colors: {
         border: "hsl(var(--border))",

@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Award, Newspaper, Bookmark, User, Settings as SettingsIcon, Bell, Languages, Briefcase, GraduationCap } from "lucide-react";
 import { BrandMark } from "@/components/foras/Logo";
 import { SettingsSheet } from "@/components/foras/SettingsSheet";
 import { NotificationsSheet } from "@/components/foras/NotificationsSheet";
+import { AppWelcomeModal } from "@/components/foras/AppWelcomeModal";
 import { AIAdvisor } from "@/components/foras/AIAdvisor";
+import { UndoBanner } from "@/components/foras/UndoBanner";
 import { ScholarshipsTab } from "./ScholarshipsTab";
 import { EconomyNewsTab } from "./EconomyNewsTab";
 import { ApplicationsTab } from "./ApplicationsTab";
@@ -15,6 +18,7 @@ import { useLiveNotifications } from "@/hooks/useLiveNotifications";
 import { useGeoSync } from "@/hooks/useGeoSync";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { notificationsStore } from "@/lib/notificationsStorage";
+import { toast } from "sonner";
 
 const tabs = [
   { id: "scholarships" as const, key: "tabScholarships", icon: Award, comp: ScholarshipsTab },
@@ -26,7 +30,13 @@ const tabs = [
 ];
 
 export const AppShell = () => {
-  const [tab, setTab] = useState<typeof tabs[number]["id"]>("scholarships");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get("tab");
+  const validInitial = (initialTab === "arab_universities" || initialTab === "universities")
+    ? "arabUnis"
+    : (tabs.some(t => t.id === initialTab) ? (initialTab as typeof tabs[number]["id"]) : "scholarships");
+
+  const [tab, setTab] = useState<typeof tabs[number]["id"]>(validInitial);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [unread, setUnread] = useState(0);
@@ -36,9 +46,22 @@ export const AppShell = () => {
   const { lang, toggleLang, t: tr } = useLanguage();
 
   useEffect(() => {
+    const requested = searchParams.get("tab");
+    if (requested) {
+      const normalized = (requested === "arab_universities" || requested === "universities") ? "arabUnis" : requested;
+      if (tabs.some(t => t.id === normalized)) {
+        setTab(normalized as typeof tabs[number]["id"]);
+      }
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
     const onNav = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { tab?: typeof tabs[number]["id"] };
-      if (detail?.tab) setTab(detail.tab);
+      const detail = (e as CustomEvent).detail as { tab?: string };
+      if (!detail?.tab) return;
+      const target = detail.tab === "arab_universities" || detail.tab === "universities" ? "arabUnis" : detail.tab;
+      const match = tabs.find(t => t.id === target);
+      if (match) setTab(match.id);
     };
     window.addEventListener("foras:navigate", onNav as EventListener);
     return () => window.removeEventListener("foras:navigate", onNav as EventListener);
@@ -48,8 +71,23 @@ export const AppShell = () => {
     const refresh = () => setUnread(notificationsStore.unreadCount());
     refresh();
     const id = window.setInterval(refresh, 30_000);
-    return () => window.clearInterval(id);
-  }, [notifOpen, tab]);
+
+    const onAdminAlert = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail && detail.message) {
+        toast.warning(
+          lang === "ar" ? `🚨 تنبيه أمني وإشراف: ${detail.message}` : `🚨 Moderator Alert: ${detail.message}`,
+          { duration: 6000 }
+        );
+      }
+    };
+    window.addEventListener("foras:admin-alert", onAdminAlert as EventListener);
+
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener("foras:admin-alert", onAdminAlert as EventListener);
+    };
+  }, [notifOpen, tab, lang]);
 
   return (
     <div className="min-h-screen bg-background relative">
@@ -126,7 +164,9 @@ export const AppShell = () => {
 
       <SettingsSheet open={settingsOpen} onOpenChange={setSettingsOpen} />
       <NotificationsSheet open={notifOpen} onOpenChange={setNotifOpen} />
+      <AppWelcomeModal />
       <AIAdvisor />
+      <UndoBanner />
     </div>
   );
 };

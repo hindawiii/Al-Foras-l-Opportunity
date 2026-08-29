@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { User, Shield, Info, Trash2, LogOut, Share2, Languages } from "lucide-react";
+import { User, Shield, Info, Trash2, LogOut, Share2, Languages, ShieldCheck, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -15,6 +15,7 @@ import { nativeShare } from "@/lib/share";
 import { guestStorage } from "@/lib/guestStorage";
 import { PrivacySecurityPage } from "@/components/foras/PrivacySecurityPage";
 import { AboutDialog } from "@/components/foras/AboutDialog";
+import { AdminDashboardModal } from "@/components/foras/AdminDashboardModal";
 
 interface Props { open: boolean; onOpenChange: (v: boolean) => void; }
 
@@ -24,6 +25,7 @@ export const SettingsSheet = ({ open, onOpenChange }: Props) => {
   const nav = useNavigate();
   const [view, setView] = useState<"main" | "privacy">("main");
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
   const isRtl = dir === "rtl";
   const alignClass = isRtl ? "text-right" : "text-left";
 
@@ -74,15 +76,44 @@ export const SettingsSheet = ({ open, onOpenChange }: Props) => {
           <PrivacySecurityPage onBack={() => setView("main")} />
         ) : (
         <div className="flex-1 overflow-y-auto px-6 pb-8 space-y-2 mt-4">
-          <Row icon={Languages} label={t("language")} align={alignClass}
+          <Row
+            icon={Languages}
+            label={t("language")}
+            align={alignClass}
+            onClick={toggleLang}
             trailing={
-              <button onClick={toggleLang}
-                className="text-xs font-bold text-primary bg-primary/10 border border-primary/30 px-3 py-1.5 rounded-full hover:bg-primary/20">
+              <span className="text-xs font-bold text-primary bg-primary/10 border border-primary/30 px-3 py-1.5 rounded-full hover:bg-primary/20 transition-colors">
                 {lang === "ar" ? "العربية ⇄ EN" : "EN ⇄ العربية"}
-              </button>
-            } />
+              </span>
+            }
+          />
+          <Row
+            icon={Sparkles}
+            label={isRtl ? "جولة ميزات المنصة (لماذا الفرص؟)" : "Platform Features Tour (Why Al-Foras?)"}
+            align={alignClass}
+            onClick={() => {
+              onOpenChange(false);
+              window.dispatchEvent(new CustomEvent("foras:open-welcome"));
+            }}
+            trailing={
+              <span className="text-2xs font-bold text-primary bg-primary/10 border border-primary/30 px-2 py-0.5 rounded-full">
+                ✨ {isRtl ? "استكشف" : "Explore"}
+              </span>
+            }
+          />
           <Row icon={User} label={t("accountSettings")} align={alignClass} onClick={openProfile} />
           <Row icon={Shield} label={t("privacy")} align={alignClass} onClick={() => setView("privacy")} />
+          <Row
+            icon={ShieldCheck}
+            label={isRtl ? "لوحة تحكم الإدارة (تحديث المنح والوظائف) 👑" : "Admin Dashboard (Manage Listings) 👑"}
+            align={alignClass}
+            onClick={() => setAdminOpen(true)}
+            trailing={
+              <span className="text-2xs font-bold text-primary bg-primary/10 border border-primary/30 px-2 py-0.5 rounded-full">
+                {isRtl ? "إدارة آمنة" : "Secure Portal"}
+              </span>
+            }
+          />
           <Row icon={Info} label={t("about")} align={alignClass}
             onClick={() => setAboutOpen(true)} />
           <Row icon={Trash2} label={t("clearCache")} align={alignClass} onClick={handleClearCache} />
@@ -125,6 +156,7 @@ export const SettingsSheet = ({ open, onOpenChange }: Props) => {
         </div>
         )}
         <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} />
+        <AdminDashboardModal isOpen={adminOpen} onClose={() => setAdminOpen(false)} />
       </SheetContent>
     </Sheet>
   );
@@ -136,12 +168,24 @@ const Row = ({
   icon: React.ElementType; label: string;
   trailing?: React.ReactNode; onClick?: () => void; align: string;
 }) => (
-  <button onClick={onClick}
-    className={`w-full flex items-center gap-3 p-4 rounded-xl bg-background/40 hover:bg-primary/10 border border-transparent hover:border-primary/30 transition-all ${align}`}>
-    <div className="w-10 h-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
+  <div
+    role={onClick ? "button" : undefined}
+    tabIndex={onClick ? 0 : undefined}
+    onClick={onClick}
+    onKeyDown={(e) => {
+      if (onClick && (e.key === "Enter" || e.key === " ")) {
+        e.preventDefault();
+        onClick();
+      }
+    }}
+    className={`w-full flex items-center gap-3 p-4 rounded-xl bg-background/40 hover:bg-primary/10 border border-transparent hover:border-primary/30 transition-all select-none ${align} ${
+      onClick ? "cursor-pointer" : ""
+    }`}
+  >
+    <div className="w-10 h-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
       <Icon className="w-5 h-5 text-primary" />
     </div>
     <span className="flex-1 text-foreground font-medium">{label}</span>
     {trailing}
-  </button>
+  </div>
 );

@@ -30,5 +30,5 @@ export const useGeoSync = () => {
       }
     }
     if (info.city && info.city !== city) setCity(info.city);
-  }, [info?.countryCode, info?.country, info?.city, locationSharingEnabled, countryCode, currencyManuallySet, localCurrency, city, setCountryCode, setAutoCurrency, setCity]);
+  }, [info, locationSharingEnabled, countryCode, currencyManuallySet, localCurrency, city, setCountryCode, setAutoCurrency, setCity]);
 };
