@@ -27,6 +27,7 @@ import {
   CheckCircle2,
   ChevronRight,
   ChevronLeft,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BrandMark } from "@/components/foras/Logo";
@@ -254,7 +255,7 @@ const Landing = () => {
         <div className="text-center mb-7">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/30 text-primary text-2xs font-bold mb-2.5 shadow-sm">
             <Globe2 className="w-3.5 h-3.5" />
-            <span>{isRtl ? "تغطية شاملة لأكثر من 20 دولة عربية" : "20+ Arab Nations Covered"}</span>
+            <span>{isRtl ? "تغطية شاملة لأكثر من 8 دولة عربية" : "8+ Arab Nations Covered"}</span>
           </div>
           <h2
             className="font-bold text-2xl sm:text-3xl text-gold-gradient"
@@ -301,7 +302,7 @@ const Landing = () => {
             <div className="flex items-center gap-3">
               <span className="text-4xl">{currentCountryStat.flag}</span>
               <div>
-                <h3 className="font-bold text-lg sm:text-xl text-foreground flex items-center gap-2">
+                <h3 className="font-bold text-lg sm:text-xl text-foreground flex items-center gap-2 flex-wrap">
                   <span>{lang === "ar" ? `ركن الجامعات في ${currentCountryStat.country}` : `${currentCountryStat.countryEn} Universities Hub`}</span>
                   {currentCountryStat.scholarships && (
                     <span className="text-2xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
@@ -317,11 +318,51 @@ const Landing = () => {
               </div>
             </div>
 
-            <div className="hidden sm:flex items-center gap-2 text-2xs text-primary font-bold bg-primary/10 border border-primary/20 px-3 py-1.5 rounded-xl">
-              <Building2 className="w-3.5 h-3.5" />
-              <span>{isRtl ? "دليل شامل وموثق" : "Accredited Directory"}</span>
+            <div className="flex items-center gap-2 text-2xs text-primary font-bold bg-primary/10 border border-primary/20 px-3 py-1.5 rounded-xl self-start sm:self-auto">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>{isRtl ? "بوابات ومصادر حكومية موثوقة" : "Accredited Government Portals"}</span>
             </div>
           </div>
+
+          {/* Scholarship Type Banner */}
+          {currentCountryStat.scholarshipType && (
+            <div className="mt-3.5 p-3 rounded-2xl bg-primary/10 border border-primary/25 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-start sm:items-center gap-2 text-xs">
+                <span className="text-base">🎓</span>
+                <div>
+                  <span className="font-bold text-primary">
+                    {isRtl ? "نوع المنح المعتمدة: " : "Supported Scholarships: "}
+                  </span>
+                  <span className="text-foreground/90 font-medium text-xs">
+                    {isRtl ? currentCountryStat.scholarshipType : currentCountryStat.scholarshipTypeEn}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Official Portals List */}
+          {currentCountryStat.officialPortals && currentCountryStat.officialPortals.length > 0 && (
+            <div className="mt-3 flex items-center gap-2 flex-wrap">
+              <span className="text-2xs font-bold text-muted-foreground flex items-center gap-1">
+                <ExternalLink className="w-3 h-3 text-primary" />
+                {isRtl ? "البوابات الرسمية:" : "Official Portals:"}
+              </span>
+              {currentCountryStat.officialPortals.map((portal) => (
+                <a
+                  key={portal.url}
+                  href={portal.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:text-primary-glow bg-background/60 hover:bg-primary/15 border border-primary/20 px-2.5 py-1 rounded-xl transition-all"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <span>{isRtl ? portal.name : portal.nameEn}</span>
+                  <ExternalLink className="w-2.5 h-2.5" />
+                </a>
+              ))}
+            </div>
+          )}
 
           {/* Sample Universities Grid for this Country */}
           <div className="grid sm:grid-cols-2 gap-3.5 mt-4">

@@ -2,10 +2,10 @@ import { useMemo, useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  GraduationCap, Search, ExternalLink, MapPin, Languages as LangIcon,
+  GraduationCap, ExternalLink, MapPin, Languages as LangIcon,
   Award, SlidersHorizontal, Building2, ChevronRight, Sparkles, Target, Filter,
   Wallet, Home, CalendarDays, FileText, ListChecks, Map as MapIcon, Scale, X,
-  Info, Users, Quote, CheckCircle2,
+  Info, Users, Quote, CheckCircle2, ShieldCheck,
 } from "lucide-react";
 import {
   ARAB_UNIVERSITIES, ARAB_COUNTRY_STATS, ARAB_FACULTIES,
@@ -34,9 +34,7 @@ export const ArabUniversitiesTab = () => {
   const isRtl = dir === "rtl";
   const alignClass = isRtl ? "text-right" : "text-left";
 
-  const [query, setQuery] = useState("");
   const [country, setCountry] = useState<string | null>(null);
-  const [cityFilter, setCityFilter] = useState<string>("");
   const [faculty, setFaculty] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<ArabUniType | "">("");
   const [scholarshipOnly, setScholarshipOnly] = useState(false);
@@ -89,8 +87,12 @@ export const ArabUniversitiesTab = () => {
     if (pct) localStorage.setItem(PCT_KEY, pct);
   }, [pct]);
 
-  const searching = query.trim().length > 0;
-  const showCountries = !country && !searching;
+  const showCountries = !country;
+
+  const currentCountryStat = useMemo(() => {
+    if (!country) return null;
+    return ARAB_COUNTRY_STATS.find((c) => c.country === country || c.countryEn === country) || null;
+  }, [country]);
 
   // Countries sorted with user's geolocation country first
   const countries = useMemo(() => {
@@ -102,27 +104,14 @@ export const ArabUniversitiesTab = () => {
     });
   }, [countryCode]);
 
-  // Dynamic available cities for current country
-  const availableCities = useMemo(() => {
-    const pool = country ? ARAB_UNIVERSITIES.filter((u) => u.country === country) : ARAB_UNIVERSITIES;
-    const set = new Set<string>();
-    pool.forEach((u) => { if (u.city) set.add(u.city); });
-    return Array.from(set);
-  }, [country]);
-
   const list = useMemo(() => {
-    const q = query.trim().toLowerCase();
     let items = ARAB_UNIVERSITIES.filter((u) => {
       if (country && u.country !== country) return false;
-      if (cityFilter && u.city !== cityFilter) return false;
       if (faculty && !u.faculties.includes(faculty)) return false;
       if (typeFilter && u.type !== typeFilter) return false;
       if (scholarshipOnly && !u.scholarships) return false;
       if (eligibleOnly && effectivePct !== undefined && effectivePct < u.minPercentage) return false;
-      if (!q) return true;
-
-      const hay = `${u.name} ${u.nameEn} ${u.city} ${u.cityEn ?? ""} ${u.country} ${u.countryEn} ${u.faculties.join(" ")}`.toLowerCase();
-      return hay.includes(q);
+      return true;
     });
 
     if (effectivePct !== undefined) {
@@ -135,7 +124,7 @@ export const ArabUniversitiesTab = () => {
     }
 
     return items;
-  }, [query, country, cityFilter, faculty, typeFilter, scholarshipOnly, eligibleOnly, effectivePct]);
+  }, [country, faculty, typeFilter, scholarshipOnly, eligibleOnly, effectivePct]);
 
   const eligibleCount = useMemo(() => {
     if (effectivePct === undefined) return 0;
@@ -166,15 +155,13 @@ export const ArabUniversitiesTab = () => {
     `https://www.google.com/maps/search/${encodeURIComponent(`${u.nameEn || u.name} ${u.cityEn || u.city} ${u.countryEn}`)}`;
 
   const clearAllFilters = () => {
-    setQuery("");
-    setCityFilter("");
     setFaculty(null);
     setTypeFilter("");
     setScholarshipOnly(false);
     setOnlyEligible(false);
   };
 
-  const hasActiveFilters = query || cityFilter || faculty || typeFilter || scholarshipOnly || eligibleOnly;
+  const hasActiveFilters = faculty || typeFilter || scholarshipOnly || eligibleOnly;
 
   return (
     <div className="space-y-4 w-full" dir={dir}>
@@ -252,27 +239,7 @@ export const ArabUniversitiesTab = () => {
         )}
       </div>
 
-      {/* Global Search Bar */}
-      <div className="relative">
-        <Search className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? "right-3.5" : "left-3.5"} w-4 h-4 text-muted-foreground pointer-events-none`} />
-        <Input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={isRtl ? "ابحث باسم الجامعة، الدولة، المدينة، أو التخصص…" : "Search university, country, city, or major..."}
-          className={`h-11 ${isRtl ? "pr-10 pl-4" : "pl-10 pr-4"} ${alignClass} bg-card/60 border-primary/20 focus:border-primary rounded-2xl text-sm`}
-          dir={dir}
-        />
-        {query && (
-          <button
-            onClick={() => setQuery("")}
-            className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? "left-3" : "right-3"} text-muted-foreground hover:text-foreground p-1`}
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        )}
-      </div>
-
-      {/* Countries Grid (When not filtering by specific country and not searching) */}
+      {/* Countries Grid (When not filtering by specific country) */}
       {showCountries ? (
         <div className="space-y-3">
           <div className={`flex items-center justify-between ${isRtl ? "" : "flex-row-reverse"}`}>
@@ -327,15 +294,14 @@ export const ArabUniversitiesTab = () => {
           </div>
         </div>
       ) : (
-        /* Selected Country View or Search Mode */
+        /* Selected Country View */
         <div className="space-y-3">
           {/* Navigation & Controls Top Bar */}
           <div className={`flex items-center justify-between gap-2 flex-wrap ${isRtl ? "" : "flex-row-reverse"}`}>
-            {country ? (
+            {country && (
               <button
                 onClick={() => {
                   setCountry(null);
-                  setCityFilter("");
                   setFaculty(null);
                 }}
                 className={`h-9 px-3.5 rounded-full text-xs font-bold border border-primary/30 bg-card/80 text-primary flex items-center gap-1.5 hover:bg-primary/10 transition-all ${
@@ -345,39 +311,88 @@ export const ArabUniversitiesTab = () => {
                 <ChevronRight className={`w-3.5 h-3.5 ${isRtl ? "" : "rotate-180"}`} />
                 {isRtl ? `← العودة إلى قائمة الدول (${country})` : `← Back to Countries (${country})`}
               </button>
-            ) : (
-              <span className="text-xs font-bold text-foreground">
-                {isRtl ? "نتائج البحث الشامل" : "Global Search Results"}
-              </span>
             )}
             <p className="text-xs text-muted-foreground font-medium">
               {t("arabUniResults").replace("{n}", String(list.length))}
             </p>
           </div>
 
-          {/* Advanced Dropdown & Pill Filter Controls (Unified from Sudanese Guide) */}
-          <div className="space-y-2.5 rounded-2xl border border-primary/20 bg-card/60 backdrop-blur-md p-3">
-            <div className="flex flex-wrap gap-2">
-              {/* City Filter */}
-              {availableCities.length > 1 && (
-                <select
-                  value={cityFilter}
-                  onChange={(e) => setCityFilter(e.target.value)}
-                  className={`flex-1 min-w-[110px] h-9 rounded-xl bg-background/60 border border-border text-xs px-2.5 text-foreground ${alignClass}`}
-                  dir={dir}
-                >
-                  <option value="">{isRtl ? "كل المدن" : "All cities"}</option>
-                  {availableCities.map((c) => (
-                    <option key={c} value={c}>{getCityLabel(c, lang)}</option>
-                  ))}
-                </select>
+          {/* Country Official Sources & Scholarships Showcase */}
+          {currentCountryStat && (
+            <div className="rounded-2xl border border-primary/30 bg-card/75 backdrop-blur-md p-4 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-primary/15">
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl">{currentCountryStat.flag}</span>
+                  <div>
+                    <h3 className="font-bold text-base text-foreground flex items-center gap-2 flex-wrap">
+                      <span>{isRtl ? currentCountryStat.country : currentCountryStat.countryEn}</span>
+                      {currentCountryStat.scholarships && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-bold">
+                          ✨ {isRtl ? "تتوفر منح معتمدة" : "Scholarships Available"}
+                        </span>
+                      )}
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {isRtl
+                        ? `يتضمن ${currentCountryStat.count} جامعة ومؤسسة معتمدة · الحد الأدنى للقبول يبدأ من %${currentCountryStat.minPercentage}`
+                        : `Features ${currentCountryStat.count} accredited institutions · Minimum admission from ${currentCountryStat.minPercentage}%`}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 text-2xs text-primary font-bold bg-primary/10 border border-primary/20 px-3 py-1.5 rounded-xl self-start sm:self-auto">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>{isRtl ? "بوابات ومصادر رسمية معتمدة" : "Official Government Portals"}</span>
+                </div>
+              </div>
+
+              {/* Scholarship Type Info */}
+              {currentCountryStat.scholarshipType && (
+                <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 flex items-start gap-2 text-xs">
+                  <span className="text-sm">🎓</span>
+                  <div>
+                    <span className="font-bold text-primary">
+                      {isRtl ? "نوع المنح الدراسية: " : "Scholarship Types: "}
+                    </span>
+                    <span className="text-foreground/90 font-medium">
+                      {isRtl ? currentCountryStat.scholarshipType : currentCountryStat.scholarshipTypeEn}
+                    </span>
+                  </div>
+                </div>
               )}
 
+              {/* Official Portals Links */}
+              {currentCountryStat.officialPortals && currentCountryStat.officialPortals.length > 0 && (
+                <div className="flex items-center gap-2 flex-wrap pt-1">
+                  <span className="text-2xs font-bold text-muted-foreground flex items-center gap-1">
+                    <ExternalLink className="w-3 h-3 text-primary" />
+                    {isRtl ? "البوابات الرسمية للتقديم والاستعلام:" : "Official Portals & Inquiries:"}
+                  </span>
+                  {currentCountryStat.officialPortals.map((portal) => (
+                    <a
+                      key={portal.url}
+                      href={portal.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:text-primary-glow bg-background/80 hover:bg-primary/20 border border-primary/30 px-3 py-1 rounded-xl transition-all"
+                    >
+                      <span>{isRtl ? portal.name : portal.nameEn}</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Advanced Dropdown & Pill Filter Controls */}
+          <div className="space-y-2.5 rounded-2xl border border-primary/20 bg-card/60 backdrop-blur-md p-3">
+            <div className="flex flex-wrap gap-2">
               {/* Major / Faculty Dropdown Filter */}
               <select
                 value={faculty || ""}
                 onChange={(e) => setFaculty(e.target.value ? e.target.value : null)}
-                className={`flex-1 min-w-[120px] h-9 rounded-xl bg-background/60 border border-border text-xs px-2.5 text-foreground ${alignClass}`}
+                className={`flex-1 min-w-[140px] h-9 rounded-xl bg-background/60 border border-border text-xs px-2.5 text-foreground ${alignClass}`}
                 dir={dir}
               >
                 <option value="">{isRtl ? "كل التخصصات والكليات" : "All faculties & majors"}</option>
@@ -390,10 +405,10 @@ export const ArabUniversitiesTab = () => {
               <select
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value as ArabUniType | "")}
-                className={`flex-1 min-w-[100px] h-9 rounded-xl bg-background/60 border border-border text-xs px-2.5 text-foreground ${alignClass}`}
+                className={`flex-1 min-w-[120px] h-9 rounded-xl bg-background/60 border border-border text-xs px-2.5 text-foreground ${alignClass}`}
                 dir={dir}
               >
-                <option value="">{isRtl ? "كل الأنواع" : "All types"}</option>
+                <option value="">{isRtl ? "كل الجامعات" : "All universities"}</option>
                 <option value="government">{isRtl ? "حكومية" : "Public"}</option>
                 <option value="private">{isRtl ? "خاصة" : "Private"}</option>
                 <option value="technical">{isRtl ? "تقنية" : "Technical"}</option>

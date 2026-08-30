@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { User, Shield, Info, Trash2, LogOut, Share2, Languages, ShieldCheck, Sparkles } from "lucide-react";
+import { User, Shield, Info, Trash2, LogOut, Share2, Languages, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -84,20 +84,6 @@ export const SettingsSheet = ({ open, onOpenChange }: Props) => {
             trailing={
               <span className="text-xs font-bold text-primary bg-primary/10 border border-primary/30 px-3 py-1.5 rounded-full hover:bg-primary/20 transition-colors">
                 {lang === "ar" ? "العربية ⇄ EN" : "EN ⇄ العربية"}
-              </span>
-            }
-          />
-          <Row
-            icon={Sparkles}
-            label={isRtl ? "جولة ميزات المنصة (لماذا الفرص؟)" : "Platform Features Tour (Why Al-Foras?)"}
-            align={alignClass}
-            onClick={() => {
-              onOpenChange(false);
-              window.dispatchEvent(new CustomEvent("foras:open-welcome"));
-            }}
-            trailing={
-              <span className="text-2xs font-bold text-primary bg-primary/10 border border-primary/30 px-2 py-0.5 rounded-full">
-                ✨ {isRtl ? "استكشف" : "Explore"}
               </span>
             }
           />

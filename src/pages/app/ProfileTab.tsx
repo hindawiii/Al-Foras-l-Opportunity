@@ -4,7 +4,7 @@ import {
   Save, Plus, X, GraduationCap, MapPin, Mail, Phone, User as UserIcon,
   Edit3, Sparkles, Check, Camera, Loader2, Link as LinkIcon, Trash2,
   Star, Briefcase, ChevronDown, Maximize2, Compass, HelpCircle, CheckCircle2,
-  ExternalLink, Award, Globe, BookOpen, Clock, Building, ShieldCheck
+  ExternalLink, Award, Globe, BookOpen, Clock, Building, Copy
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,7 +19,6 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { guestStorage } from "@/lib/guestStorage";
 import { useGeolocation } from "@/hooks/useGeolocation";
-import { AdminDashboardModal } from "@/components/foras/AdminDashboardModal";
 import {
   profileExtras, defaultExtras, type ProfileExtras, type PersonalLink,
   type LinkType, type SkillEntry,
@@ -89,6 +88,7 @@ export const ProfileTab = () => {
   const [extras, setExtras] = useState<ProfileExtras>(defaultExtras);
   const [extrasDraft, setExtrasDraft] = useState<ProfileExtras>(defaultExtras);
   const [phoneLocal, setPhoneLocal] = useState("");
+  const [copiedPhone, setCopiedPhone] = useState(false);
   const [editing, setEditing] = useState(false);
   const [skillInput, setSkillInput] = useState("");
   const [loading, setLoading] = useState(true);
@@ -96,7 +96,15 @@ export const ProfileTab = () => {
   const [uploading, setUploading] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [geoHelpOpen, setGeoHelpOpen] = useState(false);
-  const [adminDashboardOpen, setAdminDashboardOpen] = useState(false);
+
+  const handleCopyPhone = (numberToCopy?: string) => {
+    const raw = numberToCopy || profile.phone || (phoneLocal ? `${extrasDraft.phoneCountryCode} ${phoneLocal}` : "");
+    if (!raw) return;
+    navigator.clipboard.writeText(raw);
+    setCopiedPhone(true);
+    setTimeout(() => setCopiedPhone(false), 2000);
+    toast.success(ar ? "تم نسخ رقم الهاتف بنجاح!" : "Phone number copied to clipboard!");
+  };
 
   // Load extras from storage
   useEffect(() => {
@@ -421,9 +429,21 @@ export const ProfileTab = () => {
                 </span>
               )}
               {profile.phone && !hideProfile && (
-                <span className="inline-flex items-center gap-1 bg-background/50 border border-border/80 px-2.5 py-1 rounded-full text-foreground font-medium" dir="ltr">
-                  <Phone className="w-3.5 h-3.5 text-primary" /> {profile.phone}
-                </span>
+                <button
+                  type="button"
+                  onClick={() => handleCopyPhone(profile.phone)}
+                  title={ar ? "انقر لنسخ رقم الهاتف" : "Click to copy phone number"}
+                  className="inline-flex items-center gap-1.5 bg-background/60 hover:bg-primary/15 active:scale-95 border border-border/80 hover:border-primary/40 px-3 py-1 rounded-full text-foreground font-medium transition-all cursor-pointer group shadow-sm"
+                  dir="ltr"
+                >
+                  <Phone className="w-3.5 h-3.5 text-primary group-hover:scale-110 transition-transform" />
+                  <span>{profile.phone}</span>
+                  {copiedPhone ? (
+                    <Check className="w-3 h-3 text-emerald-400 shrink-0" />
+                  ) : (
+                    <Copy className="w-3 h-3 text-muted-foreground opacity-60 group-hover:opacity-100 group-hover:text-primary transition-all shrink-0" />
+                  )}
+                </button>
               )}
             </div>
           </div>
@@ -649,34 +669,6 @@ export const ProfileTab = () => {
             </div>
           </div>
         )}
-
-        {/* === ADMIN MANAGEMENT SHORTCUT === */}
-        <div className="p-4 rounded-3xl bg-gradient-to-r from-primary/15 via-primary/5 to-transparent border-2 border-primary/30 shadow-md flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gold-gradient text-primary-foreground flex items-center justify-center shadow-gold flex-shrink-0">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-            <div>
-              <h4 className="text-xs sm:text-sm font-bold text-foreground flex items-center gap-1.5 flex-wrap">
-                {ar ? "بوابة إدارة المنح والمشرفين" : "Admin & Moderation Portal"}
-                <span className="px-2 py-0.5 rounded-full bg-primary/20 text-primary text-2xs font-semibold">
-                  alforas.one@gmail.com
-                </span>
-              </h4>
-              <p className="text-2xs text-muted-foreground mt-0.5">
-                {ar ? "إدارة الفرص، مراجعة المحتوى، وإدارة صلاحيات المشرفين" : "Manage listings, review submissions, and moderator roles"}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => setAdminDashboardOpen(true)}
-            className="px-3.5 py-2 rounded-xl bg-gold-gradient text-primary-foreground text-xs font-bold shadow hover:opacity-90 flex-shrink-0"
-          >
-            {ar ? "فتح اللوحة" : "Open"}
-          </button>
-        </div>
-
-        <AdminDashboardModal isOpen={adminDashboardOpen} onClose={() => setAdminDashboardOpen(false)} />
       </div>
     );
   }
@@ -810,6 +802,20 @@ export const ProfileTab = () => {
               inputMode="tel"
               type="tel"
             />
+            {phoneLocal && (
+              <button
+                type="button"
+                onClick={() => handleCopyPhone(`${extrasDraft.phoneCountryCode} ${phoneLocal}`)}
+                title={ar ? "نسخ رقم الهاتف" : "Copy phone number"}
+                className="h-10 px-3 rounded-md bg-input border border-gold/30 hover:bg-primary/20 hover:border-primary/50 text-foreground flex items-center justify-center transition-all shrink-0 active:scale-95 cursor-pointer"
+              >
+                {copiedPhone ? (
+                  <Check className="w-4 h-4 text-emerald-400" />
+                ) : (
+                  <Copy className="w-4 h-4 text-muted-foreground hover:text-primary" />
+                )}
+              </button>
+            )}
           </div>
           {phoneLocal && !validatePhone(extrasDraft.phoneCountryIso, phoneLocal) && (
             <p className="text-[10px] text-destructive mt-1">⚠️ {ar ? "رقم غير صالح لهذه الدولة" : "Invalid phone number for this country"}</p>

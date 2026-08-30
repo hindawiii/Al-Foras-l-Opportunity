@@ -300,9 +300,6 @@ export const ScholarshipsTab = () => {
           </div>
           <div className="flex-1 w-full">
             <p className="text-sm font-bold text-gold-gradient leading-tight">{t("arabUniTitle")}</p>
-            <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">
-              {isRtl ? "شروط القبول، الرسوم، والمنح في 20 دولة عربية" : "Admission, fees & scholarships across 20 Arab nations"}
-            </p>
           </div>
           <span className="inline-flex items-center gap-1 text-[11px] font-bold text-primary mt-1">
             {t("discover")} {isRtl ? <ArrowLeft className="w-3 h-3" /> : <ArrowRight className="w-3 h-3" />}
