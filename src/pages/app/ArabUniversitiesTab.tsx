@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   GraduationCap, Search, ExternalLink, MapPin, Languages as LangIcon,
@@ -28,6 +29,7 @@ const typeBadgeClass: Record<ArabUniType, string> = {
 export const ArabUniversitiesTab = () => {
   const { lang, t, dir } = useLanguage();
   const { countryCode } = useSettings();
+  const [searchParams, setSearchParams] = useSearchParams();
   const ar = lang === "ar";
   const isRtl = dir === "rtl";
   const alignClass = isRtl ? "text-right" : "text-left";
@@ -41,9 +43,40 @@ export const ArabUniversitiesTab = () => {
   const [pct, setPct] = useState(() => (typeof window !== "undefined" ? localStorage.getItem(PCT_KEY) ?? "" : ""));
   const [eligibleOnly, setOnlyEligible] = useState(false);
   const [selected, setSelected] = useState<ArabUniversity | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [compare, setCompare] = useState<string[]>([]);
   const [compareOpen, setCompareOpen] = useState(false);
+
+  // Parse incoming URL query params (e.g. from Landing page clicks)
+  useEffect(() => {
+    const cParam = searchParams.get("country");
+    const uParam = searchParams.get("uni");
+
+    if (cParam) {
+      const match = ARAB_COUNTRY_STATS.find(
+        (c) =>
+          c.country.toLowerCase() === cParam.toLowerCase() ||
+          c.countryEn.toLowerCase() === cParam.toLowerCase() ||
+          c.code.toLowerCase() === cParam.toLowerCase()
+      );
+      if (match) {
+        setCountry(match.country);
+      } else {
+        setCountry(cParam);
+      }
+    }
+
+    if (uParam) {
+      const matchUni = ARAB_UNIVERSITIES.find(
+        (u) => u.id === uParam || u.name === uParam || (u.nameEn && u.nameEn.toLowerCase() === uParam.toLowerCase())
+      );
+      if (matchUni) {
+        setSelected(matchUni);
+        if (!cParam) {
+          setCountry(matchUni.country);
+        }
+      }
+    }
+  }, [searchParams]);
 
   const effectivePct = useMemo(() => {
     const n = parseFloat(pct);
@@ -155,11 +188,6 @@ export const ArabUniversitiesTab = () => {
             <h1 className="text-lg sm:text-xl font-bold font-display text-gold-gradient leading-tight">
               {t("arabUniTitle")}
             </h1>
-            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-              {isRtl
-                ? `${ARAB_UNIVERSITIES.length} جامعة في 20 دولة عربية — شروط القبول، الرسوم، والمنح الرسمية`
-                : `${ARAB_UNIVERSITIES.length} universities across 20 Arab countries with admission criteria, fees & scholarships`}
-            </p>
           </div>
         </div>
       </div>
@@ -413,15 +441,13 @@ export const ArabUniversitiesTab = () => {
             )}
           </div>
 
-          {/* Universities List with Full Ported Design & Inline Expandable Details */}
+          {/* Universities List with Full Ported Design & Direct Modal Details */}
           <div className="space-y-3">
             {list.map((u, i) => {
               const qualifies = effectivePct !== undefined ? effectivePct >= u.minPercentage : null;
               const isCompared = compare.includes(u.id);
-              const isExpanded = expandedId === u.id;
               const cityText = ar ? u.city : (u.cityEn || getCityLabel(u.city, lang));
               const countryText = ar ? u.country : u.countryEn;
-              const details = getUniDetails(u);
 
               return (
                 <motion.div
@@ -429,7 +455,8 @@ export const ArabUniversitiesTab = () => {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: Math.min(i * 0.03, 0.3) }}
-                  className={`rounded-2xl border bg-card/60 backdrop-blur-md p-4 transition-all hover:border-primary/50 ${
+                  onClick={() => setSelected(u)}
+                  className={`rounded-2xl border bg-card/60 backdrop-blur-md p-4 transition-all hover:border-primary/50 cursor-pointer group hover:bg-card/80 ${
                     isCompared
                       ? "border-primary shadow-[0_0_18px_-4px_hsl(var(--primary)/0.4)]"
                       : "border-primary/20"
@@ -438,11 +465,11 @@ export const ArabUniversitiesTab = () => {
                   {/* Card Header: Name, Country, Flag, Badge */}
                   <div className={`flex items-start justify-between gap-3 mb-2.5 ${isRtl ? "" : "flex-row-reverse"}`}>
                     <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                      <div className="w-10 h-10 shrink-0 rounded-2xl bg-primary/10 border border-primary/30 flex items-center justify-center text-xl shadow-sm">
+                      <div className="w-10 h-10 shrink-0 rounded-2xl bg-primary/10 border border-primary/30 flex items-center justify-center text-xl shadow-sm group-hover:scale-105 transition-transform">
                         {u.flag}
                       </div>
                       <div className={`flex-1 min-w-0 ${alignClass}`}>
-                        <h3 className="text-base font-bold font-display text-gold-gradient truncate leading-snug">
+                        <h3 className="text-base font-bold font-display text-gold-gradient truncate leading-snug group-hover:text-primary transition-colors">
                           {ar ? u.name : (u.nameEn || u.name)}
                         </h3>
                         <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
@@ -516,7 +543,7 @@ export const ArabUniversitiesTab = () => {
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={(e) => toggleCompare(u.id, e)}
                         className={`h-8 px-2.5 rounded-xl text-[11px] font-bold border transition-all flex items-center gap-1 ${
@@ -531,7 +558,7 @@ export const ArabUniversitiesTab = () => {
                       </button>
 
                       <Button asChild size="sm" variant="luxe" className="h-8 rounded-xl text-[11px]">
-                        <a href={u.website} target="_blank" rel="noopener noreferrer">
+                        <a href={u.website} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
                           <ExternalLink className={`w-3 h-3 ${isRtl ? "ml-1" : "mr-1"}`} />
                           {isRtl ? "الموقع" : "Website"}
                         </a>
@@ -539,114 +566,17 @@ export const ArabUniversitiesTab = () => {
                     </div>
                   </div>
 
-                  {/* Inline Full Details Accordion Button (Ported from Sudanese Guide) */}
+                  {/* Primary Standalone Modal Opener Button */}
                   <button
-                    onClick={() => setExpandedId(isExpanded ? null : u.id)}
-                    className="mt-2.5 w-full h-9 rounded-xl border border-primary/25 bg-primary/5 text-primary text-[11px] font-bold flex items-center justify-center gap-1.5 hover:bg-primary/10 transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelected(u);
+                    }}
+                    className="mt-3 w-full h-10 rounded-xl bg-gold-gradient text-primary-foreground text-xs font-bold flex items-center justify-center gap-2 shadow-gold hover:brightness-105 active:scale-[0.99] transition-all"
                   >
-                    <Info className="w-3.5 h-3.5" />
-                    {isExpanded
-                      ? (isRtl ? "إخفاء التفاصيل الشاملة" : "Hide Full Details")
-                      : (isRtl ? "تفاصيل كاملة: الرسوم، المعيشة، والتقديم" : "Full Details: Tuition, Living & Admission")}
+                    <Building2 className="w-4 h-4" />
+                    <span>{isRtl ? "التفاصيل الكاملة" : "Full Details"}</span>
                   </button>
-
-                  {/* Inline Expanded Panel (Tuition, Living, Admission, Docs, Steps, Map) */}
-                  <AnimatePresence>
-                    {isExpanded && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className={`mt-3 space-y-3 ${alignClass} border-t border-border/60 pt-3 overflow-hidden`}
-                      >
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          <div className="rounded-xl border border-primary/15 bg-background/60 p-3">
-                            <p className={`text-[10px] text-muted-foreground flex items-center gap-1 ${isRtl ? "" : "flex-row-reverse"}`}>
-                              <Wallet className="w-3 h-3 text-primary flex-shrink-0" />
-                              <span>{t("arabUniTuition")}</span>
-                            </p>
-                            <p className="text-[11px] text-foreground/90 font-bold mt-1 leading-relaxed">
-                              {ar ? details.tuition : details.tuitionEn}
-                            </p>
-                          </div>
-
-                          <div className="rounded-xl border border-primary/15 bg-background/60 p-3">
-                            <p className={`text-[10px] text-muted-foreground flex items-center gap-1 ${isRtl ? "" : "flex-row-reverse"}`}>
-                              <Home className="w-3 h-3 text-primary flex-shrink-0" />
-                              <span>{t("arabUniLiving")}</span>
-                            </p>
-                            <p className="text-[11px] text-foreground/90 font-bold mt-1 leading-relaxed">
-                              {ar ? details.living : details.livingEn}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="rounded-xl border border-primary/15 bg-background/60 p-3">
-                          <p className={`text-[10px] text-muted-foreground flex items-center gap-1 mb-1 ${isRtl ? "" : "flex-row-reverse"}`}>
-                            <CalendarDays className="w-3.5 h-3.5 text-primary flex-shrink-0" />
-                            <span className="font-bold">{t("arabUniSeasons")}</span>
-                          </p>
-                          <p className="text-[11px] text-foreground/90 leading-relaxed">
-                            {ar ? details.seasons : details.seasonsEn}
-                          </p>
-                        </div>
-
-                        {/* Required Documents */}
-                        <div className="rounded-xl border border-primary/15 bg-background/50 p-3">
-                          <p className={`text-[11px] font-bold text-foreground flex items-center gap-1.5 mb-2 ${isRtl ? "" : "flex-row-reverse"}`}>
-                            <FileText className="w-3.5 h-3.5 text-primary flex-shrink-0" />
-                            <span>{t("arabUniDocs")}</span>
-                          </p>
-                          <ul className="space-y-1">
-                            {(ar ? details.docs : details.docsEn).map((doc) => (
-                              <li key={doc} className="text-[11px] text-muted-foreground flex items-start gap-1.5">
-                                <CheckCircle2 className="w-3 h-3 text-primary shrink-0 mt-0.5" />
-                                <span>{doc}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-
-                        {/* Application Steps */}
-                        <div className="rounded-xl border border-primary/15 bg-background/50 p-3">
-                          <p className={`text-[11px] font-bold text-foreground flex items-center gap-1.5 mb-2 ${isRtl ? "" : "flex-row-reverse"}`}>
-                            <ListChecks className="w-3.5 h-3.5 text-primary flex-shrink-0" />
-                            <span>{t("arabUniSteps")}</span>
-                          </p>
-                          <ol className="space-y-1.5">
-                            {(ar ? details.steps : details.stepsEn).map((step, sIdx) => (
-                              <li key={step} className="text-[11px] text-muted-foreground flex items-start gap-2">
-                                <span className="w-4 h-4 shrink-0 rounded-full bg-primary/15 border border-primary/30 text-primary text-[9px] font-bold flex items-center justify-center mt-0.5">
-                                  {sIdx + 1}
-                                </span>
-                                <span>{step}</span>
-                              </li>
-                            ))}
-                          </ol>
-                        </div>
-
-                        {/* Map Location & Quick Sheet Opener */}
-                        <div className="grid grid-cols-2 gap-2 pt-1">
-                          <a
-                            href={mapUrl(u)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="h-9 rounded-xl border border-primary/30 bg-background/60 text-primary text-[11px] font-bold flex items-center justify-center gap-1.5 hover:bg-primary/10 transition-colors"
-                          >
-                            <MapIcon className="w-3.5 h-3.5" />
-                            {t("arabUniMap")}
-                          </a>
-                          <button
-                            onClick={() => setSelected(u)}
-                            className="h-9 rounded-xl bg-gold-gradient text-primary-foreground text-[11px] font-bold flex items-center justify-center gap-1.5 shadow-sm hover:brightness-105 transition-all"
-                          >
-                            <Building2 className="w-3.5 h-3.5" />
-                            {isRtl ? "عرض في نافذة مستقلة" : "Open in Modal"}
-                          </button>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
                 </motion.div>
               );
             })}

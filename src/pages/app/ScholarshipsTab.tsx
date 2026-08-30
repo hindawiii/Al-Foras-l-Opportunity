@@ -167,7 +167,7 @@ export const ScholarshipsTab = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={ar ? "ابحث عن منحة، جامعة، تخصص، دولة، ممولة بالكامل..." : "Search scholarships, majors, countries, funding..."}
+              placeholder={ar ? "ابحث عن منحة، جامعة، تخصص، دولة..." : "Search scholarship, university, major, country..."}
               className={`w-full h-12 py-2.5 ${
                 isRtl ? "pr-2 pl-10" : "pl-2 pr-10"
               } text-xs sm:text-sm bg-transparent font-medium text-foreground placeholder:text-muted-foreground/80 focus:outline-none`}

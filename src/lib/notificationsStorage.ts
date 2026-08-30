@@ -17,6 +17,7 @@ export interface AppNotification {
 }
 
 const READ_KEY = "notifRead";
+const DISMISSED_KEY = "notifDismissed";
 
 const daysLeft = (deadline?: string): number | null => {
   if (!deadline) return null;
@@ -121,11 +122,15 @@ export const buildNotifications = (lang: "ar" | "en" = "ar"): AppNotification[] 
 };
 
 const readIds = (): string[] => guestStorage.get<string[]>(READ_KEY, []) ?? [];
+const dismissedIds = (): string[] => guestStorage.get<string[]>(DISMISSED_KEY, []) ?? [];
 
 export const notificationsStore = {
   list(lang: "ar" | "en" = "ar"): (AppNotification & { read: boolean })[] {
     const read = new Set(readIds());
-    return buildNotifications(lang).map((n) => ({ ...n, read: read.has(n.id) }));
+    const dismissed = new Set(dismissedIds());
+    return buildNotifications(lang)
+      .filter((n) => !dismissed.has(n.id))
+      .map((n) => ({ ...n, read: read.has(n.id) }));
   },
   unreadCount(lang: "ar" | "en" = "ar"): number {
     return notificationsStore.list(lang).filter((n) => !n.read).length;
@@ -136,6 +141,14 @@ export const notificationsStore = {
   },
   markAllRead(lang: "ar" | "en" = "ar") {
     guestStorage.set(READ_KEY, buildNotifications(lang).map((n) => n.id));
+  },
+  dismiss(id: string) {
+    const cur = dismissedIds();
+    if (!cur.includes(id)) guestStorage.set(DISMISSED_KEY, [...cur, id]);
+  },
+  clearAll(lang: "ar" | "en" = "ar") {
+    const allIds = buildNotifications(lang).map((n) => n.id);
+    guestStorage.set(DISMISSED_KEY, allIds);
   },
 };
 

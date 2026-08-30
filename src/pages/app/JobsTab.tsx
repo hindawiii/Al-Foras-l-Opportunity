@@ -173,7 +173,7 @@ export const JobsTab = () => {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={ar ? "ابحث عن منصة، مهارة (برمجة، تصميم، ترجمة، كتابة، تسويق)..." : "Search platform or skill (dev, design, translation, writing)..."}
+            placeholder={ar ? "ابحث عن منصة، مهارة..." : "Search platform, skill..."}
             className={`w-full h-12 py-2.5 ${isRtl ? "pr-2 pl-10" : "pl-2 pr-10"} text-xs sm:text-sm bg-transparent font-medium text-foreground placeholder:text-muted-foreground/80 focus:outline-none`}
           />
           {searchQuery && (

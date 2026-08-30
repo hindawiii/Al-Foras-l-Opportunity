@@ -126,9 +126,15 @@ const Landing = () => {
     };
   }, []);
 
-  const goApp = (tab = "scholarships") => {
+  const goApp = (tab = "scholarships", params?: Record<string, string>) => {
     setLang(lang);
-    nav(`/app?tab=${tab}`);
+    const search = new URLSearchParams({ tab });
+    if (params) {
+      Object.entries(params).forEach(([k, v]) => {
+        if (v) search.set(k, v);
+      });
+    }
+    nav(`/app?${search.toString()}`);
   };
 
   const features = [
@@ -322,7 +328,7 @@ const Landing = () => {
             {countryUniversities.slice(0, 4).map((uni) => (
               <div
                 key={uni.id}
-                onClick={() => goApp("arabUnis")}
+                onClick={() => goApp("arabUnis", { country: currentCountryStat.country, uni: uni.id })}
                 className="p-3.5 rounded-2xl bg-card/70 border border-primary/20 hover:border-primary/50 transition-all cursor-pointer group flex flex-col justify-between"
               >
                 <div>
@@ -370,7 +376,7 @@ const Landing = () => {
           <Button
             variant="luxe"
             size="lg"
-            onClick={() => goApp("arabUnis")}
+            onClick={() => goApp("arabUnis", { country: currentCountryStat.country })}
             className="px-8 shadow-gold"
           >
             <span>{t("landingArabHubViewAll")}</span>
