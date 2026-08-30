@@ -299,7 +299,7 @@ export const ScholarshipsTab = () => {
             <GraduationCap className="w-5 h-5 text-primary-foreground" strokeWidth={2} />
           </div>
           <div className="flex-1 w-full">
-            <p className="text-sm font-bold text-gold-gradient leading-tight">{t("arabUniTitle")}</p>
+            <p className="text-sm font-bold text-gold-gradient leading-tight">{t("quickUnisGuideTitle")}</p>
           </div>
           <span className="inline-flex items-center gap-1 text-[11px] font-bold text-primary mt-1">
             {t("discover")} {isRtl ? <ArrowLeft className="w-3 h-3" /> : <ArrowRight className="w-3 h-3" />}

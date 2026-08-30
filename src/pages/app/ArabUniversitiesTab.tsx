@@ -12,6 +12,7 @@ import {
   getUniDetails, getFacultyLabel, getCityLabel, type ArabUniversity,
   type ArabUniType,
 } from "@/lib/arabUniversities";
+import { GlobalUniversitiesView } from "@/pages/app/GlobalUniversitiesView";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -34,6 +35,9 @@ export const ArabUniversitiesTab = () => {
   const isRtl = dir === "rtl";
   const alignClass = isRtl ? "text-right" : "text-left";
 
+  const [activeSubTab, setActiveSubTab] = useState<"arab" | "global">("arab");
+  const [globalCountryParam, setGlobalCountryParam] = useState<string | null>(null);
+
   const [country, setCountry] = useState<string | null>(null);
   const [faculty, setFaculty] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<ArabUniType | "">("");
@@ -46,6 +50,15 @@ export const ArabUniversitiesTab = () => {
 
   // Parse incoming URL query params (e.g. from Landing page clicks)
   useEffect(() => {
+    const subTabParam = searchParams.get("subTab");
+    const gParam = searchParams.get("globalCountry");
+    if (subTabParam === "global" || gParam) {
+      setActiveSubTab("global");
+      if (gParam) setGlobalCountryParam(gParam);
+    } else if (subTabParam === "arab") {
+      setActiveSubTab("arab");
+    }
+
     const cParam = searchParams.get("country");
     const uParam = searchParams.get("uni");
 
@@ -167,35 +180,68 @@ export const ArabUniversitiesTab = () => {
     <div className="space-y-4 w-full" dir={dir}>
       {/* Header Banner - Matching UniversitiesGuide Gold/Luxe Theme */}
       <div className="rounded-3xl border border-primary/30 bg-card/70 backdrop-blur-xl p-4 sm:p-5 shadow-sm">
-        <div className={`flex items-center gap-3 ${isRtl ? "" : "flex-row-reverse"}`}>
-          <div className="w-12 h-12 rounded-2xl bg-gold-gradient flex items-center justify-center shadow-gold flex-shrink-0">
-            <GraduationCap className="w-6 h-6 text-primary-foreground" strokeWidth={2} />
+        <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${isRtl ? "" : "sm:flex-row-reverse"}`}>
+          <div className={`flex items-center gap-3 ${isRtl ? "" : "flex-row-reverse"}`}>
+            <div className="w-12 h-12 rounded-2xl bg-gold-gradient flex items-center justify-center shadow-gold flex-shrink-0">
+              <GraduationCap className="w-6 h-6 text-primary-foreground" strokeWidth={2} />
+            </div>
+            <div className={`flex-1 ${alignClass}`}>
+              <h1 className="text-lg sm:text-xl font-bold font-display text-gold-gradient leading-tight">
+                {t("arabUniTitle")}
+              </h1>
+            </div>
           </div>
-          <div className={`flex-1 ${alignClass}`}>
-            <h1 className="text-lg sm:text-xl font-bold font-display text-gold-gradient leading-tight">
-              {t("arabUniTitle")}
-            </h1>
+
+          {/* SubTab Navigation Switcher (Arab Hub vs. World Hub) */}
+          <div className="flex items-center gap-1.5 bg-background/80 border border-primary/25 p-1 rounded-2xl self-stretch sm:self-auto">
+            <button
+              onClick={() => setActiveSubTab("arab")}
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                activeSubTab === "arab"
+                  ? "bg-gold-gradient text-primary-foreground shadow-gold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <span>🏛️</span>
+              <span>{t("arabUnisSubTab")}</span>
+            </button>
+            <button
+              onClick={() => setActiveSubTab("global")}
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                activeSubTab === "global"
+                  ? "bg-gold-gradient text-primary-foreground shadow-gold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <span>🌍</span>
+              <span>{t("globalUnisSubTab")}</span>
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Smart Percentage Match Component (Unified from Sudanese Guide) */}
-      <div className="rounded-2xl border border-primary/30 bg-primary/5 p-3.5 space-y-2.5">
-        <div className={`flex items-center gap-2.5 ${isRtl ? "" : "flex-row-reverse"}`}>
+      {/* RENDER VIEW ACCORDING TO ACTIVE SUBTAB */}
+      {activeSubTab === "global" ? (
+        <GlobalUniversitiesView initialCountry={globalCountryParam} />
+      ) : (
+        <>
+          {/* Smart Percentage Match Component (Unified from Sudanese Guide) */}
+          <div className="rounded-2xl border border-primary/30 bg-primary/5 p-3.5 space-y-2.5">
+        <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-gold-gradient flex items-center justify-center shadow-gold flex-shrink-0">
             <Target className="w-4 h-4 text-primary-foreground" strokeWidth={2.2} />
           </div>
           <div className={`flex-1 ${alignClass}`}>
             <p className="text-xs font-bold text-gold-gradient leading-tight">
-              {isRtl ? "مطابقة ذكية بالنسبة للجامعات العربية" : "Smart Arab Universities Match"}
+              {t("arabUniMatchTitle")}
             </p>
             <p className="text-[10px] text-muted-foreground">
-              {isRtl ? "اكتب معدلك أو نسبتك لنعرض الجامعات التي تقبلك وتطابق مؤهلاتك" : "Enter your high school score to instantly see eligible universities"}
+              {t("arabUniSmartMatchDesc")}
             </p>
           </div>
         </div>
 
-        <div className={`flex items-center gap-2 ${isRtl ? "" : "flex-row-reverse"}`}>
+        <div className="flex items-center gap-2">
           <div className="relative flex-1">
             <Input
               type="number"
@@ -220,7 +266,7 @@ export const ArabUniversitiesTab = () => {
                   : "bg-background/60 border-border text-muted-foreground hover:text-foreground"
               }`}
             >
-              {isRtl ? "المؤهلة فقط" : "Eligible only"}
+              {t("arabUniEligibleOnly")}
             </button>
           )}
         </div>
@@ -229,12 +275,17 @@ export const ArabUniversitiesTab = () => {
           <motion.p
             initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`text-[11px] text-emerald-400 font-medium flex items-center gap-1.5 pt-1 ${isRtl ? "" : "flex-row-reverse"}`}
+            className="text-[11px] text-emerald-400 font-medium flex items-center gap-1.5 pt-1"
           >
             <Sparkles className="w-3.5 h-3.5 flex-shrink-0" />
-            {isRtl
-              ? `بنسبة ${effectivePct}% أنت مؤهل لـ ${eligibleCount} من ${totalInScope} جامعة ${country ? `في ${country}` : "عربية"}`
-              : `With ${effectivePct}%, you qualify for ${eligibleCount} of ${totalInScope} universities ${country ? `in ${country}` : "across Arab nations"}`}
+            {t("arabUniSmartMatchQualified")
+              .replace("{pct}", String(effectivePct))
+              .replace("{eligible}", String(eligibleCount))
+              .replace("{total}", String(totalInScope))
+              .replace(
+                "{scope}",
+                country ? t("arabUniInCountry").replace("{country}", country) : t("arabUniAllScope")
+              )}
           </motion.p>
         )}
       </div>
@@ -242,7 +293,7 @@ export const ArabUniversitiesTab = () => {
       {/* Countries Grid (When not filtering by specific country) */}
       {showCountries ? (
         <div className="space-y-3">
-          <div className={`flex items-center justify-between ${isRtl ? "" : "flex-row-reverse"}`}>
+          <div className="flex items-center justify-between">
             <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
               <Building2 className="w-4 h-4 text-primary" />
               {t("arabUniCountriesTitle")}
@@ -297,19 +348,17 @@ export const ArabUniversitiesTab = () => {
         /* Selected Country View */
         <div className="space-y-3">
           {/* Navigation & Controls Top Bar */}
-          <div className={`flex items-center justify-between gap-2 flex-wrap ${isRtl ? "" : "flex-row-reverse"}`}>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             {country && (
               <button
                 onClick={() => {
                   setCountry(null);
                   setFaculty(null);
                 }}
-                className={`h-9 px-3.5 rounded-full text-xs font-bold border border-primary/30 bg-card/80 text-primary flex items-center gap-1.5 hover:bg-primary/10 transition-all ${
-                  isRtl ? "" : "flex-row-reverse"
-                }`}
+                className="h-9 px-3.5 rounded-full text-xs font-bold border border-primary/30 bg-card/80 text-primary flex items-center gap-1.5 hover:bg-primary/10 transition-all"
               >
                 <ChevronRight className={`w-3.5 h-3.5 ${isRtl ? "" : "rotate-180"}`} />
-                {isRtl ? `← العودة إلى قائمة الدول (${country})` : `← Back to Countries (${country})`}
+                <span>{t("arabUniBackToCountries")} ({country})</span>
               </button>
             )}
             <p className="text-xs text-muted-foreground font-medium">
@@ -328,21 +377,21 @@ export const ArabUniversitiesTab = () => {
                       <span>{isRtl ? currentCountryStat.country : currentCountryStat.countryEn}</span>
                       {currentCountryStat.scholarships && (
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-bold">
-                          ✨ {isRtl ? "تتوفر منح معتمدة" : "Scholarships Available"}
+                          ✨ {t("arabUniScholarshipsAvailable")}
                         </span>
                       )}
                     </h3>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {isRtl
-                        ? `يتضمن ${currentCountryStat.count} جامعة ومؤسسة معتمدة · الحد الأدنى للقبول يبدأ من %${currentCountryStat.minPercentage}`
-                        : `Features ${currentCountryStat.count} accredited institutions · Minimum admission from ${currentCountryStat.minPercentage}%`}
+                      {t("arabUniInstitutionsCount")
+                        .replace("{count}", String(currentCountryStat.count))
+                        .replace("{min}", String(currentCountryStat.minPercentage))}
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-1.5 text-2xs text-primary font-bold bg-primary/10 border border-primary/20 px-3 py-1.5 rounded-xl self-start sm:self-auto">
                   <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>{isRtl ? "بوابات ومصادر رسمية معتمدة" : "Official Government Portals"}</span>
+                  <span>{t("arabUniOfficialPortalsBanner")}</span>
                 </div>
               </div>
 
@@ -352,7 +401,7 @@ export const ArabUniversitiesTab = () => {
                   <span className="text-sm">🎓</span>
                   <div>
                     <span className="font-bold text-primary">
-                      {isRtl ? "نوع المنح الدراسية: " : "Scholarship Types: "}
+                      {t("arabUniScholarshipTypeLabel")}{" "}
                     </span>
                     <span className="text-foreground/90 font-medium">
                       {isRtl ? currentCountryStat.scholarshipType : currentCountryStat.scholarshipTypeEn}
@@ -366,7 +415,7 @@ export const ArabUniversitiesTab = () => {
                 <div className="flex items-center gap-2 flex-wrap pt-1">
                   <span className="text-2xs font-bold text-muted-foreground flex items-center gap-1">
                     <ExternalLink className="w-3 h-3 text-primary" />
-                    {isRtl ? "البوابات الرسمية للتقديم والاستعلام:" : "Official Portals & Inquiries:"}
+                    {t("arabUniOfficialPortalsLabel")}
                   </span>
                   {currentCountryStat.officialPortals.map((portal) => (
                     <a
@@ -395,7 +444,7 @@ export const ArabUniversitiesTab = () => {
                 className={`flex-1 min-w-[140px] h-9 rounded-xl bg-background/60 border border-border text-xs px-2.5 text-foreground ${alignClass}`}
                 dir={dir}
               >
-                <option value="">{isRtl ? "كل التخصصات والكليات" : "All faculties & majors"}</option>
+                <option value="">{t("arabUniAllMajorsOption")}</option>
                 {ARAB_FACULTIES.map((f) => (
                   <option key={f} value={f}>{getFacultyLabel(f, lang)}</option>
                 ))}
@@ -408,15 +457,15 @@ export const ArabUniversitiesTab = () => {
                 className={`flex-1 min-w-[120px] h-9 rounded-xl bg-background/60 border border-border text-xs px-2.5 text-foreground ${alignClass}`}
                 dir={dir}
               >
-                <option value="">{isRtl ? "كل الجامعات" : "All universities"}</option>
-                <option value="government">{isRtl ? "حكومية" : "Public"}</option>
-                <option value="private">{isRtl ? "خاصة" : "Private"}</option>
-                <option value="technical">{isRtl ? "تقنية" : "Technical"}</option>
+                <option value="">{t("arabUniAllUnisOption")}</option>
+                <option value="government">{t("arabUniGovOption")}</option>
+                <option value="private">{t("arabUniPrivOption")}</option>
+                <option value="technical">{t("arabUniTechOption")}</option>
               </select>
             </div>
 
             {/* Quick Toggle Chips: Scholarships & Compare Status */}
-            <div className={`flex items-center justify-between gap-2 pt-1 flex-wrap ${isRtl ? "" : "flex-row-reverse"}`}>
+            <div className="flex items-center justify-between gap-2 pt-1 flex-wrap">
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setScholarshipOnly((v) => !v)}
@@ -437,21 +486,21 @@ export const ArabUniversitiesTab = () => {
                   className="text-[11px] text-primary flex items-center gap-1 hover:underline"
                 >
                   <Filter className="w-3 h-3" />
-                  {isRtl ? "مسح الفلاتر" : "Clear filters"}
+                  {t("arabUniClearFilters")}
                 </button>
               )}
             </div>
           </div>
 
           {/* Compare Hint Banner */}
-          <div className={`flex items-center justify-between text-[11px] text-muted-foreground px-1 ${isRtl ? "" : "flex-row-reverse"}`}>
+          <div className="flex items-center justify-between text-[11px] text-muted-foreground px-1">
             <span className="flex items-center gap-1.5">
               <Scale className="w-3.5 h-3.5 text-primary" />
               {t("arabUniCompareHint")}
             </span>
             {compare.length > 0 && (
               <span className="text-primary font-bold">
-                {isRtl ? `تم تحديد ${compare.length} من 3` : `${compare.length}/3 selected`}
+                {t("arabUniSelectedCompare").replace("{count}", String(compare.length))}
               </span>
             )}
           </div>
@@ -611,6 +660,10 @@ export const ArabUniversitiesTab = () => {
             )}
           </div>
         </div>
+      )}
+
+        {/* Action Button at Bottom if filtering */}
+      </>
       )}
 
       {/* Floating Comparison Bottom Bar */}

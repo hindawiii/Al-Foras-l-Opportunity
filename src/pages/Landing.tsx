@@ -27,6 +27,8 @@ import {
   CheckCircle2,
   ChevronRight,
   ChevronLeft,
+  ChevronDown,
+  ChevronUp,
   ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -35,7 +37,8 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Scholarship } from "@/lib/mockData";
 import { JOBS, Job } from "@/lib/jobsData";
-import { ARAB_COUNTRY_STATS, ARAB_UNIVERSITIES } from "@/lib/arabUniversities";
+import { ARAB_COUNTRY_STATS } from "@/lib/arabUniversities";
+import { GLOBAL_COUNTRIES } from "@/lib/globalUniversities";
 import { dynamicStore } from "@/lib/dynamicStore";
 
 // Render Arabic text with diacritics (tashkeel) highlighted in a lighter gold/white
@@ -71,8 +74,10 @@ const Landing = () => {
   const [featuredScholarships, setFeaturedScholarships] = useState<Scholarship[]>([]);
   // Dynamic live jobs synced with dynamicStore and jobsData
   const [featuredJobs, setFeaturedJobs] = useState<Job[]>([]);
-  // Selected Arab country preview index for the hub (default Sudan 🇸🇩)
-  const [selectedCountry, setSelectedCountry] = useState<string>("السودان");
+
+  // Show more / less state for Arab & Global countries on Landing page
+  const [showAllArabCountries, setShowAllArabCountries] = useState(false);
+  const [showAllGlobalCountries, setShowAllGlobalCountries] = useState(false);
 
   const loadScholarships = () => {
     const all = dynamicStore.getScholarships();
@@ -179,10 +184,6 @@ const Landing = () => {
 
   const bodyFont = lang === "ar" ? "'Cairo', 'Tajawal', sans-serif" : "'Inter', system-ui, sans-serif";
 
-  // Selected Country data for Hub preview
-  const currentCountryStat = ARAB_COUNTRY_STATS.find((c) => c.country === selectedCountry) || ARAB_COUNTRY_STATS[0];
-  const countryUniversities = ARAB_UNIVERSITIES.filter((u) => u.country === currentCountryStat.country);
-
   return (
     <div dir={dir} className="relative min-h-screen bg-background text-foreground overflow-hidden" style={{ fontFamily: bodyFont }}>
       {/* Ambient gold glow background */}
@@ -250,12 +251,13 @@ const Landing = () => {
         </motion.div>
       </section>
 
-      {/* 🌟 NEW SECTION: أركان الدول ودليل الجامعات العربية (Arab Countries Hub) */}
-      <section className="relative z-10 px-5 sm:px-10 py-10 max-w-5xl mx-auto">
-        <div className="text-center mb-7">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/30 text-primary text-2xs font-bold mb-2.5 shadow-sm">
-            <Globe2 className="w-3.5 h-3.5" />
-            <span>{isRtl ? "تغطية شاملة لأكثر من 8 دولة عربية" : "8+ Arab Nations Covered"}</span>
+      {/* 🌟 UNIFIED SECTION: دليل الجامعات العربية والعالمية (Arab & World Universities Guide) */}
+      <section className="relative z-10 px-5 sm:px-10 py-12 max-w-5xl mx-auto">
+        {/* Main Unified Header */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-primary/10 border border-primary/30 text-primary text-2xs font-bold mb-2.5 shadow-sm">
+            <GraduationCap className="w-3.5 h-3.5" />
+            <span>{isRtl ? "دليل الجامعات والمنح المعتمدة" : "Accredited Universities & Grants Guide"}</span>
           </div>
           <h2
             className="font-bold text-2xl sm:text-3xl text-gold-gradient"
@@ -263,162 +265,186 @@ const Landing = () => {
           >
             {lang === "ar" ? <TashkeelText>{t("landingArabHubTitle")}</TashkeelText> : t("landingArabHubTitle")}
           </h2>
-          <p className="text-muted-foreground text-xs sm:text-sm mt-1.5 max-w-xl mx-auto">
+          <p className="text-muted-foreground text-xs sm:text-sm mt-1.5 max-w-xl mx-auto leading-relaxed">
             {t("landingArabHubSubtitle")}
           </p>
         </div>
 
-        {/* Interactive Country Selector Ribbon (All 20+ Arab Nations) */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-3 pt-1 scrollbar-thin scrollbar-thumb-primary/20 no-scrollbar">
-          {ARAB_COUNTRY_STATS.map((c) => {
-            const isSelected = selectedCountry === c.country;
-            return (
-              <button
-                key={c.country}
-                onClick={() => setSelectedCountry(c.country)}
-                className={`flex-shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-2xl border transition-all duration-300 text-xs font-bold ${
-                  isSelected
-                    ? "bg-gold-gradient text-primary-foreground border-primary shadow-gold scale-105"
-                    : "glass border-primary/20 text-foreground hover:border-primary/50 hover:bg-primary/10"
-                }`}
-              >
-                <span className="text-base leading-none">{c.flag}</span>
-                <span>{lang === "ar" ? c.country : c.countryEn}</span>
-                <span
-                  className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                    isSelected ? "bg-black/30 text-white" : "bg-primary/15 text-primary"
-                  }`}
-                >
-                  {c.count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Selected Country Highlights & Universities Showcase Card */}
-        <div className="mt-4 glass rounded-3xl p-5 sm:p-6 border-primary/30 shadow-luxe relative overflow-hidden bg-card/85">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-primary/15">
-            <div className="flex items-center gap-3">
-              <span className="text-4xl">{currentCountryStat.flag}</span>
-              <div>
-                <h3 className="font-bold text-lg sm:text-xl text-foreground flex items-center gap-2 flex-wrap">
-                  <span>{lang === "ar" ? `ركن الجامعات في ${currentCountryStat.country}` : `${currentCountryStat.countryEn} Universities Hub`}</span>
-                  {currentCountryStat.scholarships && (
-                    <span className="text-2xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
-                      ✨ {isRtl ? "تتوفر منح دراسية" : "Scholarships Available"}
-                    </span>
-                  )}
-                </h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {isRtl
-                    ? `يتضمن ${currentCountryStat.count} جامعة ومؤسسة معتمدة · الحد الأدنى للقبول يبدأ من %${currentCountryStat.minPercentage}`
-                    : `Features ${currentCountryStat.count} accredited institutions · Minimum admission from ${currentCountryStat.minPercentage}%`}
-                </p>
-              </div>
+        {/* 🏛️ SUB-SECTION 1: الجامعات العربية (Arab Universities Hub) */}
+        <div className="space-y-3.5">
+          <div className="flex items-center justify-between gap-3 pb-1 border-b border-primary/15">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">🏛️</span>
+              <h3 className="text-sm sm:text-base font-bold text-foreground">
+                {isRtl ? "تغطية شاملة لأكثر من 8 دولة عربية" : "Comprehensive Coverage of 8+ Arab Nations"}
+              </h3>
             </div>
-
-            <div className="flex items-center gap-2 text-2xs text-primary font-bold bg-primary/10 border border-primary/20 px-3 py-1.5 rounded-xl self-start sm:self-auto">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>{isRtl ? "بوابات ومصادر حكومية موثوقة" : "Accredited Government Portals"}</span>
-            </div>
+            <span className="text-2xs font-semibold text-primary bg-primary/10 border border-primary/20 px-2.5 py-0.5 rounded-full">
+              {ARAB_COUNTRY_STATS.length} {isRtl ? "دول" : "Countries"}
+            </span>
           </div>
 
-          {/* Scholarship Type Banner */}
-          {currentCountryStat.scholarshipType && (
-            <div className="mt-3.5 p-3 rounded-2xl bg-primary/10 border border-primary/25 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div className="flex items-start sm:items-center gap-2 text-xs">
-                <span className="text-base">🎓</span>
-                <div>
-                  <span className="font-bold text-primary">
-                    {isRtl ? "نوع المنح المعتمدة: " : "Supported Scholarships: "}
-                  </span>
-                  <span className="text-foreground/90 font-medium text-xs">
-                    {isRtl ? currentCountryStat.scholarshipType : currentCountryStat.scholarshipTypeEn}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Official Portals List */}
-          {currentCountryStat.officialPortals && currentCountryStat.officialPortals.length > 0 && (
-            <div className="mt-3 flex items-center gap-2 flex-wrap">
-              <span className="text-2xs font-bold text-muted-foreground flex items-center gap-1">
-                <ExternalLink className="w-3 h-3 text-primary" />
-                {isRtl ? "البوابات الرسمية:" : "Official Portals:"}
-              </span>
-              {currentCountryStat.officialPortals.map((portal) => (
-                <a
-                  key={portal.url}
-                  href={portal.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:text-primary-glow bg-background/60 hover:bg-primary/15 border border-primary/20 px-2.5 py-1 rounded-xl transition-all"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <span>{isRtl ? portal.name : portal.nameEn}</span>
-                  <ExternalLink className="w-2.5 h-2.5" />
-                </a>
-              ))}
-            </div>
-          )}
-
-          {/* Sample Universities Grid for this Country */}
-          <div className="grid sm:grid-cols-2 gap-3.5 mt-4">
-            {countryUniversities.slice(0, 4).map((uni) => (
+          {/* Arab Country Cards Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {(showAllArabCountries ? ARAB_COUNTRY_STATS : ARAB_COUNTRY_STATS.slice(0, 4)).map((c) => (
               <div
-                key={uni.id}
-                onClick={() => goApp("arabUnis", { country: currentCountryStat.country, uni: uni.id })}
-                className="p-3.5 rounded-2xl bg-card/70 border border-primary/20 hover:border-primary/50 transition-all cursor-pointer group flex flex-col justify-between"
+                key={c.country}
+                onClick={() => goApp("arabUnis", { subTab: "arab", country: c.country })}
+                className="glass rounded-2xl p-4 border border-primary/20 hover:border-primary/50 hover:bg-primary/10 transition-all duration-300 cursor-pointer group flex flex-col justify-between space-y-3 relative overflow-hidden bg-card/80 shadow-2xs hover:scale-[1.02]"
               >
-                <div>
-                  <div className="flex items-center justify-between gap-2 mb-1.5">
-                    <span className="text-xs font-bold text-primary truncate group-hover:text-primary-glow transition-colors">
-                      {lang === "ar" ? uni.name : uni.nameEn}
-                    </span>
-                    <span
-                      className={`text-[10px] px-2 py-0.5 rounded-full font-semibold border ${
-                        uni.type === "government"
-                          ? "bg-primary/10 text-primary border-primary/30"
-                          : "bg-amber-500/10 text-amber-400 border-amber-500/30"
-                      }`}
-                    >
-                      {uni.type === "government"
-                        ? isRtl
-                          ? "حكومية"
-                          : "Public"
-                        : isRtl
-                        ? "خاصة"
-                        : "Private"}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl">{c.flag}</span>
+                      <span className="text-xs sm:text-sm font-bold text-foreground group-hover:text-primary transition-colors">
+                        {lang === "ar" ? c.country : c.countryEn}
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/30">
+                      {c.count} {isRtl ? "جامعة" : "Unis"}
                     </span>
                   </div>
-                  <p className="text-2xs text-gray-300 line-clamp-2 leading-relaxed">
-                    {lang === "ar" ? uni.highlights : uni.highlightsEn}
-                  </p>
+
+                  <div className="space-y-1 text-2xs text-muted-foreground">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span>{isRtl ? "الحد الأدنى للقبول:" : "Min. Admission:"}</span>
+                      <span className="text-emerald-400 font-bold">%{c.minPercentage}+</span>
+                    </div>
+                    <p className="line-clamp-1 text-[11px] text-gray-300 font-medium pt-0.5">
+                      {c.scholarships ? (isRtl ? "✨ منح ورعاية كاملة / حكومية" : "✨ Full Government Grants") : (isRtl ? "🏛️ قبول حكومي وخاص" : "🏛️ Public & Private")}
+                    </p>
+                  </div>
                 </div>
 
-                <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-2.5 mt-2 border-t border-primary/10">
-                  <span className="flex items-center gap-1">
-                    <MapPin className="w-3 h-3 text-primary" />
-                    {lang === "ar" ? uni.city : uni.cityEn || uni.city}
-                  </span>
-                  <span className="text-emerald-400 font-semibold">
-                    {isRtl ? `القبول: %${uni.minPercentage}+` : `Admission: ${uni.minPercentage}%+`}
-                  </span>
+                <div className="pt-2 border-t border-primary/10 flex items-center justify-between text-2xs font-bold text-primary group-hover:text-primary-glow">
+                  <span>{isRtl ? "استكشف الجامعات والمنح" : "Explore Hub"}</span>
+                  <ArrowRight className={`w-3.5 h-3.5 transition-transform group-hover:translate-x-1 ${isRtl ? "rotate-180 group-hover:-translate-x-1" : ""}`} />
                 </div>
               </div>
             ))}
           </div>
+
+          {/* Show More / Show Less Button for Arab Countries */}
+          {ARAB_COUNTRY_STATS.length > 4 && (
+            <div className="flex justify-center pt-2">
+              <button
+                onClick={() => setShowAllArabCountries(!showAllArabCountries)}
+                className="px-4 py-2 rounded-full border border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs hover:scale-105 active:scale-95"
+              >
+                {showAllArabCountries ? (
+                  <>
+                    <ChevronUp className="w-3.5 h-3.5" />
+                    <span>{isRtl ? "عرض أقل للدول العربية" : "Show Less Arab Nations"}</span>
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="w-3.5 h-3.5" />
+                    <span>
+                      {isRtl
+                        ? `عرض باقي الدول العربية (${ARAB_COUNTRY_STATS.length - 4} دول إضافية)`
+                        : `Show More Arab Nations (+${ARAB_COUNTRY_STATS.length - 4})`}
+                    </span>
+                  </>
+                )}
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Action Button at the Bottom (matching Scholarships and Freelance sections) */}
-        <div className="mt-6 text-center">
+        {/* 🌍 SUB-SECTION 2: الجامعات العالمية والمنح الدولية (Global Universities Hub) */}
+        <div className="mt-9 space-y-3.5 pt-6 border-t border-primary/15">
+          <div className="flex items-center justify-between gap-3 pb-1 border-b border-primary/15">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">🌍</span>
+              <h3 className="text-sm sm:text-base font-bold text-foreground">
+                {isRtl ? "15+ دولة عالمية رائدة مانحة" : "15+ Top Global Donor Nations"}
+              </h3>
+            </div>
+            <span className="text-2xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 rounded-full">
+              {GLOBAL_COUNTRIES.length} {isRtl ? "دولة مانحة" : "Donor Nations"}
+            </span>
+          </div>
+
+          {/* Global Country Cards Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {(showAllGlobalCountries ? GLOBAL_COUNTRIES : GLOBAL_COUNTRIES.slice(0, 6)).map((g) => (
+              <div
+                key={g.country}
+                onClick={() => goApp("arabUnis", { subTab: "global", globalCountry: g.country })}
+                className="glass rounded-2xl p-4 border border-primary/20 hover:border-primary/50 hover:bg-primary/10 transition-all duration-300 cursor-pointer group flex flex-col justify-between space-y-3 relative overflow-hidden bg-card/80 shadow-2xs hover:scale-[1.02]"
+              >
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl">{g.flag}</span>
+                      <span className="text-xs sm:text-sm font-bold text-foreground group-hover:text-primary transition-colors">
+                        {lang === "ar" ? g.country : g.countryEn}
+                      </span>
+                    </div>
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                        g.tier === "guaranteed"
+                          ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                          : "bg-amber-500/15 border-amber-500/30 text-amber-400"
+                      }`}
+                    >
+                      {g.tier === "guaranteed" ? (isRtl ? "سنوية مضمونة" : "Annual") : isRtl ? "دورية / نخبوية" : "Periodic"}
+                    </span>
+                  </div>
+
+                  <div className="space-y-1 text-2xs text-muted-foreground">
+                    <p className="text-xs font-bold text-primary truncate">
+                      🏆 {lang === "ar" ? g.scholarshipName : g.scholarshipNameEn}
+                    </p>
+                    <div className="flex items-center justify-between text-[11px] pt-0.5">
+                      <span className="text-gray-300">{lang === "ar" ? g.fundingType : g.fundingTypeEn}</span>
+                      <span className="text-primary font-medium">{lang === "ar" ? g.applicationWindow : g.applicationWindowEn}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-primary/10 flex items-center justify-between text-2xs font-bold text-primary group-hover:text-primary-glow">
+                  <span>{isRtl ? "استكشف ركن الدولة والمنحة" : "Explore Grants & Unis"}</span>
+                  <ArrowRight className={`w-3.5 h-3.5 transition-transform group-hover:translate-x-1 ${isRtl ? "rotate-180 group-hover:-translate-x-1" : ""}`} />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Show More / Show Less Button for Global Countries */}
+          {GLOBAL_COUNTRIES.length > 6 && (
+            <div className="flex justify-center pt-2">
+              <button
+                onClick={() => setShowAllGlobalCountries(!showAllGlobalCountries)}
+                className="px-4 py-2 rounded-full border border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs hover:scale-105 active:scale-95"
+              >
+                {showAllGlobalCountries ? (
+                  <>
+                    <ChevronUp className="w-3.5 h-3.5" />
+                    <span>{isRtl ? "عرض أقل للدول العالمية" : "Show Less Global Nations"}</span>
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="w-3.5 h-3.5" />
+                    <span>
+                      {isRtl
+                        ? `عرض باقي الدول العالمية (${GLOBAL_COUNTRIES.length - 6} دول إضافية)`
+                        : `Show More Global Nations (+${GLOBAL_COUNTRIES.length - 6})`}
+                    </span>
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Unified Prominent CTA Button at Bottom */}
+        <div className="mt-8 text-center">
           <Button
             variant="luxe"
             size="lg"
-            onClick={() => goApp("arabUnis", { country: currentCountryStat.country })}
-            className="px-8 shadow-gold"
+            onClick={() => goApp("arabUnis")}
+            className="px-8 py-3 text-sm font-bold shadow-gold hover:scale-105 transition-transform inline-flex items-center gap-2"
           >
             <span>{t("landingArabHubViewAll")}</span>
             <ArrowRight className={`w-4 h-4 ${isRtl ? "rotate-180" : ""}`} />

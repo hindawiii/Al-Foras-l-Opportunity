@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { ShieldCheck, Mail, ArrowRight, ArrowLeft, RefreshCw, KeyRound, Check, X, AlertTriangle, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface SecurityPasswordManagerProps {
   currentUserId: string;
@@ -14,8 +15,9 @@ export const SecurityPasswordManager: React.FC<SecurityPasswordManagerProps> = (
   currentUserId,
   userEmail,
   onSuccess,
-  isRtl = true,
 }) => {
+  const { dir } = useLanguage();
+  const isRtl = dir === "rtl";
   // Step 1: Input Old & New Password
   // Step 2: OTP Verification sent to unified email
   const [step, setStep] = useState<"form" | "otp">("form");

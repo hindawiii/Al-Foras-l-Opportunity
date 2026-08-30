@@ -3,27 +3,32 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ShieldCheck, Sparkles, Plus, Trash2, Edit3, ExternalLink, Check, X,
   RefreshCw, Globe, Search, ArrowRight, ArrowLeft, Download, AlertCircle,
-  Briefcase, GraduationCap, Lock, Eye, Users, FileCheck2, History,
+  Briefcase, GraduationCap, Lock, Eye, EyeOff, Users, FileCheck2, History,
   KeyRound, Mail, UserCheck, ShieldAlert, CheckCircle2, XCircle,
   Archive, RotateCcw, Menu, ChevronRight, ChevronLeft, AlertTriangle,
-  Upload, Layers, CheckSquare, Square, MinusSquare
+  Upload, Layers, CheckSquare, Square, MinusSquare, Building2, Globe2
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Scholarship } from "@/lib/mockData";
 import { dynamicStore, CustomJobItem, ArchivedItem } from "@/lib/dynamicStore";
 import { adminAuthStore, AdminUser, AuditLog, PendingItem, AdminRole } from "@/lib/adminAuthStore";
+import { ARAB_UNIVERSITIES, ARAB_COUNTRY_STATS } from "@/lib/arabUniversities";
+import { GLOBAL_COUNTRIES } from "@/lib/globalUniversities";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { SecurityPasswordManager } from "@/components/foras/SecurityPasswordManager";
 
 export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
-  const { lang, dir } = useLanguage();
+  const { lang, dir, t } = useLanguage();
   const isRtl = dir === "rtl";
+  const alignClass = isRtl ? "text-right" : "text-left";
 
   // Active Task Section in Slide Sidebar
   type AdminTab =
     | "scholarships"
     | "jobs"
+    | "arab_unis"
+    | "global_unis"
     | "archive"
     | "url_parser"
     | "pending_reviews"
@@ -178,6 +183,31 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
     });
   }, [archivedItems, searchQuery]);
 
+  const filteredArabUnis = useMemo(() => {
+    if (!searchQuery.trim()) return ARAB_UNIVERSITIES;
+    const q = searchQuery.toLowerCase().trim();
+    return ARAB_UNIVERSITIES.filter(
+      u =>
+        u.name.toLowerCase().includes(q) ||
+        (u.nameEn && u.nameEn.toLowerCase().includes(q)) ||
+        u.country.toLowerCase().includes(q) ||
+        u.countryEn.toLowerCase().includes(q) ||
+        u.city.toLowerCase().includes(q)
+    );
+  }, [searchQuery]);
+
+  const filteredGlobalCountries = useMemo(() => {
+    if (!searchQuery.trim()) return GLOBAL_COUNTRIES;
+    const q = searchQuery.toLowerCase().trim();
+    return GLOBAL_COUNTRIES.filter(
+      c =>
+        c.country.toLowerCase().includes(q) ||
+        c.countryEn.toLowerCase().includes(q) ||
+        c.scholarshipName.toLowerCase().includes(q) ||
+        (c.scholarshipNameEn && c.scholarshipNameEn.toLowerCase().includes(q))
+    );
+  }, [searchQuery]);
+
   // Current active list based on tab
   const currentVisibleList = activeTab === "scholarships" ? filteredScholarships : activeTab === "jobs" ? filteredJobs : filteredArchive;
 
@@ -305,6 +335,8 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
       items: [
         { id: "scholarships" as const, labelAr: "المنح الدراسية", labelEn: "Scholarships", icon: GraduationCap, badge: scholarships.length },
         { id: "jobs" as const, labelAr: "وظائف العمل الحر $", labelEn: "Remote Freelance Jobs", icon: Briefcase, badge: jobs.length },
+        { id: "arab_unis" as const, labelAr: "دليل الجامعات العربية", labelEn: "Arab Universities", icon: Building2, badge: ARAB_UNIVERSITIES.length },
+        { id: "global_unis" as const, labelAr: "دليل الجامعات العالمية", labelEn: "Global Universities", icon: Globe2, badge: GLOBAL_COUNTRIES.length },
         { id: "url_parser" as const, labelAr: "محرر الروابط الذكي AI", labelEn: "AI URL Parser", icon: Sparkles },
       ],
     },
@@ -354,53 +386,51 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
         onClick={e => e.stopPropagation()}
       >
         {/* Top Header Bar */}
-        <header className="relative flex items-center justify-between px-5 sm:px-7 py-4 border-b border-primary/20 bg-background/50 flex-shrink-0">
-          <div className="flex items-center gap-3">
+        <header className="relative flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3.5 border-b border-primary/20 bg-background/50 flex-shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             <button
               onClick={() => setSidebarOpen(prev => !prev)}
-              className="p-2 rounded-xl bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20 transition-all cursor-pointer"
+              className="p-2 rounded-xl bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20 transition-all cursor-pointer flex-shrink-0"
               aria-label="Toggle Sidebar"
             >
               <Menu className="w-5 h-5" />
             </button>
 
-            <div className="w-10 h-10 rounded-2xl bg-gold-gradient flex items-center justify-center shadow-gold flex-shrink-0">
-              <ShieldCheck className="w-6 h-6 text-primary-foreground" />
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gold-gradient flex items-center justify-center shadow-gold flex-shrink-0">
+              <ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6 text-primary-foreground" />
             </div>
 
-            <div>
+            <div className="min-w-0">
               <h2
-                className="font-bold text-base sm:text-xl text-gold-gradient leading-tight"
+                className="font-bold text-sm sm:text-lg md:text-xl text-gold-gradient leading-tight truncate"
                 style={{ fontFamily: "'Tajawal', sans-serif" }}
               >
-                {isRtl ? "لوحة تحكم إدارة منصة الفُرَص 👑" : "Al-Foras Control Center"}
+                {t("adminTitle")}
               </h2>
-              <span className="text-xs font-semibold text-gray-200 block">
+              <span className="text-[11px] sm:text-xs font-semibold text-gray-200 block truncate">
                 {currentUser
-                  ? isRtl
-                    ? `الجلسة نشطة: ${currentUser.name} (${currentUser.role === "super_admin" ? "المدير العام" : "مشرف محتوى"})`
-                    : `Active: ${currentUser.name} (${currentUser.role})`
-                  : isRtl
-                  ? "سجّل الدخول للوصول إلى صلاحيات التحرير والإشراف"
-                  : "Sign in to manage opportunities & review submissions"}
+                  ? t("adminActiveSession")
+                      .replace("{name}", currentUser.name)
+                      .replace("{role}", currentUser.role === "super_admin" ? (isRtl ? "المدير العام" : "Super Admin") : (isRtl ? "مشرف محتوى" : "Moderator"))
+                  : t("adminLoginPrompt")}
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             {currentUser && (
               <button
                 onClick={handleLogout}
-                className="px-3.5 py-1.5 rounded-xl bg-destructive/15 border border-destructive/30 text-destructive text-xs sm:text-sm font-bold hover:bg-destructive/25 transition-all cursor-pointer"
+                className="px-3 py-1.5 rounded-xl bg-destructive/15 border border-destructive/30 text-destructive text-xs font-bold hover:bg-destructive/25 transition-all cursor-pointer whitespace-nowrap"
               >
-                {isRtl ? "قفل وخروج" : "Lock / Logout"}
+                {t("adminLockLogout")}
               </button>
             )}
             <button
               onClick={onClose}
-              className="w-9 h-9 rounded-full bg-primary/15 border border-primary/30 hover:bg-primary/25 text-gray-200 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-primary/15 border border-primary/30 hover:bg-primary/25 text-gray-200 hover:text-white flex items-center justify-center transition-all cursor-pointer flex-shrink-0"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </div>
         </header>
@@ -414,17 +444,17 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                   <Lock className="w-7 h-7 text-primary-foreground" />
                 </div>
                 <h3 className="text-xl font-bold text-white mb-1" style={{ fontFamily: "'Tajawal', sans-serif" }}>
-                  {isRtl ? "تسجيل دخول الإدارة والمشرفين" : "Admin & Moderator Access"}
+                  {t("adminLoginTitle")}
                 </h3>
                 <p className="text-xs sm:text-sm text-gray-200">
-                  {isRtl ? "أدخل البريد الإلكتروني وكلمة المرور المشفرة للمتابعة" : "Enter verified email and password to proceed"}
+                  {t("adminLoginDesc")}
                 </p>
               </div>
 
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-200 mb-1">
-                    {isRtl ? "البريد الإلكتروني أو اسم المستخدم" : "Email or Username"}
+                    {t("adminEmailOrUsername")}
                   </label>
                   <input
                     type="text"
@@ -432,12 +462,13 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                     onChange={e => setIdentifierInput(e.target.value)}
                     placeholder="alforas.one@gmail.com"
                     className="w-full px-4 py-3 rounded-xl bg-background border-2 border-primary/30 text-white text-sm focus:border-primary outline-none"
+                    dir={dir}
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-gray-200 mb-1">
-                    {isRtl ? "كلمة المرور / الرمز السريع" : "Password / PIN"}
+                    {t("adminPasswordOrPin")}
                   </label>
                   <div className="relative">
                     <input
@@ -446,6 +477,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                       onChange={e => setPasswordInput(e.target.value)}
                       placeholder="••••••••"
                       className="w-full px-4 py-3 rounded-xl bg-background border-2 border-primary/30 text-white text-sm focus:border-primary outline-none"
+                      dir="ltr"
                     />
                     <button
                       type="button"
@@ -463,7 +495,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                   size="lg"
                   className="w-full py-3.5 rounded-xl shadow-gold font-bold text-base cursor-pointer"
                 >
-                  {isRtl ? "دخول لوحة التحكم" : "Unlock Control Panel"}
+                  {t("adminUnlockBtn")}
                 </Button>
               </form>
             </div>
@@ -488,8 +520,9 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                         type="text"
                         value={sidebarSearch}
                         onChange={e => setSidebarSearch(e.target.value)}
-                        placeholder={isRtl ? "بحث في أركان الإدارة..." : "Search menu..."}
+                        placeholder={t("adminSearchMenu")}
                         className={`w-full py-2 ${isRtl ? "pr-9 pl-3" : "pl-9 pr-3"} rounded-xl bg-background border border-primary/30 text-xs text-white focus:border-primary outline-none`}
+                        dir={dir}
                       />
                     </div>
                   </div>
@@ -563,7 +596,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                     <button
                       onClick={handleToggleSelectAll}
                       className="flex items-center gap-2 p-2 rounded-xl bg-card border border-primary/30 hover:border-primary text-xs font-bold text-gray-200 hover:text-white transition-all cursor-pointer"
-                      title={isRtl ? "تحديد / إلغاء تحديد الكل" : "Select / Deselect All"}
+                      title={isAllSelected ? t("adminDeselectAll") : t("adminSelectAll")}
                     >
                       {isAllSelected ? (
                         <CheckSquare className="w-5 h-5 text-primary" />
@@ -573,7 +606,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                         <Square className="w-5 h-5 text-gray-400" />
                       )}
                       <span className="hidden sm:inline">
-                        {isRtl ? "تحديد الكل" : "Select All"}
+                        {t("adminSelectAll")}
                       </span>
                     </button>
                   )}
@@ -598,6 +631,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                           : "Search listings..."
                       }
                       className={`w-full py-2 ${isRtl ? "pr-9 pl-3" : "pl-9 pr-3"} rounded-xl bg-background border border-primary/30 text-xs sm:text-sm text-white focus:border-primary outline-none`}
+                      dir={dir}
                     />
                   </div>
                 </div>
@@ -612,8 +646,8 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                           id: `sch_${Date.now()}`,
                           title_ar: "منحة جديدة ممولة بالكامل",
                           title_en: "New Fully Funded Scholarship",
-                          university: "جامعة دولية معتمدة",
-                          country: "عالمي",
+                          university: isRtl ? "جامعة دولية معتمدة" : "Accredited International University",
+                          country: isRtl ? "عالمي" : "International",
                           flag: "🌍",
                           degree: "bachelor_master",
                           coverage: "full" as any,
@@ -630,7 +664,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                       className="flex items-center gap-1.5 rounded-xl text-xs sm:text-sm font-bold shadow-gold cursor-pointer"
                     >
                       <Plus className="w-4 h-4" />
-                      <span>{isRtl ? "إضافة منحة جديدة" : "Add Scholarship"}</span>
+                      <span>{t("adminAddScholarship")}</span>
                     </Button>
                   )}
 
@@ -657,7 +691,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                       className="flex items-center gap-1.5 rounded-xl text-xs sm:text-sm font-bold shadow-gold cursor-pointer"
                     >
                       <Plus className="w-4 h-4" />
-                      <span>{isRtl ? "إضافة فرصة عمل" : "Add Job"}</span>
+                      <span>{t("adminAddJob")}</span>
                     </Button>
                   )}
                 </div>
@@ -669,9 +703,9 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                 {activeTab === "scholarships" && (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between text-xs text-gray-300 mb-2">
-                      <span>{isRtl ? `إجمالي المنح النشطة: ${filteredScholarships.length}` : `Active Scholarships: ${filteredScholarships.length}`}</span>
+                      <span>{t("adminActiveScholarshipsCount").replace("{count}", String(filteredScholarships.length))}</span>
                       <span className="text-primary font-semibold">
-                        {isRtl ? "💡 يمكنك الضغط مع Shift لتحديد نطاق كامل دفعة واحدة" : "Shift+Click for range selection"}
+                        {t("adminRangeHint")}
                       </span>
                     </div>
 
@@ -679,10 +713,10 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                       <div className="text-center py-16 p-6 rounded-2xl bg-card/60 border border-primary/20">
                         <GraduationCap className="w-12 h-12 text-primary mx-auto mb-3 opacity-60" />
                         <h4 className="text-base font-bold text-white mb-1">
-                          {isRtl ? "لا توجد منح مطابقة للبحث" : "No scholarships found"}
+                          {t("adminNoScholarships")}
                         </h4>
                         <p className="text-xs text-gray-300">
-                          {isRtl ? "أضف منحة جديدة أو غيّر كلمات البحث" : "Add a new scholarship or clear search"}
+                          {t("adminNoScholarshipsDesc")}
                         </p>
                       </div>
                     ) : (
@@ -729,7 +763,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                               <button
                                 onClick={() => setEditingScholarship(s)}
                                 className="p-2 rounded-xl bg-primary/10 border border-primary/30 hover:bg-primary/20 text-primary transition-all cursor-pointer"
-                                title={isRtl ? "تعديل المنحة" : "Edit"}
+                                title={t("adminEdit")}
                               >
                                 <Edit3 className="w-4 h-4" />
                               </button>
@@ -737,7 +771,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                               <button
                                 onClick={() => requestDelete(s.id, "scholarship", s.title || (s as any).title_ar)}
                                 className="p-2 rounded-xl bg-destructive/15 border border-destructive/30 hover:bg-destructive/25 text-destructive transition-all cursor-pointer"
-                                title={isRtl ? "أرشفة ونقل لسلة المحذوفات" : "Archive"}
+                                title={t("adminArchive")}
                               >
                                 <Archive className="w-4 h-4" />
                               </button>
@@ -753,14 +787,14 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                 {activeTab === "jobs" && (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between text-xs text-gray-300 mb-2">
-                      <span>{isRtl ? `إجمالي فرص العمل النشطة: ${filteredJobs.length}` : `Active Remote Jobs: ${filteredJobs.length}`}</span>
+                      <span>{t("adminActiveJobsCount").replace("{count}", String(filteredJobs.length))}</span>
                     </div>
 
                     {filteredJobs.length === 0 ? (
                       <div className="text-center py-16 p-6 rounded-2xl bg-card/60 border border-primary/20">
                         <Briefcase className="w-12 h-12 text-primary mx-auto mb-3 opacity-60" />
                         <h4 className="text-base font-bold text-white mb-1">
-                          {isRtl ? "لا توجد فرص عمل مطابقة" : "No remote jobs found"}
+                          {t("adminNoJobs")}
                         </h4>
                       </div>
                     ) : (
@@ -796,7 +830,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                                 <div className="flex items-center gap-2 flex-wrap text-xs text-gray-300 mt-1">
                                   <span>{j.company}</span>
                                   <span>•</span>
-                                  <span className="text-emerald-400 font-semibold">{j.salary || "بالدولار $"}</span>
+                                  <span className="text-emerald-400 font-semibold">{j.salary || (isRtl ? "بالدولار $" : "In USD $")}</span>
                                   <span>•</span>
                                   <span className="text-primary">{j.category}</span>
                                 </div>
@@ -807,6 +841,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                               <button
                                 onClick={() => setEditingJob(j)}
                                 className="p-2 rounded-xl bg-primary/10 border border-primary/30 hover:bg-primary/20 text-primary transition-all cursor-pointer"
+                                title={t("adminEdit")}
                               >
                                 <Edit3 className="w-4 h-4" />
                               </button>
@@ -814,6 +849,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                               <button
                                 onClick={() => requestDelete(j.id, "job", j.title_ar)}
                                 className="p-2 rounded-xl bg-destructive/15 border border-destructive/30 hover:bg-destructive/25 text-destructive transition-all cursor-pointer"
+                                title={t("adminArchive")}
                               >
                                 <Archive className="w-4 h-4" />
                               </button>
@@ -825,6 +861,181 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                   </div>
                 )}
 
+                {/* Arab Universities Management / Directory */}
+                {activeTab === "arab_unis" && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between text-xs text-gray-300 mb-1 flex-wrap gap-2">
+                      <span className="font-bold text-white">
+                        {isRtl ? `دليل الجامعات العربية (${filteredArabUnis.length} جامعة)` : `Arab Universities Directory (${filteredArabUnis.length} unis)`}
+                      </span>
+                      <span className="text-primary font-medium text-2xs">
+                        {isRtl ? "يمكنك تحويل أي جامعة إلى منحة معتمدة بنقرة زر واحدة" : "Click 'Add to Scholarships' to create a grant from any uni"}
+                      </span>
+                    </div>
+
+                    <div className="space-y-3">
+                      {filteredArabUnis.map((uni) => (
+                        <div
+                          key={uni.id}
+                          className="p-4 rounded-2xl border-2 border-primary/20 bg-card/70 hover:border-primary/50 transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
+                        >
+                          <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+                            <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center text-xl flex-shrink-0">
+                              {uni.flag}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <h4 className="text-sm sm:text-base font-bold text-white leading-tight truncate">
+                                {isRtl ? uni.name : (uni.nameEn || uni.name)}
+                              </h4>
+                              <div className="flex items-center gap-2 flex-wrap text-xs text-gray-300 mt-1">
+                                <span>{isRtl ? uni.city : uni.cityEn || uni.city}</span>
+                                <span>•</span>
+                                <span>{isRtl ? uni.country : uni.countryEn}</span>
+                                <span>•</span>
+                                <span className="text-amber-300 font-medium">
+                                  {isRtl ? `أقل نسبة: ${uni.minPercentage}%` : `Min: ${uni.minPercentage}%`}
+                                </span>
+                                {uni.scholarships && (
+                                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold">
+                                    {isRtl ? "منح متوفرة ✨" : "Scholarships Available ✨"}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 self-end sm:self-center shrink-0 flex-wrap">
+                            <a
+                              href={uni.website}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-2 rounded-xl bg-primary/10 border border-primary/30 hover:bg-primary/20 text-primary transition-all flex items-center gap-1 text-xs font-bold"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              <span className="hidden sm:inline">{isRtl ? "الموقع" : "Website"}</span>
+                            </a>
+
+                            <Button
+                              variant="luxe"
+                              size="sm"
+                              onClick={() => {
+                                setEditingScholarship({
+                                  id: `sch_arab_${uni.id}_${Date.now()}`,
+                                  title_ar: `منحة ${uni.name} للطلاب الدوليين`,
+                                  title_en: `${uni.nameEn || uni.name} Scholarship for International Students`,
+                                  university: uni.name,
+                                  country: uni.country,
+                                  flag: uni.flag,
+                                  degree: "bachelor_master",
+                                  coverage: "full" as any,
+                                  deadline: new Date(Date.now() + 60 * 86400000).toISOString().split("T")[0],
+                                  majors: uni.faculties,
+                                  apply_url: uni.website,
+                                  official_website: uni.website,
+                                  description_ar: uni.highlights,
+                                  description_en: uni.highlightsEn || uni.highlights,
+                                  benefits_ar: ["إعفاء من الرسوم الدراسية", "سكن جامعي", "تأمين صحي"],
+                                  benefits_en: ["Tuition fee waiver", "Campus housing", "Health insurance"],
+                                });
+                                toast.info(isRtl ? "تم تجهيز بطاقة المنحة بنجاح! راجع التفاصيل واضغط حفظ ونشر" : "Scholarship pre-filled! Review and click Save");
+                              }}
+                              className="text-xs font-bold shadow-gold flex items-center gap-1.5"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>{isRtl ? "إضافة للمنح" : "Add to Scholarships"}</span>
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Global Universities Management / Directory */}
+                {activeTab === "global_unis" && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between text-xs text-gray-300 mb-1 flex-wrap gap-2">
+                      <span className="font-bold text-white">
+                        {isRtl ? `دليل الوجهات والجامعات العالمية (${filteredGlobalCountries.length} دولة ووجهة)` : `Global Universities & Hubs (${filteredGlobalCountries.length} destinations)`}
+                      </span>
+                      <span className="text-primary font-medium text-2xs">
+                        {isRtl ? "منح حكومية ورسمية ممولة بالكامل" : "Fully funded government scholarships"}
+                      </span>
+                    </div>
+
+                    <div className="space-y-3">
+                      {filteredGlobalCountries.map((gc) => (
+                        <div
+                          key={gc.country}
+                          className="p-4 rounded-2xl border-2 border-primary/20 bg-card/70 hover:border-primary/50 transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
+                        >
+                          <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+                            <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center text-xl flex-shrink-0">
+                              {gc.flag}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <h4 className="text-sm sm:text-base font-bold text-white leading-tight truncate">
+                                {isRtl ? gc.scholarshipName : (gc.scholarshipNameEn || gc.scholarshipName)}
+                              </h4>
+                              <div className="flex items-center gap-2 flex-wrap text-xs text-gray-300 mt-1">
+                                <span className="font-bold text-primary">{isRtl ? gc.country : gc.countryEn}</span>
+                                <span>•</span>
+                                <span className="text-emerald-400 font-semibold">{gc.stipend}</span>
+                                <span>•</span>
+                                <span className="text-amber-300 font-medium">
+                                  {isRtl ? `الموعد: ${gc.deadline}` : `Deadline: ${gc.deadline}`}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 self-end sm:self-center shrink-0 flex-wrap">
+                            <a
+                              href={gc.officialPortal}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-2 rounded-xl bg-primary/10 border border-primary/30 hover:bg-primary/20 text-primary transition-all flex items-center gap-1 text-xs font-bold"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              <span className="hidden sm:inline">{isRtl ? "البوابة الرسمية" : "Official Portal"}</span>
+                            </a>
+
+                            <Button
+                              variant="luxe"
+                              size="sm"
+                              onClick={() => {
+                                setEditingScholarship({
+                                  id: `sch_global_${gc.country}_${Date.now()}`,
+                                  title_ar: gc.scholarshipName,
+                                  title_en: gc.scholarshipNameEn || gc.scholarshipName,
+                                  university: isRtl ? `الجامعات الحكومية في ${gc.country}` : `Government Universities in ${gc.countryEn}`,
+                                  country: isRtl ? gc.country : gc.countryEn,
+                                  flag: gc.flag,
+                                  degree: "all",
+                                  coverage: "full" as any,
+                                  deadline: new Date(Date.now() + 60 * 86400000).toISOString().split("T")[0],
+                                  majors: ["كافة التخصصات والمجالات الدراسية"],
+                                  apply_url: gc.officialPortal,
+                                  official_website: gc.officialPortal,
+                                  description_ar: `${gc.scholarshipName} - التمويل: ${gc.stipend}. لغة الدراسة: ${gc.studyLanguage}.`,
+                                  description_en: `${gc.scholarshipNameEn || gc.scholarshipName} - Funding: ${gc.stipend}. Study language: ${gc.studyLanguage}.`,
+                                  benefits_ar: ["إعفاء كامل من المصروفات", "راتب شهري", "سكن مجاني", "تذاكر سفر"],
+                                  benefits_en: ["Full tuition waiver", "Monthly stipend", "Free accommodation", "Flight tickets"],
+                                });
+                                toast.info(isRtl ? "تم تجهيز بطاقة المنحة بنجاح! راجع التفاصيل واضغط حفظ ونشر" : "Scholarship pre-filled! Review and click Save");
+                              }}
+                              className="text-xs font-bold shadow-gold flex items-center gap-1.5"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>{isRtl ? "إضافة للمنح" : "Add to Scholarships"}</span>
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* 3. Archive Vault (Soft Delete View & Danger Zone) */}
                 {activeTab === "archive" && (
                   <div className="space-y-6">
@@ -832,13 +1043,11 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                       <div className="flex items-center gap-2 text-destructive">
                         <Archive className="w-5 h-5 flex-shrink-0" />
                         <span className="font-bold">
-                          {isRtl
-                            ? `سلة المحذوفات والأرشيف (${archivedItems.length} عنصر محفوظ بأمان)`
-                            : `Archive Vault (${archivedItems.length} saved)`}
+                          {t("adminVaultTitle").replace("{count}", String(archivedItems.length))}
                         </span>
                       </div>
                       <span className="text-gray-300">
-                        {isRtl ? "يمكنك استعادة أي عنصر في أي وقت" : "Restore anytime"}
+                        {t("adminVaultHint")}
                       </span>
                     </div>
 
@@ -846,10 +1055,10 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                       <div className="text-center py-16 p-6 rounded-2xl bg-card/60 border border-primary/20">
                         <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto mb-3 opacity-80" />
                         <h4 className="text-base font-bold text-white mb-1">
-                          {isRtl ? "الأرشيف نظيف وفارغ حالياً" : "Vault is empty"}
+                          {t("adminVaultEmpty")}
                         </h4>
                         <p className="text-xs text-gray-300">
-                          {isRtl ? "العناصر المحذوفة ستظهر هنا مع إمكانية استعادتها فوراً" : "Deleted items will appear here"}
+                          {t("adminVaultEmptyDesc")}
                         </p>
                       </div>
                     ) : (
@@ -903,7 +1112,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 hover:bg-emerald-500/25 text-emerald-400 text-xs font-bold transition-all cursor-pointer"
                                 >
                                   <RotateCcw className="w-3.5 h-3.5" />
-                                  <span>{isRtl ? "استعادة" : "Restore"}</span>
+                                  <span>{t("adminRestore")}</span>
                                 </button>
 
                                 {currentUser?.role === "super_admin" && (
@@ -913,7 +1122,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                                       toast.success(isRtl ? "تم الحذف النهائي" : "Permanently deleted");
                                     }}
                                     className="p-1.5 rounded-xl bg-destructive/15 border border-destructive/30 hover:bg-destructive/25 text-destructive transition-all cursor-pointer"
-                                    title={isRtl ? "حذف نهائي لا رجعة فيه" : "Delete permanently"}
+                                    title={t("adminDeletePermanently")}
                                   >
                                     <Trash2 className="w-4 h-4" />
                                   </button>
@@ -930,12 +1139,10 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                       <div className="mt-8 p-5 rounded-3xl bg-destructive/5 border-2 border-destructive/40 shadow-inner">
                         <div className="flex items-center gap-2 text-destructive font-bold text-sm sm:text-base mb-2">
                           <AlertTriangle className="w-5 h-5" />
-                          <span>{isRtl ? "منطقة الخطر (المدير العام فقط) — Danger Zone" : "Danger Zone (Super Admin Only)"}</span>
+                          <span>{t("adminDangerZone")}</span>
                         </div>
                         <p className="text-xs sm:text-sm text-gray-300 mb-4">
-                          {isRtl
-                            ? "تفريغ الأرشيف سيؤدي إلى مسح كافة العناصر المؤرشفة نهائياً من الذاكرة دون أي إمكانية للاسترجاع. اكتب 'DELETE' أو 'تأكيد' في الحقل أدناه لتأكيد المسح."
-                            : "Emptying the vault will permanently destroy all archived items forever. Type DELETE to confirm."}
+                          {t("adminDangerZoneDesc")}
                         </p>
 
                         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
@@ -943,8 +1150,9 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                             type="text"
                             value={emptyArchiveConfirmText}
                             onChange={e => setEmptyArchiveConfirmText(e.target.value)}
-                            placeholder={isRtl ? "اكتب DELETE أو تأكيد" : "Type DELETE to confirm"}
+                            placeholder={t("adminTypeDeleteConfirm")}
                             className="px-4 py-2.5 rounded-xl bg-background border-2 border-destructive/40 text-white text-xs sm:text-sm focus:border-destructive outline-none"
+                            dir={dir}
                           />
                           <Button
                             variant="destructive"
@@ -958,7 +1166,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                             className="font-bold text-xs sm:text-sm cursor-pointer"
                           >
                             <Trash2 className="w-4 h-4 mr-1.5 ml-1.5" />
-                            <span>{isRtl ? "تفريغ الأرشيف بالكامل نهائياً" : "Empty Vault Forever"}</span>
+                            <span>{t("adminEmptyVaultBtn")}</span>
                           </Button>
                         </div>
                       </div>
@@ -975,8 +1183,8 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                           <Sparkles className="w-6 h-6 text-primary-foreground" />
                         </div>
                         <div>
-                          <h4 className="text-base font-bold text-white">{isRtl ? "استخراج البيانات الذكي عبر الرابط" : "AI URL Data Extractor"}</h4>
-                          <p className="text-xs text-gray-300">{isRtl ? "الصق رابط المنحة أو الوظيفة وسيقوم المستشار الذكي بملء كافة التفاصيل" : "Paste link to auto-fill"}</p>
+                          <h4 className="text-base font-bold text-white">{t("adminAiUrlExtractor")}</h4>
+                          <p className="text-xs text-gray-300">{t("adminAiUrlExtractorDesc")}</p>
                         </div>
                       </div>
 
@@ -1007,6 +1215,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                             onChange={e => setUrlInput(e.target.value)}
                             placeholder="https://turkiyeburslari.gov.tr or https://daad.de..."
                             className="flex-1 px-4 py-2.5 rounded-xl bg-background border border-primary/30 text-white text-xs sm:text-sm focus:border-primary outline-none"
+                            dir="ltr"
                           />
                           <Button
                             variant="luxe"
@@ -1025,7 +1234,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                             }}
                             className="font-bold text-xs sm:text-sm shadow-gold cursor-pointer"
                           >
-                            {isParsing ? <RefreshCw className="w-4 h-4 animate-spin" /> : isRtl ? "استخراج فوري" : "Extract"}
+                            {isParsing ? <RefreshCw className="w-4 h-4 animate-spin" /> : t("adminExtractBtn")}
                           </Button>
                         </div>
                       </div>
@@ -1036,7 +1245,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                         <div className="flex items-center justify-between border-b border-emerald-500/20 pb-3">
                           <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
                             <CheckCircle2 className="w-4 h-4" />
-                            {isRtl ? "تم تجهيز البيانات المستخرجة للمراجعة والنشر" : "Extracted Ready for Publish"}
+                            {t("adminExtractedReady")}
                           </span>
                           <Button
                             variant="luxe"
@@ -1054,7 +1263,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                             }}
                             className="font-bold text-xs shadow-gold cursor-pointer"
                           >
-                            {isRtl ? "اعتماد ونشر في التطبيق فوراً" : "Approve & Publish Live"}
+                            {t("adminApprovePublishNow")}
                           </Button>
                         </div>
 
@@ -1076,7 +1285,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                 {activeTab === "team" && (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs sm:text-sm font-bold text-white">{isRtl ? "أعضاء فريق الإدارة والمشرفين" : "Moderator Team"}</span>
+                      <span className="text-xs sm:text-sm font-bold text-white">{t("adminTeamTitle")}</span>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -1090,7 +1299,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                               <h4 className="text-sm font-bold text-white leading-tight">{m.name}</h4>
                               <span className="text-xs text-gray-300 block">{m.email}</span>
                               <span className="text-[10px] font-bold text-amber-400 mt-0.5 block">
-                                {m.role === "super_admin" ? "المدير العام 👑" : m.role === "editor" ? "محرر محتوى" : "مشرف"}
+                                {m.role === "super_admin" ? (isRtl ? "المدير العام 👑" : "Super Admin 👑") : m.role === "editor" ? (isRtl ? "محرر محتوى" : "Editor") : (isRtl ? "مشرف" : "Moderator")}
                               </span>
                             </div>
                           </div>
@@ -1104,7 +1313,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                 {activeTab === "audit_logs" && (
                   <div className="space-y-3">
                     <div className="text-xs text-gray-300 mb-2">
-                      {isRtl ? `سجل التوثيق الأمني المباشر (آخر ${auditLogs.length} عملية)` : `Audit Log (${auditLogs.length} entries)`}
+                      {t("adminAuditLogTitle").replace("{count}", String(auditLogs.length))}
                     </div>
 
                     <div className="space-y-2">
@@ -1129,13 +1338,13 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                 {activeTab === "pending_reviews" && (
                   <div className="space-y-3">
                     <div className="text-xs text-gray-300 mb-2">
-                      {isRtl ? `العناصر المقدمة وبانتظار موافقة المدير العام (${pendingItems.length})` : `Pending Submissions (${pendingItems.length})`}
+                      {t("adminPendingTitle").replace("{count}", String(pendingItems.length))}
                     </div>
 
                     {pendingItems.length === 0 ? (
                       <div className="text-center py-16 p-6 rounded-2xl bg-card/60 border border-primary/20">
                         <FileCheck2 className="w-12 h-12 text-primary mx-auto mb-3 opacity-60" />
-                        <h4 className="text-base font-bold text-white mb-1">{isRtl ? "لا توجد عناصر معلقة حالياً" : "No pending items"}</h4>
+                        <h4 className="text-base font-bold text-white mb-1">{t("adminNoPending")}</h4>
                       </div>
                     ) : (
                       pendingItems.map(p => (
@@ -1156,7 +1365,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                               }}
                               className="font-bold text-xs cursor-pointer"
                             >
-                              {isRtl ? "موافقة ونشر" : "Approve"}
+                              {t("adminApprovePublish")}
                             </Button>
                           </div>
                         </div>
@@ -1168,9 +1377,9 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                 {/* 8. Backup & Restore */}
                 {activeTab === "backup" && (
                   <div className="p-6 rounded-2xl bg-card border-2 border-primary/30 max-w-xl mx-auto space-y-4">
-                    <h4 className="text-base font-bold text-white">{isRtl ? "النسخ الاحتياطي وتصدير البيانات" : "Data Backup & Export"}</h4>
+                    <h4 className="text-base font-bold text-white">{t("adminBackupTitle")}</h4>
                     <p className="text-xs text-gray-300">
-                      {isRtl ? "تصدير نسخة JSON شاملة لكافة المنح والوظائف والأرشيف وسجل التدقيق" : "Export full JSON backup"}
+                      {t("adminBackupDesc")}
                     </p>
                     <Button
                       variant="luxe"
@@ -1193,7 +1402,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                       className="w-full font-bold shadow-gold cursor-pointer"
                     >
                       <Download className="w-4 h-4 mr-2 ml-2" />
-                      <span>{isRtl ? "تحميل نسخة JSON الآن" : "Download JSON Backup"}</span>
+                      <span>{t("adminDownloadBackupBtn")}</span>
                     </Button>
                   </div>
                 )}
@@ -1223,14 +1432,14 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                   >
                     <div className="flex items-center gap-3">
                       <span className="px-3.5 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs sm:text-sm font-bold shadow-md">
-                        {isRtl ? `تم تحديد ${selectedIds.length} عنصر` : `${selectedIds.length} selected`}
+                        {t("adminItemsSelected").replace("{count}", String(selectedIds.length))}
                       </span>
 
                       <button
                         onClick={() => setSelectedIds([])}
                         className="text-xs font-semibold text-gray-300 hover:text-white underline cursor-pointer"
                       >
-                        {isRtl ? "إلغاء التحديد" : "Clear selection"}
+                        {t("adminClearSelection")}
                       </button>
                     </div>
 
@@ -1243,7 +1452,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                           className="font-bold text-xs sm:text-sm shadow-gold cursor-pointer"
                         >
                           <RotateCcw className="w-4 h-4 mr-1.5 ml-1.5" />
-                          <span>{isRtl ? `استعادة المحددة (${selectedIds.length})` : `Restore (${selectedIds.length})`}</span>
+                          <span>{t("adminRestoreSelected").replace("{count}", String(selectedIds.length))}</span>
                         </Button>
                       ) : (
                         <Button
@@ -1253,7 +1462,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                           className="font-bold text-xs sm:text-sm cursor-pointer"
                         >
                           <Archive className="w-4 h-4 mr-1.5 ml-1.5" />
-                          <span>{isRtl ? `أرشفة المحددة (${selectedIds.length})` : `Archive (${selectedIds.length})`}</span>
+                          <span>{t("adminArchiveSelected").replace("{count}", String(selectedIds.length))}</span>
                         </Button>
                       )}
                     </div>
@@ -1278,13 +1487,11 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
             >
               <div className="flex items-center gap-3 text-destructive">
                 <ShieldAlert className="w-7 h-7" />
-                <h4 className="text-base sm:text-lg font-bold text-white">{isRtl ? "تأكيد أمني لنقل العنصر للأرشيف" : "Security Deletion Confirmation"}</h4>
+                <h4 className="text-base sm:text-lg font-bold text-white">{t("adminDeleteModalTitle")}</h4>
               </div>
 
               <p className="text-xs sm:text-sm text-gray-300 leading-relaxed">
-                {isRtl
-                  ? `أنت على وشك أرشفة "${pendingDeleteAction.title}". سيتم نقلها للأرشيف فوراً وإرسال إشعار رسمي للمدير العام بالإجراء.`
-                  : `You are about to archive "${pendingDeleteAction.title}". Admin will receive an official notification.`}
+                {t("adminDeleteModalDesc").replace("{title}", pendingDeleteAction.title)}
               </p>
 
               <div className="flex gap-2 justify-end pt-2">
@@ -1294,7 +1501,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                   onClick={() => setIsDeletingConfirmOpen(false)}
                   className="border-primary/40 text-gray-200 cursor-pointer"
                 >
-                  {isRtl ? "إلغاء" : "Cancel"}
+                  {t("adminCancel")}
                 </Button>
                 <Button
                   variant="destructive"
@@ -1302,7 +1509,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                   onClick={confirmSupervisorDelete}
                   className="font-bold cursor-pointer"
                 >
-                  {isRtl ? "تأكيد الأرشفة والإشعار" : "Confirm Archive"}
+                  {t("adminConfirmArchive")}
                 </Button>
               </div>
             </motion.div>
@@ -1320,8 +1527,8 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                   <GraduationCap className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-base sm:text-lg font-bold text-white">{isRtl ? "إضافة / تحرير بيانات المنحة الشاملة" : "Edit Scholarship Details"}</h4>
-                  <p className="text-[11px] text-gray-400">{isRtl ? "إضافة وتعديل كافة الحقول وشروط القبول والملاحظات الإضافية" : "Configure all scholarship details & dynamic fields"}</p>
+                  <h4 className="text-base sm:text-lg font-bold text-white">{t("adminEditScholarshipTitle")}</h4>
+                  <p className="text-[11px] text-gray-400">{t("adminEditScholarshipDesc")}</p>
                 </div>
               </div>
               <button onClick={() => setEditingScholarship(null)} className="text-gray-400 hover:text-white p-1 rounded-lg">
@@ -1331,39 +1538,42 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs sm:text-sm">
               <div>
-                <label className="block font-bold text-gray-200 mb-1">{isRtl ? "عنوان المنحة (بالعربية)" : "Title (Arabic)"} <span className="text-destructive">*</span></label>
+                <label className="block font-bold text-gray-200 mb-1">{t("adminTitleAr")} <span className="text-destructive">*</span></label>
                 <input
                   type="text"
                   value={(editingScholarship as any).title_ar || editingScholarship.title}
                   onChange={e => setEditingScholarship({ ...editingScholarship, title: e.target.value, title_ar: e.target.value } as any)}
                   className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
+                  dir="rtl"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-gray-200 mb-1">{isRtl ? "عنوان المنحة (بالإنجليزية)" : "Title (English)"}</label>
+                <label className="block font-bold text-gray-200 mb-1">{t("adminTitleEn")}</label>
                 <input
                   type="text"
                   value={(editingScholarship as any).title_en || (editingScholarship as any).titleEn || ""}
                   onChange={e => setEditingScholarship({ ...editingScholarship, title_en: e.target.value, titleEn: e.target.value } as any)}
                   placeholder="e.g. Fully Funded Oxford Scholarship"
                   className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
+                  dir="ltr"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-gray-200 mb-1">{isRtl ? "الدولة المستضيفة والجامعة" : "Country & University"}</label>
+                <label className="block font-bold text-gray-200 mb-1">{t("adminCountryUniversity")}</label>
                 <input
                   type="text"
                   value={editingScholarship.country}
                   onChange={e => setEditingScholarship({ ...editingScholarship, country: e.target.value })}
-                  placeholder="بريطانيا - جامعة أكسفورد"
+                  placeholder={isRtl ? "بريطانيا - جامعة أكسفورد" : "UK - Oxford University"}
                   className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
+                  dir={dir}
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-gray-200 mb-1">{isRtl ? "المرحلة الدراسية" : "Degree Level"}</label>
+                <label className="block font-bold text-gray-200 mb-1">{t("adminDegreeLevel")}</label>
                 <select
                   value={editingScholarship.degree || "all"}
                   onChange={e => setEditingScholarship({ ...editingScholarship, degree: e.target.value as any })}
@@ -1378,7 +1588,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
               </div>
 
               <div>
-                <label className="block font-bold text-gray-200 mb-1">{isRtl ? "نوع التمويل والدعم" : "Funding Coverage"}</label>
+                <label className="block font-bold text-gray-200 mb-1">{t("adminFundingCoverage")}</label>
                 <select
                   value={editingScholarship.coverage || "full"}
                   onChange={e => setEditingScholarship({ ...editingScholarship, coverage: e.target.value as any })}
@@ -1391,7 +1601,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
               </div>
 
               <div>
-                <label className="block font-bold text-gray-200 mb-1">{isRtl ? "الموعد النهائي للتقديم" : "Application Deadline"}</label>
+                <label className="block font-bold text-gray-200 mb-1">{t("adminDeadline")}</label>
                 <input
                   type="date"
                   value={editingScholarship.deadline}
@@ -1401,35 +1611,38 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
               </div>
 
               <div>
-                <label className="block font-bold text-gray-200 mb-1">{isRtl ? "رابط التقديم الرسمي" : "Official Apply URL"}</label>
+                <label className="block font-bold text-gray-200 mb-1">{t("adminApplyUrl")}</label>
                 <input
                   type="url"
                   value={editingScholarship.apply_url}
                   onChange={e => setEditingScholarship({ ...editingScholarship, apply_url: e.target.value })}
                   placeholder="https://..."
                   className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
+                  dir="ltr"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-gray-200 mb-1">{isRtl ? "متطلبات اللغة (آيلتس / توفل)" : "Language Requirement"}</label>
+                <label className="block font-bold text-gray-200 mb-1">{t("adminLanguageReq")}</label>
                 <input
                   type="text"
                   value={(editingScholarship as any).language_req || ""}
                   onChange={e => setEditingScholarship({ ...editingScholarship, language_req: e.target.value } as any)}
                   placeholder={isRtl ? "مثال: IELTS 6.5 أو بدون شرط لغة" : "e.g. IELTS 6.5 or No Language Req"}
                   className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
+                  dir={dir}
                 />
               </div>
             </div>
 
             <div>
-              <label className="block font-bold text-gray-200 mb-1">{isRtl ? "وصف ومزايا المنحة والتخصصات" : "Description & Benefits"}</label>
+              <label className="block font-bold text-gray-200 mb-1">{t("adminDescriptionBenefits")}</label>
               <textarea
                 rows={3}
                 value={(editingScholarship as any).description_ar || editingScholarship.description}
                 onChange={e => setEditingScholarship({ ...editingScholarship, description: e.target.value, description_ar: e.target.value } as any)}
                 className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary text-xs sm:text-sm"
+                dir={dir}
               />
             </div>
 
@@ -1438,7 +1651,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Plus className="w-4 h-4 text-primary" />
-                  <span className="text-xs sm:text-sm font-bold text-white">{isRtl ? "حقول وشروط وملاحظات إضافية مخصصة" : "Dynamic Custom Fields"}</span>
+                  <span className="text-xs sm:text-sm font-bold text-white">{t("adminCustomFieldsTitle")}</span>
                 </div>
                 <Button
                   type="button"
@@ -1454,7 +1667,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                   className="text-xs border-primary/40 text-primary cursor-pointer hover:bg-primary/10"
                 >
                   <Plus className="w-3.5 h-3.5 mr-1 ml-1" />
-                  <span>{isRtl ? "إضافة حقل جديد" : "Add New Field"}</span>
+                  <span>{t("adminAddField")}</span>
                 </Button>
               </div>
 
@@ -1470,6 +1683,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                       setEditingScholarship({ ...editingScholarship, custom_fields: updated } as any);
                     }}
                     className="w-1/3 px-3 py-1.5 rounded-xl bg-background border border-primary/30 text-white text-xs outline-none focus:border-primary"
+                    dir={dir}
                   />
                   <input
                     type="text"
@@ -1481,6 +1695,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                       setEditingScholarship({ ...editingScholarship, custom_fields: updated } as any);
                     }}
                     className="flex-1 px-3 py-1.5 rounded-xl bg-background border border-primary/30 text-white text-xs outline-none focus:border-primary"
+                    dir={dir}
                   />
                   <button
                     type="button"
@@ -1498,7 +1713,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
 
             <div className="flex gap-2 justify-end pt-3 border-t border-primary/20">
               <Button variant="outline" size="sm" onClick={() => setEditingScholarship(null)} className="cursor-pointer">
-                {isRtl ? "إلغاء" : "Cancel"}
+                {t("adminCancel")}
               </Button>
               <Button
                 variant="luxe"
@@ -1510,7 +1725,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                 }}
                 className="font-bold shadow-gold cursor-pointer"
               >
-                {isRtl ? "حفظ ونشر المنحة" : "Save & Publish"}
+                {t("adminSavePublish")}
               </Button>
             </div>
           </div>
@@ -1527,8 +1742,8 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                   <Briefcase className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-base sm:text-lg font-bold text-white">{isRtl ? "إضافة / تحرير فرصة العمل الشاملة" : "Edit Job Opportunity"}</h4>
-                  <p className="text-[11px] text-gray-400">{isRtl ? "تفاصيل الوظيفة والراتب بالدولار وطريقة الدفع والحقول المخصصة" : "Set job specs, USD salary, payment terms & custom fields"}</p>
+                  <h4 className="text-base sm:text-lg font-bold text-white">{t("adminEditJobTitle")}</h4>
+                  <p className="text-[11px] text-gray-400">{t("adminEditJobDesc")}</p>
                 </div>
               </div>
               <button onClick={() => setEditingJob(null)} className="text-gray-400 hover:text-white p-1 rounded-lg">
@@ -1538,51 +1753,55 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs sm:text-sm">
               <div>
-                <label className="block font-bold text-gray-200 mb-1">{isRtl ? "المسمى الوظيفي (بالعربية)" : "Job Title (Arabic)"} <span className="text-destructive">*</span></label>
+                <label className="block font-bold text-gray-200 mb-1">{t("adminJobTitleAr")} <span className="text-destructive">*</span></label>
                 <input
                   type="text"
                   value={editingJob.title_ar}
                   onChange={e => setEditingJob({ ...editingJob, title_ar: e.target.value })}
                   placeholder="مطور واجهات ومواقع عن بُعد"
                   className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
+                  dir="rtl"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-gray-200 mb-1">{isRtl ? "المسمى الوظيفي (بالإنجليزية)" : "Job Title (English)"}</label>
+                <label className="block font-bold text-gray-200 mb-1">{t("adminJobTitleEn")}</label>
                 <input
                   type="text"
                   value={editingJob.title_en || ""}
                   onChange={e => setEditingJob({ ...editingJob, title_en: e.target.value })}
                   placeholder="Remote Frontend Engineer"
                   className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
+                  dir="ltr"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-gray-200 mb-1">{isRtl ? "اسم الشركة / المنصة العالمية" : "Company / Platform"}</label>
+                <label className="block font-bold text-gray-200 mb-1">{t("adminCompany")}</label>
                 <input
                   type="text"
                   value={editingJob.company}
                   onChange={e => setEditingJob({ ...editingJob, company: e.target.value })}
                   placeholder="Upwork / Toptal / Global Remote"
                   className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
+                  dir={dir}
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-gray-200 mb-1">{isRtl ? "الراتب / الدخل المتوقع بالدولار" : "Estimated Salary ($)"}</label>
+                <label className="block font-bold text-gray-200 mb-1">{t("adminSalaryUsd")}</label>
                 <input
                   type="text"
                   value={editingJob.salary || ""}
                   onChange={e => setEditingJob({ ...editingJob, salary: e.target.value })}
                   placeholder="$2,500 - $4,500 / month"
                   className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
+                  dir="ltr"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-gray-200 mb-1">{isRtl ? "نوع العمل وموقعه" : "Job Type & Location"}</label>
+                <label className="block font-bold text-gray-200 mb-1">{t("adminJobType")}</label>
                 <select
                   value={editingJob.type || "remote_freelance"}
                   onChange={e => setEditingJob({ ...editingJob, type: e.target.value as any })}
@@ -1596,46 +1815,50 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
               </div>
 
               <div>
-                <label className="block font-bold text-gray-200 mb-1">{isRtl ? "طريقة استلام الأرباح والتحويل" : "Payout Method"}</label>
+                <label className="block font-bold text-gray-200 mb-1">{t("adminPayoutMethod")}</label>
                 <input
                   type="text"
                   value={(editingJob as any).payout_method || ""}
                   onChange={e => setEditingJob({ ...editingJob, payout_method: e.target.value } as any)}
                   placeholder={isRtl ? "بايبال، بايونير، تحويل بنكي دولي" : "PayPal, Payoneer, Wire Transfer"}
                   className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
+                  dir={dir}
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-gray-200 mb-1">{isRtl ? "رابط التقديم المباشر" : "Apply URL"}</label>
+                <label className="block font-bold text-gray-200 mb-1">{t("adminApplyUrl")}</label>
                 <input
                   type="url"
                   value={editingJob.apply_url}
                   onChange={e => setEditingJob({ ...editingJob, apply_url: e.target.value })}
                   placeholder="https://..."
                   className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
+                  dir="ltr"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-gray-200 mb-1">{isRtl ? "المهارات والخبرات المطلوبة" : "Required Skills"}</label>
+                <label className="block font-bold text-gray-200 mb-1">{t("adminSkillsReq")}</label>
                 <input
                   type="text"
                   value={(editingJob.skills || []).join(", ")}
                   onChange={e => setEditingJob({ ...editingJob, skills: e.target.value.split(",").map(s => s.trim()).filter(Boolean) })}
                   placeholder="React, English B2, Node.js"
                   className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
+                  dir="ltr"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block font-bold text-gray-200 mb-1">{isRtl ? "تفاصيل الوصف الوظيفي والمسؤوليات" : "Job Description"}</label>
+              <label className="block font-bold text-gray-200 mb-1">{t("adminJobDescription")}</label>
               <textarea
                 rows={3}
                 value={editingJob.description_ar}
                 onChange={e => setEditingJob({ ...editingJob, description_ar: e.target.value })}
                 className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary text-xs sm:text-sm"
+                dir={dir}
               />
             </div>
 
@@ -1644,7 +1867,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Plus className="w-4 h-4 text-primary" />
-                  <span className="text-xs sm:text-sm font-bold text-white">{isRtl ? "حقول وشروط وملاحظات إضافية مخصصة" : "Dynamic Custom Fields"}</span>
+                  <span className="text-xs sm:text-sm font-bold text-white">{t("adminCustomFieldsTitle")}</span>
                 </div>
                 <Button
                   type="button"
@@ -1660,7 +1883,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                   className="text-xs border-primary/40 text-primary cursor-pointer hover:bg-primary/10"
                 >
                   <Plus className="w-3.5 h-3.5 mr-1 ml-1" />
-                  <span>{isRtl ? "إضافة حقل جديد" : "Add New Field"}</span>
+                  <span>{t("adminAddField")}</span>
                 </Button>
               </div>
 
@@ -1676,6 +1899,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                       setEditingJob({ ...editingJob, custom_fields: updated } as any);
                     }}
                     className="w-1/3 px-3 py-1.5 rounded-xl bg-background border border-primary/30 text-white text-xs outline-none focus:border-primary"
+                    dir={dir}
                   />
                   <input
                     type="text"
@@ -1687,6 +1911,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                       setEditingJob({ ...editingJob, custom_fields: updated } as any);
                     }}
                     className="flex-1 px-3 py-1.5 rounded-xl bg-background border border-primary/30 text-white text-xs outline-none focus:border-primary"
+                    dir={dir}
                   />
                   <button
                     type="button"
@@ -1704,7 +1929,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
 
             <div className="flex gap-2 justify-end pt-3 border-t border-primary/20">
               <Button variant="outline" size="sm" onClick={() => setEditingJob(null)} className="cursor-pointer">
-                {isRtl ? "إلغاء" : "Cancel"}
+                {t("adminCancel")}
               </Button>
               <Button
                 variant="luxe"
@@ -1716,7 +1941,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                 }}
                 className="font-bold shadow-gold cursor-pointer"
               >
-                {isRtl ? "حفظ ونشر الوظيفة" : "Save & Publish"}
+                {t("adminSavePublish")}
               </Button>
             </div>
           </div>
