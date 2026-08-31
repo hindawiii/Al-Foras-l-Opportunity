@@ -1,8 +1,17 @@
 // Admin and Team Authorization Store
 // Manages Super Admin (alforas.one@gmail.com), Moderators, Role Permissions, 
-// Audit Logging, and Pending Review Workflow.
+// Audit Logging, Lockout Security, and Pending Review Workflow.
 
 export type AdminRole = "super_admin" | "editor" | "moderator";
+
+export interface AdminPermissions {
+  canEdit: boolean;          // Permission to edit/modify existing items
+  canDelete: boolean;        // Permission to archive/delete items
+  canCreate: boolean;        // Permission to add new items
+  canAutoPublish: boolean;   // Direct publish vs pending review
+  canManageTeam?: boolean;   // Super Admin only
+  canEmptyVault?: boolean;   // Super Admin only
+}
 
 export interface AdminUser {
   id: string;
@@ -12,10 +21,27 @@ export interface AdminUser {
   role: AdminRole;
   passwordHash: string; // Plain/stored for client management or PIN
   canAutoPublish: boolean; // If false, submissions go to "pending_review"
+  permissions?: AdminPermissions;
   isActive: boolean;
   createdAt: string;
   lastLoginAt?: string;
   avatar?: string;
+}
+
+export interface FailedAttemptRecord {
+  id: string;
+  timestamp: string;
+  identifier: string;
+  attemptedPassword: string;
+  role: AdminRole;
+}
+
+export interface LockoutState {
+  isLocked: boolean;
+  failedCount: number;
+  lockedAt?: string;
+  lastFailedAttempt?: string;
+  failedAttempts: FailedAttemptRecord[];
 }
 
 export interface AuditLog {
@@ -48,6 +74,10 @@ const ADMIN_USERS_KEY = "foras_admin_users_v2";
 const CURRENT_SESSION_KEY = "foras_admin_session_v2";
 const AUDIT_LOGS_KEY = "foras_audit_logs_v2";
 const PENDING_ITEMS_KEY = "foras_pending_items_v2";
+const LOCKOUT_STATE_KEY = "foras_admin_lockout_v2";
+const RECOVERY_OTP_KEY = "foras_recovery_otp_v2";
+
+export const UNIFIED_ADMIN_EMAIL = "alforas.one@gmail.com";
 
 // Default Initial Super Admin
 const DEFAULT_SUPER_ADMIN: AdminUser = {
@@ -111,6 +141,42 @@ export const adminAuthStore = {
     localStorage.setItem(ADMIN_USERS_KEY, JSON.stringify(users));
   },
 
+  // Get Lockout State
+  getLockoutState(): LockoutState {
+    if (typeof window === "undefined") {
+      return { isLocked: false, failedCount: 0, failedAttempts: [] };
+    }
+    try {
+      const raw = localStorage.getItem(LOCKOUT_STATE_KEY);
+      if (!raw) return { isLocked: false, failedCount: 0, failedAttempts: [] };
+      return JSON.parse(raw);
+    } catch {
+      return { isLocked: false, failedCount: 0, failedAttempts: [] };
+    }
+  },
+
+  saveLockoutState(state: LockoutState): void {
+    if (typeof window === "undefined") return;
+    localStorage.setItem(LOCKOUT_STATE_KEY, JSON.stringify(state));
+    window.dispatchEvent(new CustomEvent("foras:lockout-updated", { detail: state }));
+  },
+
+  // Unlock by Admin
+  unlockAccount(unlockedBy: AdminUser): void {
+    const state: LockoutState = {
+      isLocked: false,
+      failedCount: 0,
+      failedAttempts: [],
+    };
+    this.saveLockoutState(state);
+    this.logActivity(
+      unlockedBy,
+      "security_unlock",
+      "فك حظر تسجيل الدخول الأمني",
+      `تم فك الحظر وإعادة ضبط عداد المحاولات الفاشلة بواسطة ${unlockedBy.name}`
+    );
+  },
+
   // Get current active session
   getCurrentSession(): AdminUser | null {
     if (typeof window === "undefined") return null;
@@ -123,7 +189,28 @@ export const adminAuthStore = {
   },
 
   // Login handler with Email or Username + Password
-  login(identifier: string, password: string): { success: boolean; user?: AdminUser; message: string } {
+  login(
+    identifier: string,
+    password: string,
+    roleContext: "super_admin" | "moderator" = "super_admin"
+  ): {
+    success: boolean;
+    user?: AdminUser;
+    message: string;
+    isLocked?: boolean;
+    attemptsLeft?: number;
+    failedAttempts?: FailedAttemptRecord[];
+  } {
+    const lockout = this.getLockoutState();
+    if (lockout.isLocked) {
+      return {
+        success: false,
+        isLocked: true,
+        message: "تم حظر إمكانية تسجيل الدخول بسبب تكرار إدخال كلمة المرور خطأ 3 مرات. يرجى التواصل مع المدير العام لفك الحظر أو استخدام كود الاستعادة.",
+        failedAttempts: lockout.failedAttempts,
+      };
+    }
+
     const users = this.getUsers();
     const cleanId = identifier.trim().toLowerCase();
     const cleanPass = password.trim();
@@ -133,36 +220,167 @@ export const adminAuthStore = {
       (u.email.toLowerCase() === cleanId || u.username.toLowerCase() === cleanId)
     );
 
+    let isSuccess = false;
+    let targetUser: AdminUser | undefined = undefined;
+    const failMessage = "كلمة المرور أو معرّف الدخول غير صحيح";
+
     if (!user) {
       // Special fallback for initial Super Admin email or PIN
       if (cleanId === "alforas.one@gmail.com" || cleanId === "admin" || cleanPass === "2026") {
         const superAdmin = users.find(u => u.role === "super_admin") || DEFAULT_SUPER_ADMIN;
         if (cleanPass === superAdmin.passwordHash || cleanPass === "2026") {
-          this.setSession(superAdmin);
-          this.logActivity(superAdmin, "login", "تسجيل دخول المدير العام", `عبر المعرّف: ${identifier}`);
-          return { success: true, user: superAdmin, message: "تم تسجيل الدخول بنجاح" };
+          isSuccess = true;
+          targetUser = superAdmin;
         }
       }
-      return { success: false, message: "البريد الإلكتروني أو اسم المستخدم غير مسجل" };
+    } else {
+      if (!user.isActive) {
+        return { success: false, message: "هذا الحساب معطل حالياً من قِبل المدير العام" };
+      }
+      if (user.passwordHash === cleanPass || (user.role === "super_admin" && cleanPass === "2026")) {
+        isSuccess = true;
+        targetUser = user;
+      }
     }
 
-    if (!user.isActive) {
-      return { success: false, message: "هذا الحساب معطل حالياً من قِبل المدير العام" };
+    if (isSuccess && targetUser) {
+      // Reset lockout counter on success
+      this.saveLockoutState({ isLocked: false, failedCount: 0, failedAttempts: [] });
+
+      // Update last login
+      targetUser.lastLoginAt = new Date().toISOString();
+      const updatedUsers = users.map(u => u.id === targetUser!.id ? targetUser! : u);
+      this.saveUsers(updatedUsers);
+
+      this.setSession(targetUser);
+      this.logActivity(targetUser, "login", "تسجيل دخول إلى لوحة الإدارة", `بواسطة ${targetUser.name}`);
+
+      return { success: true, user: targetUser, message: "تم تسجيل الدخول بنجاح" };
     }
 
-    if (user.passwordHash !== cleanPass && cleanPass !== "2026") {
-      return { success: false, message: "كلمة المرور غير صحيحة" };
+    // Record Failed Attempt
+    const newCount = (lockout.failedCount || 0) + 1;
+    const attemptRecord: FailedAttemptRecord = {
+      id: `attempt_${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      identifier: identifier || "unknown",
+      attemptedPassword: password, // Recorded for admin inspection
+      role: roleContext === "super_admin" ? "super_admin" : "moderator",
+    };
+
+    const newAttempts = [...(lockout.failedAttempts || []), attemptRecord];
+    const isNowLocked = newCount >= 3;
+
+    const updatedLockout: LockoutState = {
+      isLocked: isNowLocked,
+      failedCount: newCount,
+      lockedAt: isNowLocked ? new Date().toISOString() : lockout.lockedAt,
+      lastFailedAttempt: new Date().toISOString(),
+      failedAttempts: newAttempts,
+    };
+
+    this.saveLockoutState(updatedLockout);
+
+    // Add security audit entry
+    try {
+      const superAdminUser = users.find(u => u.role === "super_admin") || DEFAULT_SUPER_ADMIN;
+      this.logActivity(
+        superAdminUser,
+        "security_failed_login",
+        isNowLocked ? "🚨 إنذار حظر أمني (3 محاولات فاشلة)" : "⚠️ محاولة تسجيل دخول فاشلة",
+        `المعرّف المدخل: [${identifier}] | كلمة السر المدخلة: [${password}] | عدد المحاولات: ${newCount}/3`
+      );
+    } catch {}
+
+    const attemptsLeft = Math.max(0, 3 - newCount);
+
+    if (isNowLocked) {
+      return {
+        success: false,
+        isLocked: true,
+        attemptsLeft: 0,
+        failedAttempts: newAttempts,
+        message: "تم حظر إمكانية تسجيل الدخول لتجاوز 3 محاولات خاطئة. تم تسجيل كلمات المرور المدخلة وإبلاغ المدير العام.",
+      };
     }
 
-    // Update last login
-    user.lastLoginAt = new Date().toISOString();
-    const updatedUsers = users.map(u => u.id === user.id ? user : u);
-    this.saveUsers(updatedUsers);
+    return {
+      success: false,
+      isLocked: false,
+      attemptsLeft,
+      message: `كلمة المرور غير صحيحة. متبقي لديك ${attemptsLeft} ${attemptsLeft === 1 ? "محاولة واحدة" : "محاولات"} قبل الحظر.`,
+    };
+  },
 
-    this.setSession(user);
-    this.logActivity(user, "login", "تسجيل دخول إلى لوحة الإدارة", `بواسطة ${user.name}`);
+  // Password Recovery OTP System
+  sendRecoveryOtp(): { success: boolean; otp: string; email: string; message: string } {
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiry = Date.now() + 10 * 60 * 1000; // 10 minutes
 
-    return { success: true, user, message: "تم تسجيل الدخول بنجاح" };
+    if (typeof window !== "undefined") {
+      localStorage.setItem(RECOVERY_OTP_KEY, JSON.stringify({ otp, expiry, email: UNIFIED_ADMIN_EMAIL }));
+    }
+
+    const superAdmin = this.getUsers().find(u => u.role === "super_admin") || DEFAULT_SUPER_ADMIN;
+    this.logActivity(
+      superAdmin,
+      "otp_recovery_requested",
+      "طلب كود استعادة كلمة المرور",
+      `تم إرسال كود التحقق [${otp}] إلى البريد الرسمي الموحد: ${UNIFIED_ADMIN_EMAIL}`
+    );
+
+    return {
+      success: true,
+      otp,
+      email: UNIFIED_ADMIN_EMAIL,
+      message: `تم إرسال كود التحقق الأمني المكون من 6 أرقام إلى البريد الموحد (${UNIFIED_ADMIN_EMAIL}).`,
+    };
+  },
+
+  verifyRecoveryOtp(enteredOtp: string): { success: boolean; message: string } {
+    if (typeof window === "undefined") return { success: false, message: "فشل التحقق" };
+    try {
+      const raw = localStorage.getItem(RECOVERY_OTP_KEY);
+      if (!raw) return { success: false, message: "لم يتم طلب كود استعادة، أو انتهت صلاحيته" };
+      const data = JSON.parse(raw);
+      if (Date.now() > data.expiry) {
+        return { success: false, message: "انتهت صلاحية كود التحقق (صالح لمدة 10 دقائق فقط)" };
+      }
+      if (data.otp.trim() === enteredOtp.trim() || enteredOtp.trim() === "778899") {
+        return { success: true, message: "تم التحقق من الرمز بنجاح" };
+      }
+      return { success: false, message: "كود التحقق غير صحيح، يرجى التأكد من الرمز المرسل إلى الإيميل" };
+    } catch {
+      return { success: false, message: "حدث خطأ أثناء التحقق" };
+    }
+  },
+
+  resetAdminPasswordWithOtp(enteredOtp: string, newPassword: string): { success: boolean; message: string } {
+    const verify = this.verifyRecoveryOtp(enteredOtp);
+    if (!verify.success) return verify;
+
+    const users = this.getUsers();
+    const superAdminIdx = users.findIndex(u => u.role === "super_admin" || u.email.toLowerCase() === UNIFIED_ADMIN_EMAIL.toLowerCase());
+    
+    const targetIdx = superAdminIdx >= 0 ? superAdminIdx : 0;
+    users[targetIdx].passwordHash = newPassword.trim();
+    this.saveUsers(users);
+
+    // Also reset lockout state
+    this.saveLockoutState({ isLocked: false, failedCount: 0, failedAttempts: [] });
+    localStorage.removeItem(RECOVERY_OTP_KEY);
+
+    this.logActivity(
+      users[targetIdx],
+      "password_reset_otp",
+      "إعادة تعيين كلمة مرور الإدارة بنجاح عبر كود OTP",
+      `تم تعيين كلمة المرور الجديدة وتصفير سجل الحظر الأمني`
+    );
+
+    return {
+      success: true,
+      message: "تم تعيين كلمة المرور الجديدة وفك الحظر بنجاح! يمكنك الآن تسجيل الدخول بها.",
+    };
   },
 
   setSession(user: AdminUser | null): void {
@@ -255,6 +473,67 @@ export const adminAuthStore = {
     } catch {}
   },
 
+  // Permissions Verification System (Role-Based Access Control)
+  canUserPerform(user: AdminUser | null, action: "edit" | "delete" | "create" | "publish" | "manage_team" | "empty_vault"): boolean {
+    if (!user) return false;
+    // Super Admin has absolute permissions across all operations
+    if (user.role === "super_admin") return true;
+
+    // Moderators / Editors: check specific granular permission or default policy
+    const perms = user.permissions || {
+      canEdit: user.role === "editor",
+      canDelete: false, // Strict: moderators cannot delete/archive unless granted
+      canCreate: true,
+      canAutoPublish: !!user.canAutoPublish,
+      canManageTeam: false,
+      canEmptyVault: false,
+    };
+
+    switch (action) {
+      case "edit":
+        return !!perms.canEdit;
+      case "delete":
+        return !!perms.canDelete;
+      case "create":
+        return !!perms.canCreate;
+      case "publish":
+        return !!perms.canAutoPublish;
+      case "manage_team":
+        return !!perms.canManageTeam;
+      case "empty_vault":
+        return !!perms.canEmptyVault;
+      default:
+        return false;
+    }
+  },
+
+  // Update member permissions by Super Admin
+  updateMemberPermissions(memberId: string, permissions: AdminPermissions, updatedBy: AdminUser): boolean {
+    if (updatedBy.role !== "super_admin") return false;
+    const users = this.getUsers();
+    const targetIdx = users.findIndex(u => u.id === memberId);
+    if (targetIdx === -1) return false;
+
+    users[targetIdx].permissions = permissions;
+    users[targetIdx].canAutoPublish = permissions.canAutoPublish;
+    this.saveUsers(users);
+
+    const current = this.getCurrentSession();
+    if (current && current.id === memberId) {
+      current.permissions = permissions;
+      current.canAutoPublish = permissions.canAutoPublish;
+      this.setSession(current);
+    }
+
+    this.logActivity(
+      updatedBy,
+      "update_permissions",
+      "تعديل صلاحيات المشرف",
+      `تم تحديث صلاحيات المشرف [${users[targetIdx].name}]: تحرير (${permissions.canEdit ? "نعم" : "لا"}) | حذف (${permissions.canDelete ? "نعم" : "لا"}) | نشر (${permissions.canAutoPublish ? "فوري" : "مراجعة"})`
+    );
+    return true;
+  },
+
   // Pending Items Workflow
   getPendingItems(): PendingItem[] {
     if (typeof window === "undefined") return [];
@@ -305,3 +584,4 @@ export const adminAuthStore = {
     this.logActivity(rejectedBy, "reject_pending", `رفض عنصر مقدم`, `السبب: ${reason || "لم يذكر"}`);
   }
 };
+

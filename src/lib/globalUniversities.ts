@@ -565,3 +565,104 @@ export const GLOBAL_COUNTRIES: GlobalCountryStat[] = [
     ]
   }
 ];
+
+export const GLOBAL_LANG_TRANSLATIONS: Record<string, string> = {
+  "التركية": "Turkish",
+  "الإنجليزية": "English",
+  "الإنجليزية 100%": "100% English",
+  "الروسية": "Russian",
+  "الصينية (ماندرين)": "Chinese (Mandarin)",
+  "المجرية (مع سنة لغة)": "Hungarian (with prep year)",
+  "الألمانية": "German",
+  "الكورية": "Korean",
+  "اليابانية": "Japanese",
+  "الفرنسية": "French",
+  "الإيطالية": "Italian",
+  "الرومانية (مع سنة لغة مجانية)": "Romanian (with free prep year)",
+  "السويدية": "Swedish",
+  "الهولندية": "Dutch",
+  "البولندية": "Polish",
+  "التشيكية": "Czech",
+  "الإسبانية": "Spanish",
+  "الأذرية": "Azerbaijani",
+  "اللغات الأوروبية المشتركة": "Pan-European Languages",
+};
+
+export const GLOBAL_DEGREE_TRANSLATIONS: Record<string, string> = {
+  "بكالوريوس": "Bachelor's",
+  "ماجستير": "Master's",
+  "دكتوراه": "PhD",
+  "بحوث": "Research",
+  "أبحاث ما بعد الدكتوراه": "Postdoctoral Research",
+  "زمالات بحثية": "Research Fellowships",
+  "كليات التكنولوجيا": "Technology Colleges",
+  "الطب البشري وطب الأسنان والصيدلة (برامج متكاملة)": "Medicine, Dentistry & Pharmacy (Integrated)",
+  "إقامة طبية (Residency)": "Medical Residency",
+  "ماجستير لمدة عام واحد": "1-Year Master's",
+  "ماجستير مشترك": "Joint Master's",
+};
+
+export const GLOBAL_CITY_TRANSLATIONS: Record<string, string> = {
+  "أنقرة": "Ankara",
+  "إسطنبول": "Istanbul",
+  "موسكو": "Moscow",
+  "سانت بطرسبرغ": "Saint Petersburg",
+  "بكين": "Beijing",
+  "هانغتشو": "Hangzhou",
+  "دبرتسن": "Debrecen",
+  "بودابست": "Budapest",
+  "ميونخ": "Munich",
+  "هايدلبرغ": "Heidelberg",
+  "أكسفورد": "Oxford",
+  "كامبريدج": "Cambridge",
+  "لندن": "London",
+  "كاليفورنيا": "California",
+  "سيول": "Seoul",
+  "دايجون": "Daejeon",
+  "طوكيو": "Tokyo",
+  "كيوتو": "Kyoto",
+  "عواصم أوروبية متعددة": "Multiple EU Capitals",
+  "بولونيا": "Bologna",
+  "ميلانو": "Milan",
+  "روما": "Rome",
+  "بوخارست": "Bucharest",
+  "باريس": "Paris",
+  "ستوكهولم": "Stockholm",
+  "زيورخ": "Zurich",
+  "لوزان": "Lausanne",
+  "مونتريال": "Montreal",
+  "تورونتو": "Toronto",
+  "سيدني": "Sydney",
+  "ملبورن": "Melbourne",
+  "أمستردام": "Amsterdam",
+  "دلفت": "Delft",
+  "وارسو": "Warsaw",
+  "كراكوف": "Krakow",
+  "براغ": "Prague",
+  "برنو": "Brno",
+  "بروكسل": "Brussels",
+  "لوفان": "Leuven",
+  "مدريد": "Madrid",
+  "برشلونة": "Barcelona",
+  "فيينا": "Vienna",
+  "إنسبروك": "Innsbruck",
+  "باكو": "Baku",
+  "كوالالمبور": "Kuala Lumpur",
+  "بيراك": "Perak",
+};
+
+export const getStudyLanguageLabels = (languages: string[], lang: "ar" | "en" = "ar"): string[] => {
+  if (lang === "ar") return languages;
+  return languages.map((l) => GLOBAL_LANG_TRANSLATIONS[l] || l);
+};
+
+export const getDegreeLevelLabel = (degree: string, lang: "ar" | "en" = "ar"): string => {
+  if (lang === "ar") return degree;
+  return GLOBAL_DEGREE_TRANSLATIONS[degree] || degree;
+};
+
+export const getGlobalCityLabel = (city: string, lang: "ar" | "en" = "ar"): string => {
+  if (lang === "ar") return city;
+  return GLOBAL_CITY_TRANSLATIONS[city] || city;
+};
+

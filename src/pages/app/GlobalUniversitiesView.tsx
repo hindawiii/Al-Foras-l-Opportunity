@@ -5,7 +5,14 @@ import {
   Building2, Award, Search, ChevronRight, X, GraduationCap, Scale,
   BookOpen, Wallet, Home, CalendarDays, FileText, ListChecks, Map as MapIcon
 } from "lucide-react";
-import { GLOBAL_COUNTRIES, type GlobalCountryStat } from "@/lib/globalUniversities";
+import {
+  GLOBAL_COUNTRIES,
+  type GlobalCountryStat,
+  getStudyLanguageLabels,
+  getDegreeLevelLabel,
+  getGlobalCityLabel,
+} from "@/lib/globalUniversities";
+import { getFacultyLabel } from "@/lib/arabUniversities";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -80,10 +87,10 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
           <div className="flex items-center justify-between">
             <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
               <Building2 className="w-4 h-4 text-primary" />
-              <span>{isRtl ? "اختر الدولة العالمية" : "Select Global Country"}</span>
+              <span>{t("globalUniSelectCountry")}</span>
             </p>
             <span className="text-[11px] text-muted-foreground">
-              {filteredCountries.length} {isRtl ? "دولة" : "countries"}
+              {t("globalUniCountryCount").replace("{n}", String(filteredCountries.length))}
             </span>
           </div>
 
@@ -97,7 +104,7 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              {isRtl ? "كافة الدول المانحة" : "All Countries"} ({GLOBAL_COUNTRIES.length})
+              {t("globalUniAllCountries")} ({GLOBAL_COUNTRIES.length})
             </button>
             <button
               onClick={() => setFilterTier("guaranteed")}
@@ -107,7 +114,7 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <span>{isRtl ? "منح سنوية مضمونة" : "Guaranteed"}</span>
+              <span>{t("globalUniGuaranteed")}</span>
               <span className="text-[10px] bg-emerald-500/20 px-1.5 py-0.2 rounded-full font-bold">
                 {GLOBAL_COUNTRIES.filter((g) => g.tier === "guaranteed").length}
               </span>
@@ -120,7 +127,7 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <span>{isRtl ? "دورية / نخبوية" : "Periodic"}</span>
+              <span>{t("globalUniPeriodic")}</span>
               <span className="text-[10px] bg-amber-500/20 px-1.5 py-0.2 rounded-full font-bold">
                 {GLOBAL_COUNTRIES.filter((g) => g.tier === "periodic").length}
               </span>
@@ -149,7 +156,7 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
                 >
                   {isGuaranteed && (
                     <span className={`absolute top-2.5 ${isRtl ? "left-2.5" : "right-2.5"} text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-bold`}>
-                      {isRtl ? "سنوية مضمونة" : "Guaranteed"}
+                      {t("globalUniGuaranteedBadge")}
                     </span>
                   )}
                   <div className="text-2xl mb-1">{c.flag}</div>
@@ -157,14 +164,14 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
                     {ar ? c.country : c.countryEn}
                   </p>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
-                    {c.topUniversities.length} {isRtl ? "جامعات معتمدة" : "universities"}
+                    {c.topUniversities.length} {t("globalUniAccreditedUnis")}
                   </p>
                   <div className="mt-2 flex items-center gap-1 flex-wrap">
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-background/80 border border-primary/20 text-muted-foreground font-medium">
                       {ar ? c.fundingType : c.fundingTypeEn}
                     </span>
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 border border-primary/30 text-primary font-medium">
-                      {isRtl ? "منح متاحة" : "Scholarships"}
+                      {t("globalUniScholarshipsAvailable")}
                     </span>
                   </div>
                 </motion.button>
@@ -186,10 +193,10 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
               className="h-9 px-3.5 rounded-full text-xs font-bold border border-primary/30 bg-card/80 text-primary flex items-center gap-1.5 hover:bg-primary/10 transition-all"
             >
               <ChevronRight className={`w-3.5 h-3.5 ${isRtl ? "" : "rotate-180"}`} />
-              <span>{isRtl ? `← العودة إلى قائمة الدول (${currentCountry.country})` : `← Back to Countries (${currentCountry.countryEn})`}</span>
+              <span>{t("arabUniBackToCountries")} ({isRtl ? currentCountry.country : currentCountry.countryEn})</span>
             </button>
             <p className="text-xs text-muted-foreground font-medium">
-              {isRtl ? `تم العثور على ${filteredUniversities.length} جامعة معتمدة` : `Found ${filteredUniversities.length} accredited universities`}
+              {t("globalUniFoundUnis").replace("{count}", String(filteredUniversities.length))}
             </p>
           </div>
 
@@ -206,9 +213,9 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
                     </span>
                   </h3>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {isRtl
-                      ? `يتضمن ${currentCountry.topUniversities.length} جامعات عالمية مرموقة · ${currentCountry.fundingType}`
-                      : `Features ${currentCountry.topUniversities.length} prestigious global universities · ${currentCountry.fundingTypeEn}`}
+                    {t("globalUniBannerDesc")
+                      .replace("{count}", String(currentCountry.topUniversities.length))
+                      .replace("{funding}", ar ? currentCountry.fundingType : currentCountry.fundingTypeEn)}
                   </p>
                 </div>
               </div>
@@ -263,7 +270,7 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={isRtl ? "ابحث عن اسم الجامعة، المدينة، أو التخصص في هذا البلد..." : "Search university name, city, or specialization..."}
+                placeholder={t("globalUniSearchPlaceholder")}
                 className={`bg-background/70 border-border text-xs h-9 ${isRtl ? "pr-9 pl-3" : "pl-9 pr-3"} ${alignClass}`}
                 dir={dir}
               />
@@ -281,7 +288,7 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
           {/* Universities List - Matching Screenshot 2 Exactly */}
           <div className="space-y-3">
             {filteredUniversities.map((uni, i) => {
-              const cityText = ar ? uni.city : uni.cityEn;
+              const cityText = ar ? uni.city : (uni.cityEn || getGlobalCityLabel(uni.city, lang));
               const countryText = ar ? currentCountry.country : currentCountry.countryEn;
 
               return (
@@ -312,7 +319,7 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
 
                     <div className="flex flex-col items-end gap-1.5">
                       <span className="text-[10px] px-2 py-0.5 rounded-full border font-bold bg-primary/15 border-primary/30 text-primary">
-                        {uni.ranking || (isRtl ? "عالمية رائدة" : "World Leading")}
+                        {uni.ranking || t("globalUniLeadingBadge")}
                       </span>
                     </div>
                   </div>
@@ -326,32 +333,32 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
                   <div className="flex flex-wrap gap-1.5 mb-3">
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted/40 border border-primary/10 text-muted-foreground flex items-center gap-1">
                       <Globe2 className="w-3 h-3 text-primary" />
-                      {currentCountry.studyLanguages.join(" / ")}
+                      {getStudyLanguageLabels(currentCountry.studyLanguages, lang).join(" / ")}
                     </span>
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 border border-primary/30 text-primary font-medium flex items-center gap-1">
                       <Award className="w-3 h-3" />
-                      {isRtl ? "مشمولة بالمنحة الحكومية" : "Scholarship Eligible"}
+                      {t("globalUniScholarshipEligible")}
                     </span>
                     {currentCountry.degreeLevels.map((lvl) => (
                       <span
                         key={lvl}
                         className="text-[10px] px-2 py-0.5 rounded-full bg-primary/5 border border-primary/20 text-foreground/80"
                       >
-                        {lvl}
+                        {getDegreeLevelLabel(lvl, lang)}
                       </span>
                     ))}
                   </div>
 
                   {/* Percentage & Admission Requirements Bar + Action Links */}
-                  <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-border/60">
+                  <div className={`flex items-center justify-between gap-2 pt-2.5 border-t border-border/60 ${isRtl ? "" : "flex-row-reverse"}`}>
                     <div className={alignClass}>
                       <p className="text-[10px] text-muted-foreground">
-                        {isRtl ? "حالة التمويل الأكاديمي" : "Funding Coverage"}
+                        {t("globalUniFundingStatus")}
                       </p>
                       <p className="text-sm font-bold text-emerald-400 flex items-center gap-1">
                         <span>{ar ? currentCountry.fundingType : currentCountry.fundingTypeEn}</span>
                         <span className={`${isRtl ? "mr-1.5" : "ml-1.5"} inline-flex items-center gap-0.5 text-[10px] text-emerald-400 font-bold`}>
-                          <Sparkles className="w-3 h-3" /> {isRtl ? "مؤهل للتقديم ✓" : "Eligible ✓"}
+                          <Sparkles className="w-3 h-3" /> {t("globalUniEligibleApply")}
                         </span>
                       </p>
                     </div>
@@ -360,7 +367,7 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
                       <Button asChild size="sm" variant="luxe" className="h-8 rounded-xl text-[11px]">
                         <a href={uni.website} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
                           <ExternalLink className={`w-3 h-3 ${isRtl ? "ml-1" : "mr-1"}`} />
-                          {isRtl ? "الموقع" : "Website"}
+                          {t("globalUniWebsite")}
                         </a>
                       </Button>
                     </div>
@@ -375,7 +382,7 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
                     className="mt-3 w-full h-10 rounded-xl bg-gold-gradient text-primary-foreground text-xs font-bold flex items-center justify-center gap-2 shadow-gold hover:brightness-105 active:scale-[0.99] transition-all"
                   >
                     <Building2 className="w-4 h-4" />
-                    <span>{isRtl ? "التفاصيل الكاملة" : "Full Details"}</span>
+                    <span>{t("globalUniFullDetails")}</span>
                   </button>
                 </motion.div>
               );
@@ -383,13 +390,13 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
 
             {filteredUniversities.length === 0 && (
               <div className="rounded-2xl border border-primary/20 bg-card/40 p-8 text-center text-sm text-muted-foreground space-y-2">
-                <p>{isRtl ? "لا توجد جامعات مطابقة للبحث الحالي." : "No universities match your search."}</p>
+                <p>{t("globalUniNoResults")}</p>
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery("")}
                     className="text-xs text-primary font-bold underline hover:no-underline"
                   >
-                    {isRtl ? "إلغاء البحث للبدء من جديد" : "Reset search"}
+                    {t("globalUniResetSearch")}
                   </button>
                 )}
               </div>
@@ -403,7 +410,7 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
         <SheetContent side="bottom" dir={dir} className="max-h-[90vh] overflow-y-auto bg-card/95 backdrop-blur-xl border-primary/20 rounded-t-3xl">
           {selectedUniDetail && (() => {
             const { uni, country } = selectedUniDetail;
-            const cityText = ar ? uni.city : uni.cityEn;
+            const cityText = ar ? uni.city : (uni.cityEn || getGlobalCityLabel(uni.city, lang));
             const countryText = ar ? country.country : country.countryEn;
 
             // Curated faculties/specializations based on country and university highlights
@@ -454,7 +461,7 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
             return (
               <>
                 <SheetHeader>
-                  <div className="flex items-center gap-3 mb-2">
+                  <div className={`flex items-center gap-3 mb-2 ${isRtl ? "" : "flex-row-reverse"}`}>
                     <div className="w-12 h-12 rounded-2xl bg-gold-gradient flex items-center justify-center text-2xl shadow-gold flex-shrink-0">
                       {country.flag}
                     </div>
@@ -478,37 +485,39 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
                   {/* 6-Cell Information Grid (Matching Screenshot 1 & Arab Modal Exactly) */}
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div className="rounded-xl border border-primary/15 bg-background/60 p-3">
-                      <p className="text-muted-foreground">{isRtl ? "المدينة" : "City"}</p>
+                      <p className="text-muted-foreground">{t("globalUniCityLabel")}</p>
                       <p className="text-foreground font-bold mt-1">{cityText}</p>
                     </div>
                     <div className="rounded-xl border border-primary/15 bg-background/60 p-3">
-                      <p className="text-muted-foreground">{isRtl ? "الحد الأدنى" : "Min. Admission"}</p>
+                      <p className="text-muted-foreground">{t("globalUniMinAdmissionLabel")}</p>
                       <p className="text-foreground font-bold mt-1 text-primary">{uni.ranking || (isRtl ? "تنافسي / 85%+" : "85%+")}</p>
                     </div>
                     <div className="rounded-xl border border-primary/15 bg-background/60 p-3">
-                      <p className="text-muted-foreground">{isRtl ? "النوع" : "Institution Type"}</p>
-                      <p className="text-foreground font-bold mt-1">{isRtl ? "حكومية دولية معتمدة" : "Accredited Public/State"}</p>
+                      <p className="text-muted-foreground">{t("globalUniInstTypeLabel")}</p>
+                      <p className="text-foreground font-bold mt-1">{t("globalUniInstTypeValue")}</p>
                     </div>
                     <div className="rounded-xl border border-primary/15 bg-background/60 p-3">
-                      <p className="text-muted-foreground">{isRtl ? "لغة الدراسة" : "Instruction Language"}</p>
-                      <p className="text-foreground font-bold mt-1">{country.studyLanguages.join(" / ")}</p>
+                      <p className="text-muted-foreground">{t("globalUniLangLabel")}</p>
+                      <p className="text-foreground font-bold mt-1">
+                        {getStudyLanguageLabels(country.studyLanguages, lang).join(" / ")}
+                      </p>
                     </div>
                     <div className="rounded-xl border border-primary/15 bg-background/60 p-3 col-span-2 sm:col-span-1">
                       <p className="text-muted-foreground flex items-center gap-1">
                         <Wallet className="w-3 h-3 text-primary" />
-                        {isRtl ? "الرسوم الدراسية" : "Tuition Fee"}
+                        {t("globalUniTuitionLabel")}
                       </p>
                       <p className="text-foreground font-bold mt-1 text-emerald-400">
-                        {isRtl ? "مشمولة بمنح حكومية ممولة بالكامل أو رسوم رمزية" : "Fully Covered by Government Scholarship / Subsidized"}
+                        {t("globalUniTuitionCovered")}
                       </p>
                     </div>
                     <div className="rounded-xl border border-primary/15 bg-background/60 p-3 col-span-2 sm:col-span-1">
                       <p className="text-muted-foreground flex items-center gap-1">
                         <Home className="w-3 h-3 text-primary" />
-                        {isRtl ? "تكلفة المعيشة" : "Living Cost & Stipend"}
+                        {t("globalUniLivingLabel")}
                       </p>
                       <p className="text-foreground font-bold mt-1">
-                        {isRtl ? "مغطاة براتب شهري حكومي منتظم" : "Covered with Monthly Living Allowance"}
+                        {t("globalUniLivingCovered")}
                       </p>
                     </div>
                   </div>
@@ -517,12 +526,13 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
                   <div className="rounded-xl border border-primary/15 bg-background/60 p-3">
                     <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
                       <CalendarDays className="w-4 h-4 text-primary" />
-                      {isRtl ? "مواعيد التقديم" : "Application Deadlines"}
+                      {t("globalUniDeadlinesTitle")}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
-                      {ar
-                        ? `التقديم الرئيسي: ${country.applicationWindow} · التقديم التكميلي للفصول اللاحقة حسب تقويم الجامعة`
-                        : `Main Cycle: ${country.applicationWindowEn} · Supplementary intake subject to academic calendar`}
+                      {t("globalUniDeadlinesDesc").replace(
+                        "{window}",
+                        ar ? country.applicationWindow : country.applicationWindowEn
+                      )}
                     </p>
                   </div>
 
@@ -530,7 +540,7 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
                   <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 space-y-2">
                     <p className="font-bold text-emerald-400 text-xs flex items-center gap-1.5">
                       <ShieldCheck className="w-4 h-4" />
-                      <span>{isRtl ? "المنحة الحكومية المعتمدة المرتبطة بهذه الجامعة:" : "Associated Government Scholarship:"}</span>
+                      <span>{t("globalUniAssociatedScholarshipTitle")}</span>
                     </p>
                     <p className="font-bold text-foreground text-sm">
                       {ar ? country.scholarshipName : country.scholarshipNameEn}
@@ -549,7 +559,7 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
                   <div>
                     <p className="text-xs font-bold text-foreground flex items-center gap-1.5 mb-2">
                       <Building2 className="w-4 h-4 text-primary" />
-                      {isRtl ? "الكليات والتخصصات" : "Faculties & Disciplines"}
+                      {t("globalUniFacultiesTitle")}
                     </p>
                     <div className="flex flex-wrap gap-1.5">
                       {defaultFaculties.map((fac) => (
@@ -564,7 +574,7 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
                   <div>
                     <p className="text-xs font-bold text-foreground flex items-center gap-1.5 mb-2">
                       <FileText className="w-4 h-4 text-primary" />
-                      {isRtl ? "المستندات المطلوبة" : "Required Documents"}
+                      {t("globalUniDocsTitle")}
                     </p>
                     <ul className="space-y-1.5">
                       {requiredDocs.map((doc, idx) => (
@@ -580,7 +590,7 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
                   <div>
                     <p className="text-xs font-bold text-foreground flex items-center gap-1.5 mb-2">
                       <ListChecks className="w-4 h-4 text-primary" />
-                      {isRtl ? "خطوات التقديم" : "Application Steps"}
+                      {t("globalUniStepsTitle")}
                     </p>
                     <ol className="space-y-1.5">
                       {appSteps.map((step, i) => (
@@ -603,7 +613,7 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
                       className="h-11 rounded-xl border border-primary/30 bg-background/60 text-primary text-xs font-bold flex items-center justify-center gap-2 hover:bg-primary/10 transition-colors"
                     >
                       <MapIcon className="w-4 h-4" />
-                      {isRtl ? "الموقع على الخريطة" : "Location on Map"}
+                      {t("globalUniLocationMap")}
                     </a>
                     <a
                       href={uni.website}
@@ -612,7 +622,7 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
                       className="h-11 rounded-xl bg-gold-gradient text-primary-foreground text-xs font-bold flex items-center justify-center gap-2 hover:brightness-105 shadow-sm transition-all"
                     >
                       <ExternalLink className="w-4 h-4" />
-                      {isRtl ? "زيارة الموقع الرسمي" : "Visit Official Website"}
+                      {t("globalUniVisitOfficialSite")}
                     </a>
                   </div>
                 </div>
@@ -624,3 +634,4 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
     </div>
   );
 };
+

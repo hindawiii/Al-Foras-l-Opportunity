@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ShieldCheck, Sparkles, Plus, Trash2, Edit3, ExternalLink, Check, X,
@@ -6,17 +6,19 @@ import {
   Briefcase, GraduationCap, Lock, Eye, EyeOff, Users, FileCheck2, History,
   KeyRound, Mail, UserCheck, ShieldAlert, CheckCircle2, XCircle,
   Archive, RotateCcw, Menu, ChevronRight, ChevronLeft, AlertTriangle,
-  Upload, Layers, CheckSquare, Square, MinusSquare, Building2, Globe2
+  Upload, Layers, CheckSquare, Square, MinusSquare, Building2, Globe2,
+  Crown, Shield, Unlock, HelpCircle, LockKeyhole
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Scholarship } from "@/lib/mockData";
 import { dynamicStore, CustomJobItem, ArchivedItem } from "@/lib/dynamicStore";
-import { adminAuthStore, AdminUser, AuditLog, PendingItem, AdminRole } from "@/lib/adminAuthStore";
+import { adminAuthStore, AdminUser, AuditLog, PendingItem, AdminRole, LockoutState, UNIFIED_ADMIN_EMAIL } from "@/lib/adminAuthStore";
 import { ARAB_UNIVERSITIES, ARAB_COUNTRY_STATS } from "@/lib/arabUniversities";
 import { GLOBAL_COUNTRIES } from "@/lib/globalUniversities";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { SecurityPasswordManager } from "@/components/foras/SecurityPasswordManager";
+import { StarMaskedInput } from "@/components/foras/StarMaskedInput";
 
 export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
   const { lang, dir, t } = useLanguage();
@@ -48,10 +50,195 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
   const [pendingItems, setPendingItems] = useState<PendingItem[]>([]);
   const [archivedItems, setArchivedItems] = useState<ArchivedItem[]>([]);
 
+  // Lockout State
+  const [lockoutState, setLockoutState] = useState<LockoutState>(() => adminAuthStore.getLockoutState());
+  const [isShakeError, setIsShakeError] = useState(false);
+
   // Login form state
+  const [loginRole, setLoginRole] = useState<"super_admin" | "moderator">("super_admin");
   const [identifierInput, setIdentifierInput] = useState("alforas.one@gmail.com");
   const [passwordInput, setPasswordInput] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [usePinMode, setUsePinMode] = useState(true);
+  const [pinDigits, setPinDigits] = useState<string[]>(["", "", "", ""]);
+  // Transient reveal map for 1-second visual feedback per digit
+  const [revealedIndices, setRevealedIndices] = useState<Record<number, boolean>>({});
+  const revealTimers = useRef<Record<number, NodeJS.Timeout>>({});
+  const pinInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    const currentTimers = revealTimers.current;
+    return () => {
+      Object.values(currentTimers).forEach(t => clearTimeout(t));
+    };
+  }, []);
+
+  // Forgot Password / OTP Recovery Modal State
+  const [isRecoveryOpen, setIsRecoveryOpen] = useState(false);
+  const [recoveryStep, setRecoveryStep] = useState<"send_otp" | "verify_otp" | "new_password">("send_otp");
+  const [recoveryOtpDigits, setRecoveryOtpDigits] = useState<string[]>(["", "", "", "", "", ""]);
+  const [recoveryNewPassword, setRecoveryNewPassword] = useState("");
+  const [recoveryConfirmPassword, setRecoveryConfirmPassword] = useState("");
+  const [showRecoveryNewPass, setShowRecoveryNewPass] = useState(false);
+  const [showRecoveryConfirmPass, setShowRecoveryConfirmPass] = useState(false);
+  const [isSendingRecoveryOtp, setIsSendingRecoveryOtp] = useState(false);
+  const recoveryOtpRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Update identifier when switching roles
+  useEffect(() => {
+    if (loginRole === "super_admin") {
+      setIdentifierInput("alforas.one@gmail.com");
+      setPinDigits(["", "", "", ""]);
+      setPasswordInput("");
+    } else {
+      setIdentifierInput("scholarships@foras.app");
+      setPinDigits(["", "", "", "", "", ""]);
+      setPasswordInput("");
+    }
+  }, [loginRole]);
+
+  // Synchronize pinDigits to passwordInput
+  useEffect(() => {
+    if (usePinMode) {
+      setPasswordInput(pinDigits.join(""));
+    }
+  }, [pinDigits, usePinMode]);
+
+  // Listen to Lockout Updates
+  useEffect(() => {
+    const handleLockout = (e: any) => {
+      if (e.detail) setLockoutState(e.detail);
+      else setLockoutState(adminAuthStore.getLockoutState());
+    };
+    window.addEventListener("foras:lockout-updated", handleLockout);
+    return () => window.removeEventListener("foras:lockout-updated", handleLockout);
+  }, []);
+
+  const triggerErrorShake = () => {
+    setIsShakeError(true);
+    setTimeout(() => setIsShakeError(false), 600);
+  };
+
+  const triggerTransientReveal = (index: number) => {
+    // Clear existing timer for this slot
+    if (revealTimers.current[index]) {
+      clearTimeout(revealTimers.current[index]);
+    }
+    // Set revealed state
+    setRevealedIndices(prev => ({ ...prev, [index]: true }));
+
+    // Re-mask after exactly 1 second (1000ms)
+    revealTimers.current[index] = setTimeout(() => {
+      setRevealedIndices(prev => ({ ...prev, [index]: false }));
+    }, 1000);
+  };
+
+  const handlePinDigitChange = (index: number, value: string) => {
+    const clean = value.replace(/[^\d]/g, "").slice(-1);
+    const updated = [...pinDigits];
+    updated[index] = clean;
+    setPinDigits(updated);
+
+    if (clean) {
+      triggerTransientReveal(index);
+      if (index < pinDigits.length - 1) {
+        pinInputRefs.current[index + 1]?.focus();
+      }
+    }
+  };
+
+  const handlePinKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace") {
+      if (revealTimers.current[index]) clearTimeout(revealTimers.current[index]);
+      setRevealedIndices(prev => ({ ...prev, [index]: false }));
+
+      if (!pinDigits[index] && index > 0) {
+        if (revealTimers.current[index - 1]) clearTimeout(revealTimers.current[index - 1]);
+        setRevealedIndices(prev => ({ ...prev, [index - 1]: false }));
+        const updated = [...pinDigits];
+        updated[index - 1] = "";
+        setPinDigits(updated);
+        pinInputRefs.current[index - 1]?.focus();
+      } else {
+        const updated = [...pinDigits];
+        updated[index] = "";
+        setPinDigits(updated);
+      }
+    } else if (e.key === "ArrowLeft") {
+      if (isRtl && index < pinDigits.length - 1) {
+        pinInputRefs.current[index + 1]?.focus();
+      } else if (!isRtl && index > 0) {
+        pinInputRefs.current[index - 1]?.focus();
+      }
+    } else if (e.key === "ArrowRight") {
+      if (isRtl && index > 0) {
+        pinInputRefs.current[index - 1]?.focus();
+      } else if (!isRtl && index < pinDigits.length - 1) {
+        pinInputRefs.current[index + 1]?.focus();
+      }
+    }
+  };
+
+  const handlePinPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData("text").replace(/[^\d]/g, "");
+    if (!pastedData) return;
+    const digits = pastedData.slice(0, pinDigits.length).split("");
+    const newDigits = [...pinDigits];
+    for (let i = 0; i < newDigits.length; i++) {
+      newDigits[i] = digits[i] || "";
+      if (digits[i]) triggerTransientReveal(i);
+    }
+    setPinDigits(newDigits);
+    const nextIdx = Math.min(digits.length, pinDigits.length - 1);
+    pinInputRefs.current[nextIdx]?.focus();
+  };
+
+  // Perform Login
+  const performLogin = (idValue: string, passValue: string) => {
+    if (!idValue.trim() || !passValue.trim()) {
+      toast.error(isRtl ? "يرجى إدخال البريد الإلكتروني أو اسم المستخدم وكلمة المرور" : "Please enter credentials");
+      return;
+    }
+
+    const res = adminAuthStore.login(idValue, passValue, loginRole);
+    setLockoutState(adminAuthStore.getLockoutState());
+
+    if (res.success && res.user) {
+      setCurrentUser(res.user);
+      loadData();
+      toast.success(
+        isRtl
+          ? `مرحباً بك يا ${res.user.name} (${res.user.role === "super_admin" ? "المدير العام" : "مشرف"})`
+          : `Welcome, ${res.user.name}`
+      );
+    } else {
+      triggerErrorShake();
+      if (res.isLocked) {
+        toast.error(res.message || (isRtl ? "تم حظر الحساب لمحاولات خاطئة متكررة" : "Account locked"));
+      } else {
+        toast.error(res.message || (isRtl ? "بيانات الدخول غير صحيحة" : "Invalid login credentials"));
+      }
+    }
+  };
+
+  // Auto-Submit when all PIN digits are filled!
+  useEffect(() => {
+    if (usePinMode && !currentUser && !lockoutState.isLocked) {
+      const isComplete = pinDigits.every(d => d !== "");
+      if (isComplete) {
+        const fullPin = pinDigits.join("");
+        performLogin(identifierInput, fullPin);
+      }
+    }
+  }, [pinDigits, usePinMode, currentUser, lockoutState.isLocked]);
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    performLogin(identifierInput, passwordInput);
+  };
+
 
   // Password change state
   const [newPasswordInput, setNewPasswordInput] = useState("");
@@ -121,27 +308,6 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
     setLastSelectedIndex(null);
     setSearchQuery("");
   }, [activeTab]);
-
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!identifierInput.trim() || !passwordInput.trim()) {
-      toast.error(isRtl ? "يرجى إدخال البريد الإلكتروني أو اسم المستخدم وكلمة المرور" : "Please enter credentials");
-      return;
-    }
-
-    const res = adminAuthStore.login(identifierInput, passwordInput);
-    if (res.success && res.user) {
-      setCurrentUser(res.user);
-      loadData();
-      toast.success(
-        isRtl
-          ? `مرحباً بك يا ${res.user.name} (${res.user.role === "super_admin" ? "المدير العام" : "مشرف"})`
-          : `Welcome, ${res.user.name}`
-      );
-    } else {
-      toast.error(res.message || (isRtl ? "بيانات الدخول غير صحيحة" : "Invalid login credentials"));
-    }
-  };
 
   const handleLogout = () => {
     adminAuthStore.logout();
@@ -243,8 +409,17 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
     setLastSelectedIndex(index);
   };
 
-  // Perform single delete/archive with security check
+  // Perform single delete/archive with strict permission check
   const requestDelete = (id: string, type: "scholarship" | "job", title: string) => {
+    if (!adminAuthStore.canUserPerform(currentUser, "delete")) {
+      toast.error(
+        isRtl
+          ? "غير مصرح لك بحذف أو أرشفة العناصر. هذه الصلاحية مقصورة على المدير العام أو المشرفين الممنوحين إذناً خاصاً."
+          : "You do not have permission to delete or archive items."
+      );
+      return;
+    }
+
     if (currentUser?.role === "super_admin") {
       // Direct Soft-Delete & Archive
       dynamicStore.archiveItem(id, type, currentUser);
@@ -263,6 +438,11 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
 
   const confirmSupervisorDelete = () => {
     if (!pendingDeleteAction) return;
+    if (!adminAuthStore.canUserPerform(currentUser, "delete")) {
+      toast.error(isRtl ? "غير مصرح لك بالحذف" : "Permission denied");
+      setIsDeletingConfirmOpen(false);
+      return;
+    }
     const { id, type, title } = pendingDeleteAction;
     dynamicStore.archiveItem(id, type, currentUser, "أرشفة من قبل المشرف مع إشعار الإدارة");
     window.dispatchEvent(
@@ -282,6 +462,14 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
   // Bulk Archive Action (Video 1 & 2)
   const handleBulkArchive = () => {
     if (selectedIds.length === 0) return;
+    if (!adminAuthStore.canUserPerform(currentUser, "delete")) {
+      toast.error(
+        isRtl
+          ? "غير مصرح لك بالأرشفة الجماعية. يرجى التواصل مع المدير العام."
+          : "You do not have permission for bulk archiving."
+      );
+      return;
+    }
     const count = selectedIds.length;
     const type = activeTab === "scholarships" ? "scholarship" : "job";
     
@@ -371,7 +559,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
   return (
     <div
       dir={dir}
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/85 backdrop-blur-md overflow-hidden"
+      className="fixed inset-0 z-50 flex items-center justify-center p-1.5 xs:p-2 sm:p-4 md:p-6 bg-black/85 backdrop-blur-md overflow-hidden"
     >
       {/* Backdrop Click Dismiss */}
       <div className="fixed inset-0" onClick={onClose} />
@@ -382,32 +570,39 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.94, opacity: 0, y: 15 }}
         transition={{ type: "spring", damping: 28, stiffness: 320 }}
-        className="relative w-full max-w-6xl h-[92vh] max-h-[900px] bg-card/95 border-2 border-primary/40 rounded-3xl shadow-[0_0_60px_-10px_hsl(43_74%_49%/0.35)] backdrop-blur-2xl overflow-hidden z-10 flex flex-col"
+        className="relative w-full max-w-6xl h-[96vh] sm:h-[92vh] max-h-[920px] bg-card/95 border-2 border-primary/40 rounded-2xl sm:rounded-3xl shadow-[0_0_60px_-10px_hsl(43_74%_49%/0.35)] backdrop-blur-2xl overflow-hidden z-10 flex flex-col"
         onClick={e => e.stopPropagation()}
       >
         {/* Top Header Bar */}
-        <header className="relative flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3.5 border-b border-primary/20 bg-background/50 flex-shrink-0">
-          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-            <button
-              onClick={() => setSidebarOpen(prev => !prev)}
-              className="p-2 rounded-xl bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20 transition-all cursor-pointer flex-shrink-0"
-              aria-label="Toggle Sidebar"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
+        <header className="relative flex items-center justify-between gap-2 px-3 sm:px-6 py-2.5 sm:py-3.5 border-b border-primary/20 bg-background/50 flex-shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+            {currentUser && (
+              <button
+                onClick={() => setSidebarOpen(prev => !prev)}
+                className={`p-1.5 sm:p-2 rounded-xl border transition-all cursor-pointer flex-shrink-0 ${
+                  sidebarOpen
+                    ? "bg-primary text-primary-foreground border-primary shadow-gold"
+                    : "bg-primary/10 border-primary/30 text-primary hover:bg-primary/20"
+                }`}
+                aria-label="Toggle Sidebar"
+                title={isRtl ? "القائمة الجانبية" : "Sidebar"}
+              >
+                <Menu className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+            )}
 
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gold-gradient flex items-center justify-center shadow-gold flex-shrink-0">
-              <ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6 text-primary-foreground" />
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gold-gradient flex items-center justify-center shadow-gold flex-shrink-0">
+              <ShieldCheck className="w-4 h-4 sm:w-6 sm:h-6 text-primary-foreground" />
             </div>
 
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <h2
-                className="font-bold text-sm sm:text-lg md:text-xl text-gold-gradient leading-tight truncate"
+                className="font-bold text-xs xs:text-sm sm:text-base md:text-xl text-gold-gradient leading-tight truncate"
                 style={{ fontFamily: "'Tajawal', sans-serif" }}
               >
                 {t("adminTitle")}
               </h2>
-              <span className="text-[11px] sm:text-xs font-semibold text-gray-200 block truncate">
+              <span className="text-[10px] sm:text-xs font-semibold text-gray-200 block truncate">
                 {currentUser
                   ? t("adminActiveSession")
                       .replace("{name}", currentUser.name)
@@ -417,101 +612,337 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
             {currentUser && (
               <button
                 onClick={handleLogout}
-                className="px-3 py-1.5 rounded-xl bg-destructive/15 border border-destructive/30 text-destructive text-xs font-bold hover:bg-destructive/25 transition-all cursor-pointer whitespace-nowrap"
+                className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl bg-destructive/15 border border-destructive/30 text-destructive text-[11px] sm:text-xs font-bold hover:bg-destructive/25 transition-all cursor-pointer whitespace-nowrap"
               >
                 {t("adminLockLogout")}
               </button>
             )}
             <button
               onClick={onClose}
-              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-primary/15 border border-primary/30 hover:bg-primary/25 text-gray-200 hover:text-white flex items-center justify-center transition-all cursor-pointer flex-shrink-0"
+              className="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-primary/15 border border-primary/30 hover:bg-primary/25 text-gray-200 hover:text-white flex items-center justify-center transition-all cursor-pointer flex-shrink-0"
             >
-              <X className="w-4 h-4 sm:w-5 sm:h-5" />
+              <X className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
             </button>
           </div>
         </header>
 
         {/* Content Area: Login Screen OR Slide Sidebar Layout */}
         {!currentUser ? (
-          <div className="flex-1 overflow-y-auto p-6 flex items-center justify-center">
-            <div className="w-full max-w-md p-6 sm:p-8 rounded-3xl bg-card border-2 border-primary/40 shadow-gold">
-              <div className="text-center mb-6">
-                <div className="w-14 h-14 rounded-2xl bg-gold-gradient flex items-center justify-center mx-auto mb-3 shadow-gold">
-                  <Lock className="w-7 h-7 text-primary-foreground" />
+          <div className="flex-1 overflow-y-auto p-3 sm:p-6 flex items-center justify-center">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{
+                opacity: 1,
+                scale: 1,
+                x: isShakeError ? [-10, 10, -10, 10, -5, 5, 0] : 0,
+              }}
+              transition={{ duration: isShakeError ? 0.4 : 0.2 }}
+              className="w-full max-w-md sm:max-w-lg p-4 sm:p-7 rounded-2xl sm:rounded-3xl bg-card border-2 border-primary/40 shadow-2xl space-y-4 sm:space-y-5 my-auto"
+            >
+              {/* Header Icon & Title */}
+              <div className="text-center">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gold-gradient flex items-center justify-center mx-auto mb-2 sm:mb-2.5 shadow-gold">
+                  {loginRole === "super_admin" ? (
+                    <Crown className="w-6 h-6 sm:w-7 sm:h-7 text-primary-foreground" />
+                  ) : (
+                    <Shield className="w-6 h-6 sm:w-7 sm:h-7 text-primary-foreground" />
+                  )}
                 </div>
-                <h3 className="text-xl font-bold text-white mb-1" style={{ fontFamily: "'Tajawal', sans-serif" }}>
+                <h3 className="text-lg sm:text-2xl font-bold text-white mb-1" style={{ fontFamily: "'Tajawal', sans-serif" }}>
                   {t("adminLoginTitle")}
                 </h3>
-                <p className="text-xs sm:text-sm text-gray-200">
-                  {t("adminLoginDesc")}
+                <p className="text-xs sm:text-sm text-gray-300">
+                  {isRtl
+                    ? "اختر نوع الصلاحية وأدخل الرمز السري للوصول إلى لوحة الإدارة"
+                    : "Select your role and enter the security PIN to access the dashboard"}
                 </p>
               </div>
 
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-200 mb-1">
-                    {t("adminEmailOrUsername")}
-                  </label>
-                  <input
-                    type="text"
-                    value={identifierInput}
-                    onChange={e => setIdentifierInput(e.target.value)}
-                    placeholder="alforas.one@gmail.com"
-                    className="w-full px-4 py-3 rounded-xl bg-background border-2 border-primary/30 text-white text-sm focus:border-primary outline-none"
-                    dir={dir}
-                  />
+              {/* Security Lockout Banner (if locked) */}
+              {lockoutState.isLocked && (
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-destructive/15 border-2 border-destructive/60 space-y-2 text-xs">
+                  <div className="flex items-center gap-2 text-destructive font-bold text-xs sm:text-sm">
+                    <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+                    <span>{t("adminLockoutTitle")}</span>
+                  </div>
+                  <p className="text-gray-200 leading-relaxed text-xs">
+                    {t("adminLockoutNotice")}
+                  </p>
+                  <div className="pt-2 flex items-center justify-between gap-2 border-t border-destructive/20 flex-wrap">
+                    <span className="text-[11px] text-destructive/90 font-medium">
+                      {isRtl ? "تم توثيق المحاولات الخاطئة في سجل الأمان" : "Failed attempts logged in audit trail"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsRecoveryOpen(true);
+                        setRecoveryStep("send_otp");
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-destructive text-destructive-foreground font-bold text-xs hover:bg-destructive/90 transition-all cursor-pointer shadow-md"
+                    >
+                      {t("adminForgotPassword")}
+                    </button>
+                  </div>
                 </div>
+              )}
 
+              {/* Remaining Attempts Indicator (if not locked, but has failed attempts) */}
+              {!lockoutState.isLocked && lockoutState.failedAttempts > 0 && (
+                <div className="p-2.5 rounded-xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-between text-xs text-amber-300">
+                  <div className="flex items-center gap-1.5">
+                    <AlertCircle className="w-4 h-4 text-amber-400" />
+                    <span className="font-bold">
+                      {3 - lockoutState.failedAttempts === 1
+                        ? t("adminOneAttemptLeft")
+                        : t("adminAttemptsLeft").replace("{count}", String(3 - lockoutState.failedAttempts))}
+                    </span>
+                  </div>
+                  <span className="text-2xs opacity-80 font-mono">
+                    {lockoutState.failedAttempts}/3
+                  </span>
+                </div>
+              )}
+
+              {/* Role Segmented Switcher */}
+              <div className="grid grid-cols-2 gap-1.5 sm:gap-2 bg-background/80 p-1 sm:p-1.5 rounded-2xl border border-primary/30">
+                <button
+                  type="button"
+                  onClick={() => setLoginRole("super_admin")}
+                  className={`flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
+                    loginRole === "super_admin"
+                      ? "bg-gold-gradient text-primary-foreground shadow-gold"
+                      : "text-gray-300 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <Crown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <span className="truncate">{isRtl ? "المدير العام (Super Admin)" : "Super Admin"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setLoginRole("moderator")}
+                  className={`flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
+                    loginRole === "moderator"
+                      ? "bg-gold-gradient text-primary-foreground shadow-gold"
+                      : "text-gray-300 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <span className="truncate">{isRtl ? "مشرف محتوى (Moderator)" : "Moderator"}</span>
+                </button>
+              </div>
+
+              {/* Role Description Badge */}
+              <div className="p-2 sm:p-2.5 rounded-xl bg-primary/10 border border-primary/20 flex flex-col xs:flex-row items-start xs:items-center justify-between gap-1.5 text-xs">
+                <span className="text-primary font-bold flex items-center gap-1.5 text-[11px] sm:text-xs">
+                  <ShieldAlert className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>
+                    {loginRole === "super_admin"
+                      ? (isRtl ? "صلاحيات مطلقة: حذف، أرشفة، إدارة فريق" : "Full Access: Delete, archive, manage team")
+                      : (isRtl ? "صلاحيات إشرافية: تحرير ونشر المحتوى" : "Editorial Access: Review & publish content")}
+                  </span>
+                </span>
+                <span className="text-amber-300 font-mono font-bold text-2xs bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20 whitespace-nowrap self-end xs:self-auto">
+                  {loginRole === "super_admin" ? "PIN: 2026" : "PIN: 123456"}
+                </span>
+              </div>
+
+              <form onSubmit={handleLogin} className="space-y-3.5 sm:space-y-4">
+                {/* Identifier Input - White/Luminous style */}
                 <div>
                   <label className="block text-xs font-bold text-gray-200 mb-1">
-                    {t("adminPasswordOrPin")}
+                    {loginRole === "super_admin"
+                      ? (isRtl ? "البريد الإلكتروني للمدير العام" : "Super Admin Email")
+                      : (isRtl ? "البريد الإلكتروني للمشرف أو اسم المستخدم" : "Moderator Email or Username")}
                   </label>
                   <div className="relative">
                     <input
-                      type={showPassword ? "text" : "password"}
-                      value={passwordInput}
-                      onChange={e => setPasswordInput(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full px-4 py-3 rounded-xl bg-background border-2 border-primary/30 text-white text-sm focus:border-primary outline-none"
-                      dir="ltr"
+                      type="text"
+                      value={identifierInput}
+                      onChange={e => setIdentifierInput(e.target.value)}
+                      placeholder={loginRole === "super_admin" ? "alforas.one@gmail.com" : "scholarships@foras.app"}
+                      disabled={lockoutState.isLocked}
+                      className="w-full px-3.5 sm:px-4 py-2.5 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 font-semibold text-xs sm:text-sm border-2 border-primary/40 focus:border-primary focus:ring-2 focus:ring-primary/40 shadow-[0_0_15px_rgba(255,255,255,0.15)] outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                      dir={dir}
                     />
+                    <span className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? "left-3" : "right-3"} text-gray-600 text-xs`}>
+                      {loginRole === "super_admin" ? "👑" : "🛡️"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Password / PIN Section */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1">
+                    <label className="text-xs font-bold text-gray-200">
+                      {usePinMode
+                        ? (isRtl ? `رمز PIN السري (${pinDigits.length} أرقام)` : `Security PIN (${pinDigits.length} digits)`)
+                        : t("adminPasswordOrPin")}
+                    </label>
                     <button
                       type="button"
-                      onClick={() => setShowPassword(p => !p)}
-                      className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? "left-3" : "right-3"} text-gray-400 hover:text-white cursor-pointer`}
+                      onClick={() => setUsePinMode(p => !p)}
+                      disabled={lockoutState.isLocked}
+                      className="text-primary text-xs font-bold hover:underline cursor-pointer disabled:opacity-50"
                     >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4 text-primary" />}
+                      {usePinMode
+                        ? (isRtl ? "التبديل لكلمة المرور النصية" : "Use Password field")
+                        : (isRtl ? "التبديل لمربعات PIN" : "Use PIN boxes")}
                     </button>
                   </div>
+
+                  {usePinMode ? (
+                    <div className="space-y-2">
+                      {/* Discrete PIN Digit Boxes - Sleek & Responsive Star Matrix */}
+                      <div
+                        className={`flex items-center justify-center py-1 sm:py-1.5 ${
+                          pinDigits.length > 4 ? "gap-1.5 xs:gap-2 sm:gap-2.5" : "gap-2 xs:gap-2.5 sm:gap-3"
+                        }`}
+                        dir="ltr"
+                      >
+                        {pinDigits.map((digit, idx) => {
+                          const isDigitRevealed = showPassword || !!revealedIndices[idx];
+                          const displayVal = digit ? (isDigitRevealed ? digit : "★") : "";
+                          const isLongPin = pinDigits.length > 4;
+                          return (
+                            <input
+                              key={idx}
+                              ref={el => (pinInputRefs.current[idx] = el)}
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              maxLength={1}
+                              autoComplete="off"
+                              disabled={lockoutState.isLocked}
+                              value={displayVal}
+                              onChange={e => handlePinDigitChange(idx, e.target.value)}
+                              onKeyDown={e => handlePinKeyDown(idx, e)}
+                              onPaste={handlePinPaste}
+                              className={`text-center font-bold font-mono border-2 transition-all outline-none flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed ${
+                                isLongPin
+                                  ? "w-8 h-10 xs:w-9 xs:h-11 sm:w-10 sm:h-12 rounded-lg sm:rounded-xl"
+                                  : "w-9 h-11 xs:w-10 xs:h-11 sm:w-11 sm:h-12 rounded-xl"
+                              } ${
+                                digit
+                                  ? isDigitRevealed
+                                    ? `border-primary bg-white text-gray-950 shadow-[0_0_12px_hsl(43_74%_49%/0.5)] ring-1.5 ring-primary/50 ${
+                                        isLongPin ? "text-base sm:text-lg" : "text-lg sm:text-xl"
+                                      }`
+                                    : `border-primary bg-white text-amber-500 shadow-[0_0_10px_hsl(43_74%_49%/0.35)] ring-1 ring-primary/30 ${
+                                        isLongPin ? "text-base sm:text-lg" : "text-lg sm:text-xl"
+                                      }`
+                                  : `border-primary/40 bg-white/95 text-gray-900 hover:border-primary focus:border-primary focus:bg-white focus:shadow-[0_0_10px_rgba(255,255,255,0.3)] ${
+                                      isLongPin ? "text-sm sm:text-base" : "text-base sm:text-lg"
+                                    }`
+                              } ${revealedIndices[idx] ? "scale-105 transition-transform" : ""}`}
+                              autoFocus={idx === 0 && !lockoutState.isLocked}
+                            />
+                          );
+                        })}
+                      </div>
+
+                      <div className="flex items-center justify-between text-2xs text-gray-300 px-1 pt-0.5">
+                        <span className="truncate">{isRtl ? "💡 يدعم اللصق والتنقل" : "💡 Supports auto-focus"}</span>
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(p => !p)}
+                          className="text-primary hover:text-white font-medium flex items-center gap-1 cursor-pointer whitespace-nowrap"
+                        >
+                          {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5 text-primary" />}
+                          <span>{showPassword ? (isRtl ? "إخفاء الرمز" : "Hide PIN") : (isRtl ? "إظهار الرمز" : "Show PIN")}</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <StarMaskedInput
+                        value={passwordInput}
+                        onChange={setPasswordInput}
+                        showPlain={showPassword}
+                        disabled={lockoutState.isLocked}
+                        placeholder="★★★★★★"
+                        className={`w-full py-2 sm:py-2.5 px-3.5 sm:px-4 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 text-xs sm:text-sm border-2 border-primary/40 focus:border-primary focus:ring-2 focus:ring-primary/40 shadow-sm outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-all ${
+                          isRtl ? "pl-10 pr-3.5" : "pr-10 pl-3.5"
+                        }`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(p => !p)}
+                        className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? "left-3" : "right-3"} text-gray-600 hover:text-gray-900 cursor-pointer p-1`}
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4 text-gray-700" /> : <Eye className="w-4 h-4 text-primary" />}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between pt-0.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsRecoveryOpen(true);
+                      setRecoveryStep("send_otp");
+                    }}
+                    className="text-xs font-semibold text-primary hover:text-primary-foreground hover:underline transition-all cursor-pointer flex items-center gap-1"
+                  >
+                    <HelpCircle className="w-3.5 h-3.5" />
+                    <span>{t("adminForgotPassword")}</span>
+                  </button>
                 </div>
 
                 <Button
                   type="submit"
                   variant="luxe"
                   size="lg"
-                  className="w-full py-3.5 rounded-xl shadow-gold font-bold text-base cursor-pointer"
+                  disabled={lockoutState.isLocked}
+                  className="w-full py-3 sm:py-3.5 rounded-xl shadow-gold font-bold text-sm sm:text-base cursor-pointer mt-1 sm:mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {t("adminUnlockBtn")}
+                  <Lock className="w-4 h-4 mr-1.5 ml-1.5" />
+                  <span>{t("adminUnlockBtn")}</span>
                 </Button>
               </form>
-            </div>
+            </motion.div>
           </div>
         ) : (
           <div className="flex-1 flex overflow-hidden relative">
-            {/* Slide-in Sidebar (Video 5) */}
+            {/* Mobile Sidebar Overlay Backdrop */}
+            <AnimatePresence>
+              {sidebarOpen && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setSidebarOpen(false)}
+                  className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-xs z-20"
+                />
+              )}
+            </AnimatePresence>
+
+            {/* Slide-in Sidebar (Responsive Drawer on Mobile, Column on Desktop) */}
             <AnimatePresence initial={false}>
               {sidebarOpen && (
                 <motion.aside
                   initial={{ width: 0, opacity: 0 }}
-                  animate={{ width: isRtl ? 280 : 280, opacity: 1 }}
+                  animate={{ width: 280, opacity: 1 }}
                   exit={{ width: 0, opacity: 0 }}
                   transition={{ duration: 0.25, ease: "easeInOut" }}
-                  className="h-full bg-card/90 border-l border-primary/20 flex-shrink-0 flex flex-col overflow-hidden border-r sm:border-r-0"
+                  className="absolute md:relative inset-y-0 start-0 z-30 w-72 max-w-[85vw] md:w-64 lg:w-72 h-full bg-card border-l border-r md:border-r-0 border-primary/20 flex-shrink-0 flex flex-col overflow-hidden shadow-2xl md:shadow-none"
                 >
+                  {/* Sidebar Header on Mobile with Close Button */}
+                  <div className="flex items-center justify-between p-3 border-b border-primary/20 md:hidden">
+                    <span className="text-xs font-bold text-gold-gradient">{t("adminTitle")}</span>
+                    <button
+                      onClick={() => setSidebarOpen(false)}
+                      className="p-1 rounded-lg text-gray-400 hover:text-white"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
                   {/* Sidebar Search */}
                   <div className="p-3 border-b border-primary/20">
                     <div className="relative">
@@ -561,14 +992,14 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                                     : "text-gray-300 hover:text-white hover:bg-primary/10 border border-transparent hover:border-primary/25"
                                 }`}
                               >
-                                <div className="flex items-center gap-2.5">
-                                  <Icon className={`w-4 h-4 ${isActive ? "text-primary-foreground" : "text-primary"}`} />
-                                  <span>{isRtl ? item.labelAr : item.labelEn}</span>
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? "text-primary-foreground" : "text-primary"}`} />
+                                  <span className="truncate">{isRtl ? item.labelAr : item.labelEn}</span>
                                 </div>
 
                                 {item.badge !== undefined && (
                                   <span
-                                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex-shrink-0 ${
                                       item.badgeColor || (isActive ? "bg-black/30 text-white" : "bg-primary/20 text-primary")
                                     }`}
                                   >
@@ -589,21 +1020,21 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
             {/* Main Active Tab Content View */}
             <main className="flex-1 flex flex-col overflow-hidden bg-background/30">
               {/* Active Tab Sub-Header & Search Filter Bar */}
-              <div className="p-4 border-b border-primary/20 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-card/40 flex-shrink-0">
-                <div className="flex items-center gap-3">
+              <div className="p-3 sm:p-4 border-b border-primary/20 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 bg-card/40 flex-shrink-0">
+                <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                   {/* Tri-state Header Checkbox for Lists (Video 1) */}
                   {(activeTab === "scholarships" || activeTab === "jobs" || activeTab === "archive") && (
                     <button
                       onClick={handleToggleSelectAll}
-                      className="flex items-center gap-2 p-2 rounded-xl bg-card border border-primary/30 hover:border-primary text-xs font-bold text-gray-200 hover:text-white transition-all cursor-pointer"
+                      className="flex items-center gap-1.5 sm:gap-2 p-1.5 sm:p-2 rounded-xl bg-card border border-primary/30 hover:border-primary text-xs font-bold text-gray-200 hover:text-white transition-all cursor-pointer flex-shrink-0"
                       title={isAllSelected ? t("adminDeselectAll") : t("adminSelectAll")}
                     >
                       {isAllSelected ? (
-                        <CheckSquare className="w-5 h-5 text-primary" />
+                        <CheckSquare className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                       ) : isPartiallySelected ? (
-                        <MinusSquare className="w-5 h-5 text-amber-400" />
+                        <MinusSquare className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
                       ) : (
-                        <Square className="w-5 h-5 text-gray-400" />
+                        <Square className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
                       )}
                       <span className="hidden sm:inline">
                         {t("adminSelectAll")}
@@ -611,7 +1042,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                     </button>
                   )}
 
-                  <div className="relative flex-1 sm:w-80">
+                  <div className="relative flex-1">
                     <Search className={`w-4 h-4 absolute top-1/2 -translate-y-1/2 ${isRtl ? "right-3" : "left-3"} text-gray-400`} />
                     <input
                       type="text"
@@ -636,8 +1067,8 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  {activeTab === "scholarships" && (
+                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                  {activeTab === "scholarships" && adminAuthStore.canUserPerform(currentUser, "create") && (
                     <Button
                       variant="luxe"
                       size="sm"
@@ -668,7 +1099,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                     </Button>
                   )}
 
-                  {activeTab === "jobs" && (
+                  {activeTab === "jobs" && adminAuthStore.canUserPerform(currentUser, "create") && (
                     <Button
                       variant="luxe"
                       size="sm"
@@ -760,21 +1191,25 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                             </div>
 
                             <div className="flex items-center gap-2 self-end sm:self-center" onClick={e => e.stopPropagation()}>
-                              <button
-                                onClick={() => setEditingScholarship(s)}
-                                className="p-2 rounded-xl bg-primary/10 border border-primary/30 hover:bg-primary/20 text-primary transition-all cursor-pointer"
-                                title={t("adminEdit")}
-                              >
-                                <Edit3 className="w-4 h-4" />
-                              </button>
+                              {adminAuthStore.canUserPerform(currentUser, "edit") && (
+                                <button
+                                  onClick={() => setEditingScholarship(s)}
+                                  className="p-2 rounded-xl bg-primary/10 border border-primary/30 hover:bg-primary/20 text-primary transition-all cursor-pointer"
+                                  title={t("adminEdit")}
+                                >
+                                  <Edit3 className="w-4 h-4" />
+                                </button>
+                              )}
 
-                              <button
-                                onClick={() => requestDelete(s.id, "scholarship", s.title || (s as any).title_ar)}
-                                className="p-2 rounded-xl bg-destructive/15 border border-destructive/30 hover:bg-destructive/25 text-destructive transition-all cursor-pointer"
-                                title={t("adminArchive")}
-                              >
-                                <Archive className="w-4 h-4" />
-                              </button>
+                              {adminAuthStore.canUserPerform(currentUser, "delete") && (
+                                <button
+                                  onClick={() => requestDelete(s.id, "scholarship", s.title || (s as any).title_ar)}
+                                  className="p-2 rounded-xl bg-destructive/15 border border-destructive/30 hover:bg-destructive/25 text-destructive transition-all cursor-pointer"
+                                  title={t("adminArchive")}
+                                >
+                                  <Archive className="w-4 h-4" />
+                                </button>
+                              )}
                             </div>
                           </div>
                         );
@@ -838,21 +1273,25 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                             </div>
 
                             <div className="flex items-center gap-2 self-end sm:self-center" onClick={e => e.stopPropagation()}>
-                              <button
-                                onClick={() => setEditingJob(j)}
-                                className="p-2 rounded-xl bg-primary/10 border border-primary/30 hover:bg-primary/20 text-primary transition-all cursor-pointer"
-                                title={t("adminEdit")}
-                              >
-                                <Edit3 className="w-4 h-4" />
-                              </button>
+                              {adminAuthStore.canUserPerform(currentUser, "edit") && (
+                                <button
+                                  onClick={() => setEditingJob(j)}
+                                  className="p-2 rounded-xl bg-primary/10 border border-primary/30 hover:bg-primary/20 text-primary transition-all cursor-pointer"
+                                  title={t("adminEdit")}
+                                >
+                                  <Edit3 className="w-4 h-4" />
+                                </button>
+                              )}
 
-                              <button
-                                onClick={() => requestDelete(j.id, "job", j.title_ar)}
-                                className="p-2 rounded-xl bg-destructive/15 border border-destructive/30 hover:bg-destructive/25 text-destructive transition-all cursor-pointer"
-                                title={t("adminArchive")}
-                              >
-                                <Archive className="w-4 h-4" />
-                              </button>
+                              {adminAuthStore.canUserPerform(currentUser, "delete") && (
+                                <button
+                                  onClick={() => requestDelete(j.id, "job", j.title_ar)}
+                                  className="p-2 rounded-xl bg-destructive/15 border border-destructive/30 hover:bg-destructive/25 text-destructive transition-all cursor-pointer"
+                                  title={t("adminArchive")}
+                                >
+                                  <Archive className="w-4 h-4" />
+                                </button>
+                              )}
                             </div>
                           </div>
                         );
@@ -1281,30 +1720,150 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                   </div>
                 )}
 
-                {/* 5. Team & Moderators Management */}
+                {/* 5. Team & Moderators Management & RBAC Permissions */}
                 {activeTab === "team" && (
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs sm:text-sm font-bold text-white">{t("adminTeamTitle")}</span>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                      <div>
+                        <h4 className="text-sm sm:text-base font-bold text-white">{t("adminTeamTitle")}</h4>
+                        <p className="text-xs text-gray-400">{t("adminTeamDesc")}</p>
+                      </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {teamMembers.map(m => (
-                        <div key={m.id} className="p-4 rounded-2xl bg-card border-2 border-primary/30 flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-primary/20 border border-primary/40 flex items-center justify-center text-primary font-bold">
-                              {m.name.charAt(0)}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {teamMembers.map(m => {
+                        const isSuperAdmin = m.role === "super_admin";
+                        const canManage = currentUser?.role === "super_admin" && !isSuperAdmin;
+                        const perms = m.permissions || {
+                          canEdit: false,
+                          canDelete: false,
+                          canCreate: true,
+                          canAutoPublish: false,
+                          canManageTeam: false,
+                          canEmptyVault: false,
+                        };
+
+                        return (
+                          <div key={m.id} className="p-4 rounded-2xl bg-card border-2 border-primary/30 flex flex-col justify-between gap-3 shadow-md">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex items-center gap-3">
+                                <div className="w-11 h-11 rounded-xl bg-primary/20 border border-primary/40 flex items-center justify-center text-primary font-bold text-base flex-shrink-0">
+                                  {m.name.charAt(0)}
+                                </div>
+                                <div>
+                                  <h4 className="text-sm font-bold text-white leading-tight">{m.name}</h4>
+                                  <span className="text-xs text-gray-300 block">{m.email}</span>
+                                  <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-bold bg-primary/20 text-primary mt-1">
+                                    {isSuperAdmin
+                                      ? (isRtl ? "المدير العام 👑" : "Super Admin 👑")
+                                      : m.role === "editor"
+                                      ? (isRtl ? "محرر محتوى" : "Editor")
+                                      : (isRtl ? "مشرف محتوى 🛡️" : "Moderator 🛡️")}
+                                  </span>
+                                </div>
+                              </div>
                             </div>
-                            <div>
-                              <h4 className="text-sm font-bold text-white leading-tight">{m.name}</h4>
-                              <span className="text-xs text-gray-300 block">{m.email}</span>
-                              <span className="text-[10px] font-bold text-amber-400 mt-0.5 block">
-                                {m.role === "super_admin" ? (isRtl ? "المدير العام 👑" : "Super Admin 👑") : m.role === "editor" ? (isRtl ? "محرر محتوى" : "Editor") : (isRtl ? "مشرف" : "Moderator")}
-                              </span>
-                            </div>
+
+                            {/* Granular Permission Toggles (Super Admin Only) */}
+                            {!isSuperAdmin && (
+                              <div className="mt-2 pt-3 border-t border-primary/20 space-y-2">
+                                <div className="text-2xs font-bold uppercase tracking-wider text-gray-400">
+                                  {isRtl ? "صلاحيات المشرف الممنوحة:" : "Granted Permissions:"}
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                  {/* canEdit */}
+                                  <button
+                                    type="button"
+                                    disabled={!canManage}
+                                    onClick={() => {
+                                      const updated = { ...perms, canEdit: !perms.canEdit };
+                                      adminAuthStore.updateMemberPermissions(m.id, updated, currentUser);
+                                      setTeamMembers(adminAuthStore.getUsers());
+                                      toast.success(t("adminPermissionsUpdatedToast"));
+                                    }}
+                                    className={`flex items-center justify-between p-2 rounded-xl border transition-all text-2xs font-semibold cursor-pointer ${
+                                      perms.canEdit
+                                        ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-400"
+                                        : "bg-background/60 border-primary/20 text-gray-400 opacity-70"
+                                    } ${!canManage ? "cursor-not-allowed" : "hover:border-primary"}`}
+                                  >
+                                    <span>{t("adminCanEditLabel")}</span>
+                                    <span>{perms.canEdit ? "✓" : "✕"}</span>
+                                  </button>
+
+                                  {/* canDelete */}
+                                  <button
+                                    type="button"
+                                    disabled={!canManage}
+                                    onClick={() => {
+                                      const updated = { ...perms, canDelete: !perms.canDelete };
+                                      adminAuthStore.updateMemberPermissions(m.id, updated, currentUser);
+                                      setTeamMembers(adminAuthStore.getUsers());
+                                      toast.success(t("adminPermissionsUpdatedToast"));
+                                    }}
+                                    className={`flex items-center justify-between p-2 rounded-xl border transition-all text-2xs font-semibold cursor-pointer ${
+                                      perms.canDelete
+                                        ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-400"
+                                        : "bg-background/60 border-primary/20 text-gray-400 opacity-70"
+                                    } ${!canManage ? "cursor-not-allowed" : "hover:border-primary"}`}
+                                  >
+                                    <span>{t("adminCanDeleteLabel")}</span>
+                                    <span>{perms.canDelete ? "✓" : "✕"}</span>
+                                  </button>
+
+                                  {/* canCreate */}
+                                  <button
+                                    type="button"
+                                    disabled={!canManage}
+                                    onClick={() => {
+                                      const updated = { ...perms, canCreate: !perms.canCreate };
+                                      adminAuthStore.updateMemberPermissions(m.id, updated, currentUser);
+                                      setTeamMembers(adminAuthStore.getUsers());
+                                      toast.success(t("adminPermissionsUpdatedToast"));
+                                    }}
+                                    className={`flex items-center justify-between p-2 rounded-xl border transition-all text-2xs font-semibold cursor-pointer ${
+                                      perms.canCreate
+                                        ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-400"
+                                        : "bg-background/60 border-primary/20 text-gray-400 opacity-70"
+                                    } ${!canManage ? "cursor-not-allowed" : "hover:border-primary"}`}
+                                  >
+                                    <span>{t("adminCanCreateLabel")}</span>
+                                    <span>{perms.canCreate ? "✓" : "✕"}</span>
+                                  </button>
+
+                                  {/* canAutoPublish */}
+                                  <button
+                                    type="button"
+                                    disabled={!canManage}
+                                    onClick={() => {
+                                      const updated = { ...perms, canAutoPublish: !perms.canAutoPublish };
+                                      adminAuthStore.updateMemberPermissions(m.id, updated, currentUser);
+                                      setTeamMembers(adminAuthStore.getUsers());
+                                      toast.success(t("adminPermissionsUpdatedToast"));
+                                    }}
+                                    className={`flex items-center justify-between p-2 rounded-xl border transition-all text-2xs font-semibold cursor-pointer ${
+                                      perms.canAutoPublish
+                                        ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-400"
+                                        : "bg-background/60 border-primary/20 text-gray-400 opacity-70"
+                                    } ${!canManage ? "cursor-not-allowed" : "hover:border-primary"}`}
+                                  >
+                                    <span>{t("adminCanAutoPublishLabel")}</span>
+                                    <span>{perms.canAutoPublish ? "✓" : "✕"}</span>
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+
+                            {isSuperAdmin && (
+                              <div className="mt-2 pt-2 border-t border-primary/20 text-2xs text-amber-400 font-semibold flex items-center gap-1.5">
+                                <span>👑</span>
+                                <span>{isRtl ? "صلاحيات كاملة وغير مقيدة لإدارة المنصة" : "Full unrestricted platform access"}</span>
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -1312,20 +1871,38 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                 {/* 6. Security Audit Logs */}
                 {activeTab === "audit_logs" && (
                   <div className="space-y-3">
-                    <div className="text-xs text-gray-300 mb-2">
-                      {t("adminAuditLogTitle").replace("{count}", String(auditLogs.length))}
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-2">
+                      <div className="text-xs text-gray-300">
+                        {t("adminAuditLogTitle").replace("{count}", String(auditLogs.length))}
+                      </div>
+
+                      {lockoutState.isLocked && currentUser?.role === "super_admin" && (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => {
+                            adminAuthStore.unlockAccount(currentUser);
+                            setLockoutState(adminAuthStore.getLockoutState());
+                            toast.success(isRtl ? "تم إلغاء الحظر الأمني بنجاح وفك القفل" : "Security lockout cleared");
+                          }}
+                          className="font-bold text-xs shadow-md cursor-pointer"
+                        >
+                          <Unlock className="w-3.5 h-3.5 mr-1.5 ml-1.5" />
+                          <span>{isRtl ? "إلغاء حظر تسجيل الدخول الأمني الآن" : "Clear Security Lockout"}</span>
+                        </Button>
+                      )}
                     </div>
 
                     <div className="space-y-2">
                       {auditLogs.map(log => (
                         <div key={log.id} className="p-3.5 rounded-xl bg-card/70 border border-primary/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
                           <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />
+                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${log.action.includes("LOCKOUT") || log.action.includes("FAILED") ? "bg-destructive animate-pulse" : "bg-primary"}`} />
                             <span className="font-bold text-white">{log.actionAr || log.action}</span>
                             <span className="text-gray-400">({log.userName})</span>
                           </div>
                           <div className="flex items-center gap-3 text-gray-300">
-                            <span className="text-[11px]">{log.details}</span>
+                            <span className="text-[11px] font-mono bg-background/50 px-2 py-0.5 rounded border border-primary/20">{log.details}</span>
                             <span className="text-[10px] text-gray-400">{new Date(log.timestamp).toLocaleTimeString(isRtl ? "ar-EG" : "en-US")}</span>
                           </div>
                         </div>
@@ -1947,6 +2524,270 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
           </div>
         </div>
       )}
+
+      {/* Admin Password Recovery Modal (OTP to alforas.one@gmail.com) */}
+      <AnimatePresence>
+        {isRecoveryOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-md p-6 rounded-3xl bg-card border-2 border-primary/40 shadow-2xl space-y-4"
+              dir={dir}
+            >
+              <div className="flex items-center justify-between border-b border-primary/20 pb-3">
+                <div className="flex items-center gap-2 text-primary font-bold">
+                  <KeyRound className="w-5 h-5" />
+                  <span className="text-base text-white">{t("adminRecoveryTitle")}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsRecoveryOpen(false)}
+                  className="p-1 rounded-full text-gray-400 hover:text-white hover:bg-white/10"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Step 1: Send OTP to Unified Email */}
+              {recoveryStep === "send_otp" && (
+                <div className="space-y-4">
+                  <div className="p-3 rounded-2xl bg-primary/10 border border-primary/20 text-xs text-gray-300 space-y-1.5">
+                    <p className="font-bold text-white text-xs">{t("adminRecoveryDesc")}</p>
+                    <div className="flex items-center gap-1.5 text-primary font-mono font-bold text-xs pt-1" dir="ltr">
+                      <Mail className="w-3.5 h-3.5" />
+                      <span>{UNIFIED_ADMIN_EMAIL}</span>
+                    </div>
+                  </div>
+
+                  <p className="text-2xs text-gray-400 leading-relaxed">
+                    {isRtl
+                      ? "عند الضغط على إرسال، سيقوم النظام بتوليد رمز تحقق آمن مكون من 6 أرقام وإرساله للبريد الرسمي الموحد لضمان أمان اللوحة."
+                      : "Clicking send will generate a secure 6-digit one-time passcode to the verified unified email address."}
+                  </p>
+
+                  <div className="flex gap-2 justify-end pt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsRecoveryOpen(false)}
+                      className="cursor-pointer"
+                    >
+                      {t("adminCancel")}
+                    </Button>
+                    <Button
+                      variant="luxe"
+                      size="sm"
+                      disabled={isSendingRecoveryOtp}
+                      onClick={() => {
+                        setIsSendingRecoveryOtp(true);
+                        setTimeout(() => {
+                          const res = adminAuthStore.sendRecoveryOtp();
+                          setIsSendingRecoveryOtp(false);
+                          if (res.success) {
+                            toast.success(res.message || t("adminOtpSentMsg"));
+                            setRecoveryStep("verify_otp");
+                          } else {
+                            toast.error(res.message);
+                          }
+                        }, 500);
+                      }}
+                      className="font-bold shadow-gold cursor-pointer"
+                    >
+                      <Mail className="w-4 h-4 mr-1.5 ml-1.5" />
+                      <span>{isSendingRecoveryOtp ? (isRtl ? "جاري الإرسال..." : "Sending...") : t("adminSendOtpBtn")}</span>
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 2: Enter & Verify 6-digit OTP */}
+              {recoveryStep === "verify_otp" && (
+                <div className="space-y-4">
+                  <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 text-xs text-gray-200">
+                    <p>{t("adminOtpSentMsg")}</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-200 mb-2">
+                      {t("adminEnterOtpLabel")}
+                    </label>
+
+                    <div className="flex items-center justify-center gap-1.5 xs:gap-2 sm:gap-2.5 py-1" dir="ltr">
+                      {recoveryOtpDigits.map((digit, idx) => (
+                        <input
+                          key={idx}
+                          ref={el => (recoveryOtpRefs.current[idx] = el)}
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          maxLength={1}
+                          value={digit}
+                          onChange={e => {
+                            const val = e.target.value.replace(/[^\d]/g, "").slice(-1);
+                            const updated = [...recoveryOtpDigits];
+                            updated[idx] = val;
+                            setRecoveryOtpDigits(updated);
+                            if (val && idx < 5) recoveryOtpRefs.current[idx + 1]?.focus();
+                          }}
+                          onKeyDown={e => {
+                            if (e.key === "Backspace" && !digit && idx > 0) {
+                              recoveryOtpRefs.current[idx - 1]?.focus();
+                            }
+                          }}
+                          onPaste={e => {
+                            e.preventDefault();
+                            const pasted = e.clipboardData.getData("text").replace(/[^\d]/g, "").slice(0, 6);
+                            if (!pasted) return;
+                            const digits = pasted.split("");
+                            const updated = [...recoveryOtpDigits];
+                            for (let i = 0; i < 6; i++) {
+                              updated[i] = digits[i] || "";
+                            }
+                            setRecoveryOtpDigits(updated);
+                            const next = Math.min(digits.length, 5);
+                            recoveryOtpRefs.current[next]?.focus();
+                          }}
+                          className={`w-8 h-10 xs:w-9 xs:h-11 sm:w-10 sm:h-12 text-center text-base sm:text-lg font-bold rounded-lg sm:rounded-xl border-2 transition-all outline-none ${
+                            digit
+                              ? "border-primary bg-white text-gray-950 shadow-gold"
+                              : "border-primary/40 bg-white/95 text-gray-900 focus:border-primary focus:bg-white"
+                          }`}
+                          autoFocus={idx === 0}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 justify-end pt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setRecoveryStep("send_otp")}
+                      className="cursor-pointer"
+                    >
+                      {isRtl ? "إعادة إرسال" : "Resend"}
+                    </Button>
+                    <Button
+                      variant="luxe"
+                      size="sm"
+                      onClick={() => {
+                        const code = recoveryOtpDigits.join("");
+                        const verifyRes = adminAuthStore.verifyRecoveryOtp(code);
+                        if (verifyRes.success) {
+                          toast.success(verifyRes.message);
+                          setRecoveryStep("new_password");
+                        } else {
+                          toast.error(verifyRes.message);
+                        }
+                      }}
+                      className="font-bold shadow-gold cursor-pointer"
+                    >
+                      <CheckCircle2 className="w-4 h-4 mr-1.5 ml-1.5" />
+                      <span>{t("adminVerifyOtpBtn")}</span>
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3: Set New Password & Unlock Account */}
+              {recoveryStep === "new_password" && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-200 mb-1">
+                      {t("adminNewPasswordLabel")}
+                    </label>
+                    <div className="relative">
+                      <StarMaskedInput
+                        value={recoveryNewPassword}
+                        onChange={setRecoveryNewPassword}
+                        showPlain={showRecoveryNewPass}
+                        placeholder="★★★★★★"
+                        className={`w-full py-2.5 px-4 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 text-sm border-2 border-primary/40 focus:border-primary focus:ring-2 focus:ring-primary/40 shadow-sm outline-none ${
+                          isRtl ? "pl-11 pr-4" : "pr-11 pl-4"
+                        }`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowRecoveryNewPass(p => !p)}
+                        className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? "left-3" : "right-3"} text-gray-600 hover:text-gray-900 cursor-pointer p-1`}
+                      >
+                        {showRecoveryNewPass ? <EyeOff className="w-4 h-4 text-gray-700" /> : <Eye className="w-4 h-4 text-primary" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-200 mb-1">
+                      {t("adminConfirmNewPasswordLabel")}
+                    </label>
+                    <div className="relative">
+                      <StarMaskedInput
+                        value={recoveryConfirmPassword}
+                        onChange={setRecoveryConfirmPassword}
+                        showPlain={showRecoveryConfirmPass}
+                        placeholder="★ ★ ★ ★ ★ ★"
+                        className={`w-full py-2.5 px-4 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 text-sm border-2 border-primary/40 focus:border-primary focus:ring-2 focus:ring-primary/40 shadow-sm outline-none ${
+                          isRtl ? "pl-11 pr-4" : "pr-11 pl-4"
+                        }`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowRecoveryConfirmPass(p => !p)}
+                        className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? "left-3" : "right-3"} text-gray-600 hover:text-gray-900 cursor-pointer p-1`}
+                      >
+                        {showRecoveryConfirmPass ? <EyeOff className="w-4 h-4 text-gray-700" /> : <Eye className="w-4 h-4 text-primary" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 justify-end pt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsRecoveryOpen(false)}
+                      className="cursor-pointer"
+                    >
+                      {t("adminCancel")}
+                    </Button>
+                    <Button
+                      variant="luxe"
+                      size="sm"
+                      onClick={() => {
+                        if (!recoveryNewPassword.trim() || recoveryNewPassword.length < 4) {
+                          toast.error(isRtl ? "يجب أن تكون كلمة المرور 4 خانات على الأقل" : "Password must be at least 4 chars");
+                          return;
+                        }
+                        if (recoveryNewPassword !== recoveryConfirmPassword) {
+                          toast.error(isRtl ? "كلمتا المرور غير متطابقتين" : "Passwords do not match");
+                          return;
+                        }
+
+                        const code = recoveryOtpDigits.join("");
+                        const resetRes = adminAuthStore.resetAdminPasswordWithOtp(code, recoveryNewPassword);
+                        if (resetRes.success) {
+                          setLockoutState(adminAuthStore.getLockoutState());
+                          setIsRecoveryOpen(false);
+                          setPasswordInput("");
+                          setPinDigits(["", "", "", ""]);
+                          toast.success(resetRes.message || (isRtl ? "تم تغيير كلمة المرور وفك الحظر بنجاح!" : "Password updated & lockout reset!"));
+                        } else {
+                          toast.error(resetRes.message);
+                        }
+                      }}
+                      className="font-bold shadow-gold cursor-pointer"
+                    >
+                      <LockKeyhole className="w-4 h-4 mr-1.5 ml-1.5" />
+                      <span>{t("adminSaveNewPasswordBtn")}</span>
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

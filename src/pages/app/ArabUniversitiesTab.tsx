@@ -358,7 +358,7 @@ export const ArabUniversitiesTab = () => {
                 className="h-9 px-3.5 rounded-full text-xs font-bold border border-primary/30 bg-card/80 text-primary flex items-center gap-1.5 hover:bg-primary/10 transition-all"
               >
                 <ChevronRight className={`w-3.5 h-3.5 ${isRtl ? "" : "rotate-180"}`} />
-                <span>{t("arabUniBackToCountries")} ({country})</span>
+                <span>{t("arabUniBackToCountries")} ({isRtl ? country : (currentCountryStat?.countryEn || country)})</span>
               </button>
             )}
             <p className="text-xs text-muted-foreground font-medium">

@@ -21,8 +21,11 @@ import { guestStorage } from "@/lib/guestStorage";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import {
   profileExtras, defaultExtras, type ProfileExtras, type PersonalLink,
-  type LinkType, type SkillEntry,
+  type LinkType, type SkillEntry, getLinkDisplayHandle, formatPlatformUrl,
+  PLATFORMS_LIST, calculateAIMatchingReadiness, type AIMatchingSignal
 } from "@/lib/profileExtras";
+import { InlineLinksManager } from "@/components/foras/InlineLinksManager";
+import { AIMatchingReadinessCard } from "@/components/foras/AIMatchingReadinessCard";
 import { PHONE_COUNTRIES, findPhoneCountry, validatePhone } from "@/lib/phoneCountries";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -106,12 +109,30 @@ export const ProfileTab = () => {
     toast.success(ar ? "تم نسخ رقم الهاتف بنجاح!" : "Phone number copied to clipboard!");
   };
 
-  // Load extras from storage
+  // Load extras from storage + listen for real-time persona updates from Settings
   useEffect(() => {
-    profileExtras.load().then((v) => {
-      setExtras(v);
-      setExtrasDraft(v);
-    });
+    const loadData = () => {
+      profileExtras.load().then((v) => {
+        setExtras(v);
+        setExtrasDraft(v);
+      });
+    };
+    loadData();
+
+    const handlePersonaChange = (e: any) => {
+      const p = e.detail?.persona;
+      if (p) {
+        setExtras((prev) => ({ ...prev, persona: p }));
+        setExtrasDraft((prev) => ({ ...prev, persona: p }));
+      } else {
+        loadData();
+      }
+    };
+
+    window.addEventListener("foras:persona_change", handlePersonaChange);
+    return () => {
+      window.removeEventListener("foras:persona_change", handlePersonaChange);
+    };
   }, []);
 
   useEffect(() => {
@@ -162,6 +183,61 @@ export const ProfileTab = () => {
     const filled = fields.filter(f => f && String(f).trim()).length;
     return Math.round((filled / fields.length) * 100);
   }, [profile, extras]);
+
+  // AI Matching Precision & Readiness Calculation
+  const aiReadiness = useMemo(() => {
+    return calculateAIMatchingReadiness(profile, extras);
+  }, [profile, extras]);
+
+  const handleQuickAction = (signal: AIMatchingSignal) => {
+    setDraft(profile);
+    setExtrasDraft(extras);
+    setEditing(true);
+
+    // Scroll to relevant field smoothly after mounting edit mode
+    setTimeout(() => {
+      let targetElementId = "";
+      switch (signal.iconName) {
+        case "gpa":
+          targetElementId = "field-gpa";
+          break;
+        case "degree":
+          targetElementId = "field-degree";
+          break;
+        case "major":
+          targetElementId = "field-major";
+          break;
+        case "links":
+          targetElementId = "field-links";
+          break;
+        case "skills":
+          targetElementId = "field-skills";
+          break;
+        case "experience":
+          targetElementId = "field-experience";
+          break;
+        case "location":
+          targetElementId = "field-location";
+          break;
+        case "bio":
+          targetElementId = "field-bio";
+          break;
+        default:
+          targetElementId = "";
+      }
+
+      if (targetElementId) {
+        const el = document.getElementById(targetElementId);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.classList.add("ring-2", "ring-primary", "animate-pulse");
+          setTimeout(() => {
+            el.classList.remove("ring-2", "ring-primary", "animate-pulse");
+          }, 2500);
+        }
+      }
+    }, 150);
+  };
 
   const startEdit = () => { setDraft(profile); setExtrasDraft(extras); setEditing(true); };
   const cancelEdit = () => { setDraft(profile); setExtrasDraft(extras); setEditing(false); };
@@ -292,19 +368,15 @@ export const ProfileTab = () => {
     }));
   };
 
-  const addLink = (type: LinkType) => {
-    setExtrasDraft(d => ({
-      ...d,
-      links: [...d.links, { id: crypto.randomUUID(), type, url: "" }],
-    }));
-  };
-
-  const updateLink = (id: string, url: string) => {
-    setExtrasDraft(d => ({ ...d, links: d.links.map(l => l.id === id ? { ...l, url } : l) }));
-  };
-
-  const removeLink = (id: string) => {
-    setExtrasDraft(d => ({ ...d, links: d.links.filter(l => l.id !== id) }));
+  const handleUpdateLinksDirectly = (newLinks: PersonalLink[]) => {
+    setExtrasDraft((d) => ({ ...d, links: newLinks }));
+    if (!editing) {
+      setExtras((prev) => {
+        const next = { ...prev, links: newLinks };
+        profileExtras.save(next);
+        return next;
+      });
+    }
   };
 
   const addDetailedSkill = (category: SkillEntry["category"]) => {
@@ -491,7 +563,15 @@ export const ProfileTab = () => {
           </DialogContent>
         </Dialog>
 
-        {/* === SECTION 1: BIO & SUMMARY === */}
+        {/* === AI MATCHING PRECISION & READINESS CARD (PRO AI ADVISOR) === */}
+        {!hideProfile && (
+          <AIMatchingReadinessCard
+            readiness={aiReadiness}
+            onQuickActionClick={handleQuickAction}
+          />
+        )}
+
+        {/* === SECTION: BIO & SUMMARY === */}
         {profile.bio && !hideProfile && (
           <div className="bg-card-gradient border border-border rounded-2xl p-4 space-y-1.5">
             <p className="text-xs text-primary font-bold flex items-center gap-1.5">
@@ -501,141 +581,398 @@ export const ProfileTab = () => {
           </div>
         )}
 
-        {/* === SECTION 2: ACADEMIC QUALIFICATIONS & EDUCATION === */}
-        {((degreeLabel || extras.university || extras.highSchool || extras.gpa || profile.education) && !hideProfile) && (
-          <div className="bg-card-gradient border border-border rounded-2xl p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold text-primary flex items-center gap-1.5">
-                <GraduationCap className="w-4 h-4 text-primary" />
-                {ar ? "المؤهلات الأكاديمية والتعليم" : "Academic Background & Education"}
-              </h3>
-              {degreeLabel && (
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary/10 text-primary border border-primary/20">
-                  {ar ? degreeLabel.labelAr : degreeLabel.labelEn}
-                </span>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
-              {extras.university && (
-                <div className="bg-background/50 border border-border/70 rounded-xl p-3">
-                  <p className="text-[11px] text-muted-foreground">{ar ? "الجامعة / الكلية" : "University / College"}</p>
-                  <p className="font-bold text-foreground mt-0.5">{extras.university}</p>
+        {/* === PERSONA-DRIVEN PROGRESSIVE SECTIONS === */}
+        {extras.persona === "professional" ? (
+          <>
+            {/* 1. PROFESSIONAL PERSONA: WORK & EXPERIENCE FIRST */}
+            {(expLabel && !hideProfile) && (
+              <div className="bg-card-gradient border border-border rounded-2xl p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold text-primary flex items-center gap-1.5">
+                    <Clock className="w-4 h-4 text-primary" />
+                    {ar ? "سنوات الخبرة العملية" : "Work Experience"}
+                  </h3>
+                  <span className="text-[10px] text-primary bg-primary/10 px-2 py-0.5 rounded-md font-semibold border border-primary/20">
+                    {ar ? "موثق" : "Verified"}
+                  </span>
                 </div>
-              )}
-              {extras.highSchool && (
-                <div className="bg-background/50 border border-border/70 rounded-xl p-3">
-                  <p className="text-[11px] text-muted-foreground">{ar ? "المدرسة الثانوية" : "High School"}</p>
-                  <p className="font-bold text-foreground mt-0.5">{extras.highSchool}</p>
+                <div className="bg-background/50 border border-border/70 rounded-xl p-3 flex items-center justify-between">
+                  <span className="text-xs font-bold text-foreground">
+                    {ar ? expLabel.labelAr : expLabel.labelEn}
+                  </span>
+                  <Briefcase className="w-4 h-4 text-primary/70" />
                 </div>
-              )}
-              {extras.major && (
-                <div className="bg-background/50 border border-border/70 rounded-xl p-3">
-                  <p className="text-[11px] text-muted-foreground">{ar ? "التخصص الأكاديمي" : "Field / Major"}</p>
-                  <p className="font-bold text-foreground mt-0.5">{extras.major}</p>
-                </div>
-              )}
-              {extras.gpa && (
-                <div className="bg-background/50 border border-border/70 rounded-xl p-3">
-                  <p className="text-[11px] text-muted-foreground">{ar ? "المعدل التراكمي / النسبة" : "GPA / Grade"}</p>
-                  <p className="font-bold text-gold-gradient mt-0.5 font-mono">
-                    {extras.gpa} {extras.gpaScale === "100" ? "%" : `/ ${extras.gpaScale}`}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {profile.education && (
-              <p className="text-xs text-foreground/90 leading-relaxed pt-1 border-t border-border/60">
-                {profile.education}
-              </p>
+              </div>
             )}
-          </div>
-        )}
 
-        {/* === SECTION 3: WORK & EXPERIENCE === */}
-        {(expLabel && !hideProfile) && (
-          <div className="bg-card-gradient border border-border rounded-2xl p-4 space-y-2">
-            <h3 className="text-xs font-bold text-primary flex items-center gap-1.5">
-              <Clock className="w-4 h-4 text-primary" />
-              {ar ? "سنوات الخبرة العملية" : "Work Experience"}
-            </h3>
-            <div className="bg-background/50 border border-border/70 rounded-xl p-3 flex items-center justify-between">
-              <span className="text-xs font-bold text-foreground">
-                {ar ? expLabel.labelAr : expLabel.labelEn}
-              </span>
-              <span className="text-[10px] text-primary bg-primary/10 px-2 py-0.5 rounded-md font-semibold">
-                {ar ? "تم التحقق" : "Verified"}
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* === SECTION 4: PROFESSIONAL & PORTFOLIO LINKS === */}
-        {(extras.links.length > 0 && !hideProfile) && (
-          <div className="bg-card-gradient border border-border rounded-2xl p-4 space-y-2.5">
-            <h3 className="text-xs font-bold text-primary flex items-center gap-1.5">
-              <Globe className="w-4 h-4 text-primary" />
-              {ar ? "الروابط المهنية ومعرض الأعمال" : "Professional & Portfolio Links"}
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {extras.links.map((link) => {
-                const meta = LINK_META[link.type] || LINK_META.other;
-                return (
-                  <a
-                    key={link.id}
-                    href={link.url.startsWith("http") ? link.url : `https://${link.url}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-between p-2.5 rounded-xl bg-background/50 border border-border/80 hover:border-primary/50 text-xs transition-all group"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span>{meta.emoji}</span>
-                      <span className="font-bold text-foreground truncate">
-                        {ar ? meta.labelAr : meta.labelEn}
-                      </span>
-                    </div>
-                    <ExternalLink className="w-3.5 h-3.5 text-primary group-hover:scale-110 transition-transform flex-shrink-0" />
-                  </a>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* === SECTION 5: DETAILED SKILLS WITH PROFICIENCY === */}
-        {(extras.detailedSkills.length > 0 && !hideProfile) && (
-          <div className="bg-card-gradient border border-border rounded-2xl p-4 space-y-3">
-            <h3 className="text-xs font-bold text-primary flex items-center gap-1.5">
-              <Award className="w-4 h-4 text-primary" />
-              {ar ? "المهارات المتقدمة ومستوى الإتقان" : "Detailed Skills & Proficiency"}
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {extras.detailedSkills.map((sk, idx) => {
-                const cat = SKILL_CATEGORY_META[sk.category];
-                return (
-                  <div key={idx} className="bg-background/50 border border-border/70 rounded-xl p-2.5 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span>{cat?.emoji || "⚡"}</span>
-                      <div>
-                        <p className="font-bold text-xs text-foreground">{sk.name}</p>
-                        <p className="text-[10px] text-muted-foreground">{ar ? cat?.labelAr : cat?.labelEn}</p>
+            {/* 2. PROFESSIONAL PERSONA: DETAILED SKILLS WITH RATINGS */}
+            {(extras.detailedSkills.length > 0 && !hideProfile) && (
+              <div className="bg-card-gradient border border-border rounded-2xl p-4 space-y-3">
+                <h3 className="text-xs font-bold text-primary flex items-center gap-1.5">
+                  <Award className="w-4 h-4 text-primary" />
+                  {ar ? "المهارات المتقدمة ومستوى الإتقان" : "Detailed Skills & Proficiency"}
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {extras.detailedSkills.map((sk, idx) => {
+                    const cat = SKILL_CATEGORY_META[sk.category];
+                    return (
+                      <div key={idx} className="bg-background/50 border border-border/70 rounded-xl p-2.5 flex items-center justify-between">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="flex-shrink-0">{cat?.emoji || "⚡"}</span>
+                          <div className="min-w-0">
+                            <p className="font-bold text-xs text-foreground truncate">{sk.name}</p>
+                            <p className="text-[10px] text-muted-foreground truncate">{ar ? cat?.labelAr : cat?.labelEn}</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-0.5 flex-shrink-0">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Star
+                              key={star}
+                              className={`w-3 h-3 ${star <= sk.level ? "fill-primary text-primary" : "text-muted-foreground/30"}`}
+                            />
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                    {/* Stars */}
-                    <div className="flex gap-0.5">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <Star
-                          key={star}
-                          className={`w-3 h-3 ${star <= sk.level ? "fill-primary text-primary" : "text-muted-foreground/30"}`}
-                        />
-                      ))}
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* 3. PROFESSIONAL PERSONA: PORTFOLIO & PROFESSIONAL LINKS */}
+            {(!hideProfile) && (
+              <div className="bg-card-gradient border border-border rounded-2xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold text-primary flex items-center gap-1.5">
+                    <Globe className="w-4 h-4 text-primary" />
+                    {ar ? "الروابط المهنية ومعرض الأعمال" : "Professional & Portfolio Links"}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setEditing(true)}
+                    className="flex items-center gap-1 text-[11px] font-bold text-primary hover:bg-primary/10 px-2.5 py-1 rounded-full border border-primary/30 transition-all shadow-sm"
+                  >
+                    <Edit3 className="w-3 h-3" />
+                    <span>{extras.links.length > 0 ? (ar ? "إدارة الروابط" : "Manage Links") : (ar ? "إضافة رابط" : "Add Link")}</span>
+                  </button>
+                </div>
+
+                {extras.links.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {extras.links.map((link) => {
+                      const meta = LINK_META[link.type] || LINK_META.other;
+                      const displayHandle = getLinkDisplayHandle(link.type, link.url);
+                      return (
+                        <div
+                          key={link.id}
+                          className="flex items-center justify-between p-3 rounded-2xl bg-background/60 border border-border/80 hover:border-primary/50 text-xs transition-all group shadow-xs"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="text-lg flex-shrink-0 w-8 h-8 rounded-xl bg-card border border-border/70 flex items-center justify-center">{meta.emoji}</span>
+                            <div className="flex flex-col min-w-0">
+                              <span className="font-bold text-foreground truncate text-xs">
+                                {ar ? meta.labelAr.split(" ")[0] : meta.labelEn.split(" ")[0]}
+                              </span>
+                              {displayHandle && (
+                                <span className="text-[10px] text-muted-foreground font-mono truncate max-w-[130px]" dir="ltr">
+                                  {displayHandle}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(link.url);
+                                toast.success(ar ? "تم نسخ الرابط" : "Link copied");
+                              }}
+                              className="h-8 w-8 rounded-xl border border-border/80 bg-card hover:bg-background text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors"
+                              title={ar ? "نسخ الرابط" : "Copy link"}
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
+                            <a
+                              href={link.url.startsWith("http") ? link.url : `https://${link.url}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="h-8 px-2.5 rounded-xl border border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary flex items-center gap-1 font-bold text-[11px] transition-colors"
+                              title={ar ? "فتح الرابط" : "Open link"}
+                            >
+                              <ExternalLink className="w-3.5 h-3.5 flex-shrink-0" />
+                              <span>{ar ? "فتح" : "Open"}</span>
+                            </a>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="p-3 bg-background/30 rounded-xl border border-dashed border-border text-center space-y-2">
+                    <p className="text-xs text-muted-foreground">
+                      {ar ? "لم يتم ربط أي موقع أو معرض أعمال حتى الآن." : "No portfolio or professional links connected yet."}
+                    </p>
+                    <div className="flex justify-center pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setEditing(true)}
+                        className="flex items-center gap-1 text-[11px] bg-card border border-primary/30 hover:bg-primary/15 text-primary px-3 py-1 rounded-full font-medium transition-all"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>{ar ? "إضافة وتعديل الروابط المهنية" : "Add & Edit Professional Links"}</span>
+                      </button>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          </div>
+                )}
+              </div>
+            )}
+
+            {/* 4. PROFESSIONAL PERSONA: ACADEMIC QUALIFICATIONS AS SECONDARY */}
+            {((degreeLabel || extras.university || extras.highSchool || extras.gpa || profile.education) && !hideProfile) && (
+              <div className="bg-card-gradient border border-border rounded-2xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold text-primary flex items-center gap-1.5">
+                    <GraduationCap className="w-4 h-4 text-primary" />
+                    {ar ? "المؤهلات الأكاديمية والتعليم" : "Academic Background & Education"}
+                  </h3>
+                  {degreeLabel && (
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary/10 text-primary border border-primary/20">
+                      {ar ? degreeLabel.labelAr : degreeLabel.labelEn}
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                  {extras.university && (
+                    <div className="bg-background/50 border border-border/70 rounded-xl p-3">
+                      <p className="text-[11px] text-muted-foreground">{ar ? "الجامعة / الكلية" : "University / College"}</p>
+                      <p className="font-bold text-foreground mt-0.5">{extras.university}</p>
+                    </div>
+                  )}
+                  {extras.major && (
+                    <div className="bg-background/50 border border-border/70 rounded-xl p-3">
+                      <p className="text-[11px] text-muted-foreground">{ar ? "التخصص الأكاديمي" : "Field / Major"}</p>
+                      <p className="font-bold text-foreground mt-0.5">{extras.major}</p>
+                    </div>
+                  )}
+                  {extras.gpa && (
+                    <div className="bg-background/50 border border-border/70 rounded-xl p-3">
+                      <p className="text-[11px] text-muted-foreground">{ar ? "المعدل التراكمي" : "GPA"}</p>
+                      <p className="font-bold text-gold-gradient mt-0.5 font-mono">
+                        {extras.gpa} {extras.gpaScale === "100" ? "%" : `/ ${extras.gpaScale}`}
+                      </p>
+                    </div>
+                  )}
+                  {extras.highSchool && (
+                    <div className="bg-background/50 border border-border/70 rounded-xl p-3">
+                      <p className="text-[11px] text-muted-foreground">{ar ? "المدرسة الثانوية" : "High School"}</p>
+                      <p className="font-bold text-foreground mt-0.5">{extras.highSchool}</p>
+                    </div>
+                  )}
+                </div>
+
+                {profile.education && (
+                  <p className="text-xs text-foreground/90 leading-relaxed pt-1 border-t border-border/60">
+                    {profile.education}
+                  </p>
+                )}
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            {/* 1. STUDENT PERSONA: ACADEMIC QUALIFICATIONS FIRST */}
+            {((degreeLabel || extras.university || extras.highSchool || extras.gpa || profile.education) && !hideProfile) && (
+              <div className="bg-card-gradient border border-border rounded-2xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold text-primary flex items-center gap-1.5">
+                    <GraduationCap className="w-4 h-4 text-primary" />
+                    {ar ? "المؤهلات الأكاديمية والتعليم" : "Academic Background & Education"}
+                  </h3>
+                  {degreeLabel && (
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary/10 text-primary border border-primary/20">
+                      {ar ? degreeLabel.labelAr : degreeLabel.labelEn}
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                  {extras.university && (
+                    <div className="bg-background/50 border border-border/70 rounded-xl p-3">
+                      <p className="text-[11px] text-muted-foreground">{ar ? "الجامعة / الكلية" : "University / College"}</p>
+                      <p className="font-bold text-foreground mt-0.5">{extras.university}</p>
+                    </div>
+                  )}
+                  {extras.highSchool && (
+                    <div className="bg-background/50 border border-border/70 rounded-xl p-3">
+                      <p className="text-[11px] text-muted-foreground">{ar ? "المدرسة الثانوية" : "High School"}</p>
+                      <p className="font-bold text-foreground mt-0.5">{extras.highSchool}</p>
+                    </div>
+                  )}
+                  {extras.major && (
+                    <div className="bg-background/50 border border-border/70 rounded-xl p-3">
+                      <p className="text-[11px] text-muted-foreground">{ar ? "التخصص الأكاديمي" : "Field / Major"}</p>
+                      <p className="font-bold text-foreground mt-0.5">{extras.major}</p>
+                    </div>
+                  )}
+                  {extras.gpa && (
+                    <div className="bg-background/50 border border-border/70 rounded-xl p-3">
+                      <p className="text-[11px] text-muted-foreground">{ar ? "المعدل التراكمي / النسبة" : "GPA / Grade"}</p>
+                      <p className="font-bold text-gold-gradient mt-0.5 font-mono">
+                        {extras.gpa} {extras.gpaScale === "100" ? "%" : `/ ${extras.gpaScale}`}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {profile.education && (
+                  <p className="text-xs text-foreground/90 leading-relaxed pt-1 border-t border-border/60">
+                    {profile.education}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* 2. STUDENT PERSONA: LINKS & PORTFOLIO */}
+            {(!hideProfile) && (
+              <div className="bg-card-gradient border border-border rounded-2xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold text-primary flex items-center gap-1.5">
+                    <Globe className="w-4 h-4 text-primary" />
+                    {ar ? "الروابط وملف السيرة الذاتية" : "Links & Resume (CV / Portfolio)"}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setEditing(true)}
+                    className="flex items-center gap-1 text-[11px] font-bold text-primary hover:bg-primary/10 px-2.5 py-1 rounded-full border border-primary/30 transition-all shadow-sm"
+                  >
+                    <Edit3 className="w-3 h-3" />
+                    <span>{extras.links.length > 0 ? (ar ? "إدارة الروابط" : "Manage Links") : (ar ? "إضافة رابط" : "Add Link")}</span>
+                  </button>
+                </div>
+
+                {extras.links.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {extras.links.map((link) => {
+                      const meta = LINK_META[link.type] || LINK_META.other;
+                      const displayHandle = getLinkDisplayHandle(link.type, link.url);
+                      return (
+                        <div
+                          key={link.id}
+                          className="flex items-center justify-between p-3 rounded-2xl bg-background/60 border border-border/80 hover:border-primary/50 text-xs transition-all group shadow-xs"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="text-lg flex-shrink-0 w-8 h-8 rounded-xl bg-card border border-border/70 flex items-center justify-center">{meta.emoji}</span>
+                            <div className="flex flex-col min-w-0">
+                              <span className="font-bold text-foreground truncate text-xs">
+                                {ar ? meta.labelAr.split(" ")[0] : meta.labelEn.split(" ")[0]}
+                              </span>
+                              {displayHandle && (
+                                <span className="text-[10px] text-muted-foreground font-mono truncate max-w-[130px]" dir="ltr">
+                                  {displayHandle}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(link.url);
+                                toast.success(ar ? "تم نسخ الرابط" : "Link copied");
+                              }}
+                              className="h-8 w-8 rounded-xl border border-border/80 bg-card hover:bg-background text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors"
+                              title={ar ? "نسخ الرابط" : "Copy link"}
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
+                            <a
+                              href={link.url.startsWith("http") ? link.url : `https://${link.url}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="h-8 px-2.5 rounded-xl border border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary flex items-center gap-1 font-bold text-[11px] transition-colors"
+                              title={ar ? "فتح الرابط" : "Open link"}
+                            >
+                              <ExternalLink className="w-3.5 h-3.5 flex-shrink-0" />
+                              <span>{ar ? "فتح" : "Open"}</span>
+                            </a>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="p-3 bg-background/30 rounded-xl border border-dashed border-border text-center space-y-2">
+                    <p className="text-xs text-muted-foreground">
+                      {ar ? "لم تقم بإضافة رابط سيرتك الذاتية أو حساباتك الأكاديمية بعد." : "No CV or academic links connected yet."}
+                    </p>
+                    <div className="flex justify-center pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setEditing(true)}
+                        className="flex items-center gap-1 text-[11px] bg-card border border-primary/30 hover:bg-primary/15 text-primary px-3 py-1 rounded-full font-medium transition-all"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>{ar ? "إضافة وتعديل روابط السيرة والشهادات" : "Add & Edit CV / Academic Links"}</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 3. STUDENT PERSONA: DETAILED SKILLS */}
+            {(extras.detailedSkills.length > 0 && !hideProfile) && (
+              <div className="bg-card-gradient border border-border rounded-2xl p-4 space-y-3">
+                <h3 className="text-xs font-bold text-primary flex items-center gap-1.5">
+                  <Award className="w-4 h-4 text-primary" />
+                  {ar ? "المهارات المتقدمة ومستوى الإتقان" : "Detailed Skills & Proficiency"}
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {extras.detailedSkills.map((sk, idx) => {
+                    const cat = SKILL_CATEGORY_META[sk.category];
+                    return (
+                      <div key={idx} className="bg-background/50 border border-border/70 rounded-xl p-2.5 flex items-center justify-between">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="flex-shrink-0">{cat?.emoji || "⚡"}</span>
+                          <div className="min-w-0">
+                            <p className="font-bold text-xs text-foreground truncate">{sk.name}</p>
+                            <p className="text-[10px] text-muted-foreground truncate">{ar ? cat?.labelAr : cat?.labelEn}</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-0.5 flex-shrink-0">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Star
+                              key={star}
+                              className={`w-3 h-3 ${star <= sk.level ? "fill-primary text-primary" : "text-muted-foreground/30"}`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* 4. STUDENT PERSONA: WORK & EXPERIENCE AS SECONDARY */}
+            {(expLabel && !hideProfile) && (
+              <div className="bg-card-gradient border border-border rounded-2xl p-4 space-y-2">
+                <h3 className="text-xs font-bold text-primary flex items-center gap-1.5">
+                  <Clock className="w-4 h-4 text-primary" />
+                  {ar ? "سنوات الخبرة العملية" : "Work Experience"}
+                </h3>
+                <div className="bg-background/50 border border-border/70 rounded-xl p-3 flex items-center justify-between">
+                  <span className="text-xs font-bold text-foreground">
+                    {ar ? expLabel.labelAr : expLabel.labelEn}
+                  </span>
+                  <span className="text-[10px] text-primary bg-primary/10 px-2 py-0.5 rounded-md font-semibold">
+                    {ar ? "تم التحقق" : "Verified"}
+                  </span>
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         {/* === SECTION 6: GENERAL SKILLS TAGS === */}
@@ -691,6 +1028,49 @@ export const ProfileTab = () => {
         </div>
       </div>
 
+      {/* 0. PERSONA SELECTOR (Student vs. Professional) */}
+      <div className="bg-card-gradient border-gold rounded-3xl p-4 sm:p-5 shadow-gold space-y-3">
+        <div className={alignClass}>
+          <p className="text-xs font-bold text-primary flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5" />
+            {ar ? "نوع الحساب والمسار المستهدف" : "Profile Archetype & Target Path"}
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            {ar
+              ? "اختر مسارك لتخصيص الحقول المناسبة (طالب للدراسة والمنح، أو مهني للوظائف والعمل الحر)"
+              : "Select your path to customize fields (Student for scholarships, or Professional for jobs)"}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 bg-background/60 p-1.5 rounded-2xl border border-primary/25">
+          <button
+            type="button"
+            onClick={() => setExtrasDraft({ ...extrasDraft, persona: "student" })}
+            className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              extrasDraft.persona !== "professional"
+                ? "bg-gold-gradient text-primary-foreground shadow-gold"
+                : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+            }`}
+          >
+            <GraduationCap className="w-4 h-4" />
+            <span>{ar ? "طالب ومنح دراسية 🎓" : "Student & Scholar 🎓"}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setExtrasDraft({ ...extrasDraft, persona: "professional" })}
+            className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              extrasDraft.persona === "professional"
+                ? "bg-gold-gradient text-primary-foreground shadow-gold"
+                : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+            }`}
+          >
+            <Briefcase className="w-4 h-4" />
+            <span>{ar ? "مهني وفرص عمل 💼" : "Freelancer & Pro 💼"}</span>
+          </button>
+        </div>
+      </div>
+
       {/* 1. PERSONAL INFORMATION */}
       <Section title={ar ? "المعلومات الشخصية وبيانات التواصل" : "Personal Information & Contact"} alignClass={alignClass}>
         {/* Avatar Photo Edit Widget */}
@@ -728,333 +1108,482 @@ export const ProfileTab = () => {
         </Field>
 
         {/* Location with One-Tap GPS */}
-        <Field icon={MapPin} label={t("location")}>
-          <div className="space-y-2">
-            <div className="flex gap-2">
-              <Input
-                value={draft.location}
-                onChange={e => setDraft({ ...draft, location: e.target.value })}
-                className={`bg-input border-gold/30 flex-1 ${alignClass}`}
-                placeholder={ar ? "الدولة / المدينة — مثال: السودان / الخرطوم" : "Country / City — e.g. Sudan / Khartoum"}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleAutoFillLocation}
-                disabled={geoLoading}
-                className="border-primary/40 text-primary hover:bg-primary/15 font-bold flex-shrink-0 text-xs gap-1.5 h-10 px-3 rounded-xl shadow-gold"
-              >
-                {geoLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Compass className="w-3.5 h-3.5" />}
-                <span>{ar ? "موقعي الحالي" : "My Location"}</span>
-              </Button>
-            </div>
-
-            <div className="flex items-center justify-between text-[11px] text-muted-foreground px-1">
-              <span>{ar ? "💡 سيتم ملء الدولة والمدينة ورمز الهاتف تلقائياً." : "💡 Automatically fills country, city & dial code."}</span>
-              <button
-                type="button"
-                onClick={() => setGeoHelpOpen(true)}
-                className="text-primary hover:underline inline-flex items-center gap-0.5"
-              >
-                <HelpCircle className="w-3 h-3" />
-                <span>{ar ? "موقعي غير دقيق؟" : "Wrong location?"}</span>
-              </button>
-            </div>
-          </div>
-        </Field>
-
-        {/* Phone with Country Code Selector */}
-        <Field icon={Phone} label={t("phone")}>
-          <div className="flex gap-2" dir="ltr">
-            <Select
-              value={extrasDraft.phoneCountryIso}
-              onValueChange={(iso) => {
-                const c = findPhoneCountry(iso);
-                setExtrasDraft(d => ({ ...d, phoneCountryIso: c.iso, phoneCountryCode: c.code }));
-              }}
-            >
-              <SelectTrigger className="w-[130px] bg-input border-gold/30">
-                <SelectValue>
-                  <span className="flex items-center gap-1.5">
-                    <span>{findPhoneCountry(extrasDraft.phoneCountryIso).flag}</span>
-                    <span className="font-mono text-xs">{extrasDraft.phoneCountryCode}</span>
-                  </span>
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent className="max-h-64">
-                {PHONE_COUNTRIES.map(c => (
-                  <SelectItem key={c.iso} value={c.iso}>
-                    <span className="flex items-center gap-2">
-                      <span>{c.flag}</span>
-                      <span className="font-mono text-xs">{c.code}</span>
-                      <span className="text-xs text-muted-foreground">{ar ? c.name : c.nameEn}</span>
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Input
-              value={phoneLocal}
-              onChange={e => setPhoneLocal(e.target.value.replace(/[^\d]/g, ""))}
-              className="bg-input border-gold/30 flex-1 text-left"
-              placeholder="912345678"
-              inputMode="tel"
-              type="tel"
-            />
-            {phoneLocal && (
-              <button
-                type="button"
-                onClick={() => handleCopyPhone(`${extrasDraft.phoneCountryCode} ${phoneLocal}`)}
-                title={ar ? "نسخ رقم الهاتف" : "Copy phone number"}
-                className="h-10 px-3 rounded-md bg-input border border-gold/30 hover:bg-primary/20 hover:border-primary/50 text-foreground flex items-center justify-center transition-all shrink-0 active:scale-95 cursor-pointer"
-              >
-                {copiedPhone ? (
-                  <Check className="w-4 h-4 text-emerald-400" />
-                ) : (
-                  <Copy className="w-4 h-4 text-muted-foreground hover:text-primary" />
-                )}
-              </button>
-            )}
-          </div>
-          {phoneLocal && !validatePhone(extrasDraft.phoneCountryIso, phoneLocal) && (
-            <p className="text-[10px] text-destructive mt-1">⚠️ {ar ? "رقم غير صالح لهذه الدولة" : "Invalid phone number for this country"}</p>
-          )}
-        </Field>
-
-        {/* Bio */}
-        <Field icon={BookOpen} label={t("bio")}>
-          <Textarea
-            value={draft.bio}
-            onChange={e => setDraft({ ...draft, bio: e.target.value })}
-            className={`bg-input border-gold/30 ${alignClass} min-h-24`}
-            placeholder={t("bioHolder")}
-          />
-        </Field>
-      </Section>
-
-      {/* 2. ACADEMIC QUALIFICATIONS & DEGREES */}
-      <Section title={ar ? "المؤهلات الأكاديمية والتعليم" : "Academic Background & Degrees"} alignClass={alignClass}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Field icon={GraduationCap} label={ar ? "المستوى الأكاديمي الحالي" : "Academic Level"}>
-            <Select
-              value={extrasDraft.degree || "bachelor"}
-              onValueChange={(val: any) => setExtrasDraft(d => ({ ...d, degree: val }))}
-            >
-              <SelectTrigger className="bg-input border-gold/30">
-                <SelectValue placeholder={ar ? "اختر الدرجة العلمية" : "Select Degree"} />
-              </SelectTrigger>
-              <SelectContent>
-                {DEGREE_OPTIONS.map(d => (
-                  <SelectItem key={d.value} value={d.value}>
-                    {ar ? d.labelAr : d.labelEn}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-
-          <Field icon={Building} label={ar ? "الجامعة / الكلية" : "University / College"}>
-            <Input
-              value={extrasDraft.university}
-              onChange={e => setExtrasDraft(d => ({ ...d, university: e.target.value }))}
-              placeholder={ar ? "اسم الجامعة أو المعهد" : "University name"}
-              className="bg-input border-gold/30"
-            />
-          </Field>
-
-          <Field icon={BookOpen} label={ar ? "التخصص أو الشعبة" : "Field of Study / Major"}>
-            <Input
-              value={extrasDraft.major}
-              onChange={e => setExtrasDraft(d => ({ ...d, major: e.target.value }))}
-              placeholder={ar ? "مثل: هندسة برمجيات، طب، إدارة أعمال" : "e.g. Computer Science, Medicine"}
-              className="bg-input border-gold/30"
-            />
-          </Field>
-
-          <Field icon={Award} label={ar ? "المعدل التراكمي أو النسبة المئوية" : "GPA / Grade Percentage"}>
-            <div className="flex gap-2">
-              <Input
-                value={extrasDraft.gpa}
-                onChange={e => setExtrasDraft(d => ({ ...d, gpa: e.target.value }))}
-                placeholder={ar ? "مثال: 3.85 أو 88" : "e.g. 3.85 or 88"}
-                className="bg-input border-gold/30 flex-1"
-              />
-              <Select
-                value={extrasDraft.gpaScale}
-                onValueChange={(val: any) => setExtrasDraft(d => ({ ...d, gpaScale: val }))}
-              >
-                <SelectTrigger className="w-[100px] bg-input border-gold/30">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="4">/ 4.0</SelectItem>
-                  <SelectItem value="5">/ 5.0</SelectItem>
-                  <SelectItem value="100">%</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </Field>
-        </div>
-
-        <Field icon={GraduationCap} label={t("eduLabel")}>
-          <Textarea
-            value={draft.education}
-            onChange={e => setDraft({ ...draft, education: e.target.value })}
-            className={`bg-input border-gold/30 ${alignClass} min-h-20`}
-            placeholder={t("eduHolder")}
-          />
-        </Field>
-      </Section>
-
-      {/* 3. WORK EXPERIENCE */}
-      <Section title={ar ? "الخبرات العملية والمهنية" : "Work Experience"} alignClass={alignClass}>
-        <Field icon={Briefcase} label={ar ? "سنوات الخبرة الإجمالية" : "Years of Experience"}>
-          <Select
-            value={extrasDraft.experienceYears || "none"}
-            onValueChange={(val: any) => setExtrasDraft(d => ({ ...d, experienceYears: val }))}
-          >
-            <SelectTrigger className="bg-input border-gold/30">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {EXPERIENCE_OPTIONS.map(e => (
-                <SelectItem key={e.value} value={e.value}>
-                  {ar ? e.labelAr : e.labelEn}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </Field>
-      </Section>
-
-      {/* 4. PROFESSIONAL & PORTFOLIO LINKS */}
-      <Section title={ar ? "الروابط المهنية ومعرض الأعمال (Portfolio / Links)" : "Professional Links & Portfolio"} alignClass={alignClass}>
-        <p className="text-xs text-muted-foreground">
-          {ar ? "أضف روابط حساباتك وسيرتك الذاتية وموقعك الشخصي لتقوية ملفك أمام لجان المنح والشركات:" : "Add your portfolio, LinkedIn, GitHub, or Resume link to boost your profile:"}
-        </p>
-
-        <div className="space-y-2.5">
-          {extrasDraft.links.map((link) => {
-            const meta = LINK_META[link.type] || LINK_META.other;
-            return (
-              <div key={link.id} className="flex gap-2 items-center bg-background/50 p-2.5 rounded-2xl border border-border/80">
-                <span className="text-lg px-1">{meta.emoji}</span>
-                <span className="text-xs font-bold text-primary w-24 sm:w-32 truncate flex-shrink-0">
-                  {ar ? meta.labelAr : meta.labelEn}
-                </span>
+        <div id="field-location">
+          <Field icon={MapPin} label={t("location")}>
+            <div className="space-y-2">
+              <div className="flex gap-2">
                 <Input
-                  value={link.url}
-                  onChange={e => updateLink(link.id, e.target.value)}
-                  placeholder={meta.placeholder}
-                  className="bg-input border-gold/30 flex-1 text-xs"
-                  dir="ltr"
+                  value={draft.location}
+                  onChange={e => setDraft({ ...draft, location: e.target.value })}
+                  className={`bg-input border-gold/30 flex-1 ${alignClass}`}
+                  placeholder={ar ? "الدولة / المدينة — مثال: السودان / الخرطوم" : "Country / City — e.g. Sudan / Khartoum"}
                 />
                 <Button
-                  variant="ghostGold"
+                  type="button"
+                  variant="outline"
                   size="sm"
-                  onClick={() => removeLink(link.id)}
-                  className="text-destructive h-9 px-2.5 hover:bg-destructive/10"
+                  onClick={handleAutoFillLocation}
+                  disabled={geoLoading}
+                  className="border-primary/40 text-primary hover:bg-primary/15 font-bold flex-shrink-0 text-xs gap-1.5 h-10 px-3 rounded-xl shadow-gold"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  {geoLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Compass className="w-3.5 h-3.5" />}
+                  <span>{ar ? "موقعي الحالي" : "My Location"}</span>
                 </Button>
               </div>
-            );
-          })}
+
+              <div className="flex items-center justify-between text-[11px] text-muted-foreground px-1">
+                <span>{ar ? "💡 سيتم ملء الدولة والمدينة ورمز الهاتف تلقائياً." : "💡 Automatically fills country, city & dial code."}</span>
+                <button
+                  type="button"
+                  onClick={() => setGeoHelpOpen(true)}
+                  className="text-primary hover:underline inline-flex items-center gap-0.5"
+                >
+                  <HelpCircle className="w-3 quasi-w-3" />
+                  <span>{ar ? "موقعي غير دقيق؟" : "Wrong location?"}</span>
+                </button>
+              </div>
+            </div>
+          </Field>
         </div>
 
-        {/* Add Link Dropdown */}
-        <div className="pt-2">
-          <Select onValueChange={(val: LinkType) => addLink(val)}>
-            <SelectTrigger className="w-full sm:w-56 bg-card border-primary/40 text-primary font-bold text-xs shadow-gold">
-              <Plus className="w-4 h-4 mr-1" />
-              <span>{ar ? "+ إضافة رابط جديد..." : "+ Add new link..."}</span>
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(LINK_META).map(([key, m]) => (
-                <SelectItem key={key} value={key}>
-                  <span className="flex items-center gap-2">
-                    <span>{m.emoji}</span>
-                    <span>{ar ? m.labelAr : m.labelEn}</span>
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </Section>
-
-      {/* 5. DETAILED SKILLS WITH RATINGS */}
-      <Section title={ar ? "المهارات المتقدمة ومستوى الإتقان (1 - 5 نجوم)" : "Detailed Skills & Proficiency"} alignClass={alignClass}>
-        <div className="space-y-2.5">
-          {extrasDraft.detailedSkills.map((sk, idx) => (
-            <div key={idx} className="flex flex-wrap sm:flex-nowrap gap-2 items-center bg-background/50 p-2.5 rounded-2xl border border-border/80">
-              <Input
-                value={sk.name}
-                onChange={e => updateDetailedSkill(idx, { name: e.target.value })}
-                placeholder={ar ? "اسم المهارة (مثل: Python, Figma, الإنجليزية...)" : "Skill name (e.g. Python, Figma, English...)"}
-                className="bg-input border-gold/30 flex-1 text-xs"
-              />
+        {/* Phone with Country Code Selector */}
+        <div id="field-phone">
+          <Field icon={Phone} label={t("phone")}>
+            <div className="flex gap-2" dir="ltr">
               <Select
-                value={sk.category}
-                onValueChange={(val: any) => updateDetailedSkill(idx, { category: val })}
+                value={extrasDraft.phoneCountryIso}
+                onValueChange={(iso) => {
+                  const c = findPhoneCountry(iso);
+                  setExtrasDraft(d => ({ ...d, phoneCountryIso: c.iso, phoneCountryCode: c.code }));
+                }}
               >
-                <SelectTrigger className="w-[140px] bg-input border-gold/30 text-xs">
-                  <SelectValue />
+                <SelectTrigger className="w-[130px] bg-input border-gold/30">
+                  <SelectValue>
+                    <span className="flex items-center gap-1.5">
+                      <span>{findPhoneCountry(extrasDraft.phoneCountryIso).flag}</span>
+                      <span className="font-mono text-xs">{extrasDraft.phoneCountryCode}</span>
+                    </span>
+                  </SelectValue>
                 </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(SKILL_CATEGORY_META).map(([k, meta]) => (
-                    <SelectItem key={k} value={k}>
-                      <span>{meta.emoji} {ar ? meta.labelAr : meta.labelEn}</span>
+                <SelectContent className="max-h-64">
+                  {PHONE_COUNTRIES.map(c => (
+                    <SelectItem key={c.iso} value={c.iso}>
+                      <span className="flex items-center gap-2">
+                        <span>{c.flag}</span>
+                        <span className="font-mono text-xs">{c.code}</span>
+                        <span className="text-xs text-muted-foreground">{ar ? c.name : c.nameEn}</span>
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-
-              {/* Star rating selector */}
-              <div className="flex gap-1 items-center px-2">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button
-                    key={star}
-                    type="button"
-                    onClick={() => updateDetailedSkill(idx, { level: star })}
-                    className="p-0.5 hover:scale-125 transition-transform"
-                  >
-                    <Star
-                      className={`w-4 h-4 ${star <= sk.level ? "fill-primary text-primary" : "text-muted-foreground/30"}`}
-                    />
-                  </button>
-                ))}
-              </div>
-
-              <Button
-                variant="ghostGold"
-                size="sm"
-                onClick={() => removeDetailedSkill(idx)}
-                className="text-destructive h-9 px-2 hover:bg-destructive/10"
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
+              <Input
+                value={phoneLocal}
+                onChange={e => setPhoneLocal(e.target.value.replace(/[^\d]/g, ""))}
+                className="bg-input border-gold/30 flex-1 text-left"
+                placeholder="912345678"
+                inputMode="tel"
+                type="tel"
+              />
+              {phoneLocal && (
+                <button
+                  type="button"
+                  onClick={() => handleCopyPhone(`${extrasDraft.phoneCountryCode} ${phoneLocal}`)}
+                  title={ar ? "نسخ رقم الهاتف" : "Copy phone number"}
+                  className="h-10 px-3 rounded-md bg-input border border-gold/30 hover:bg-primary/20 hover:border-primary/50 text-foreground flex items-center justify-center transition-all shrink-0 active:scale-95 cursor-pointer"
+                >
+                  {copiedPhone ? (
+                    <Check className="w-4 h-4 text-emerald-400" />
+                  ) : (
+                    <Copy className="w-4 h-4 text-muted-foreground hover:text-primary" />
+                  )}
+                </button>
+              )}
             </div>
-          ))}
+            {phoneLocal && !validatePhone(extrasDraft.phoneCountryIso, phoneLocal) && (
+              <p className="text-[10px] text-destructive mt-1">⚠️ {ar ? "رقم غير صالح لهذه الدولة" : "Invalid phone number for this country"}</p>
+            )}
+          </Field>
         </div>
 
-        <div className="pt-2 flex flex-wrap gap-2">
-          {Object.entries(SKILL_CATEGORY_META).map(([k, meta]) => (
-            <Button
-              key={k}
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => addDetailedSkill(k as any)}
-              className="text-xs border-primary/30 text-primary hover:bg-primary/10"
-            >
-              <Plus className="w-3.5 h-3.5 mr-1" />
-              <span>{meta.emoji} {ar ? `إضافة مهارة (${meta.labelAr.slice(0, 12)})` : `Add (${meta.labelEn.slice(0, 12)})`}</span>
-            </Button>
-          ))}
+        {/* Bio */}
+        <div id="field-bio">
+          <Field icon={BookOpen} label={t("bio")}>
+            <Textarea
+              value={draft.bio}
+              onChange={e => setDraft({ ...draft, bio: e.target.value })}
+              className={`bg-input border-gold/30 ${alignClass} min-h-24`}
+              placeholder={t("bioHolder")}
+            />
+          </Field>
         </div>
       </Section>
+
+      {/* PROGRESSIVE SECTIONS BASED ON SELECTED PERSONA IN EDIT MODE */}
+      {extrasDraft.persona === "professional" ? (
+        <>
+          {/* PROFESSIONAL EDIT 1: WORK EXPERIENCE */}
+          <Section title={ar ? "الخبرات العملية والمسار المهني" : "Work Experience & Professional Path"} alignClass={alignClass}>
+            <Field icon={Briefcase} label={ar ? "سنوات الخبرة الإجمالية" : "Years of Experience"}>
+              <Select
+                value={extrasDraft.experienceYears || "none"}
+                onValueChange={(val: any) => setExtrasDraft(d => ({ ...d, experienceYears: val }))}
+              >
+                <SelectTrigger className="bg-input border-gold/30">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {EXPERIENCE_OPTIONS.map(e => (
+                    <SelectItem key={e.value} value={e.value}>
+                      {ar ? e.labelAr : e.labelEn}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          </Section>
+
+          {/* PROFESSIONAL EDIT 2: DETAILED SKILLS WITH RATINGS */}
+          <Section title={ar ? "المهارات المتقدمة ومستوى الإتقان (1 - 5 نجوم)" : "Detailed Skills & Proficiency (1 - 5 Stars)"} alignClass={alignClass}>
+            <div className="space-y-2.5">
+              {extrasDraft.detailedSkills.map((sk, idx) => (
+                <div key={idx} className="flex flex-wrap sm:flex-nowrap gap-2 items-center bg-background/50 p-2.5 rounded-2xl border border-border/80">
+                  <Input
+                    value={sk.name}
+                    onChange={e => updateDetailedSkill(idx, { name: e.target.value })}
+                    placeholder={ar ? "اسم المهارة (مثل: Python, Figma, إدارة مشاريع...)" : "Skill name (e.g. Python, Figma, Project Management...)"}
+                    className="bg-input border-gold/30 flex-1 text-xs"
+                  />
+                  <Select
+                    value={sk.category}
+                    onValueChange={(val: any) => updateDetailedSkill(idx, { category: val })}
+                  >
+                    <SelectTrigger className="w-[140px] bg-input border-gold/30 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(SKILL_CATEGORY_META).map(([k, meta]) => (
+                        <SelectItem key={k} value={k}>
+                          <span>{meta.emoji} {ar ? meta.labelAr : meta.labelEn}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <div className="flex gap-1 items-center px-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => updateDetailedSkill(idx, { level: star })}
+                        className="p-0.5 hover:scale-125 transition-transform"
+                      >
+                        <Star
+                          className={`w-4 h-4 ${star <= sk.level ? "fill-primary text-primary" : "text-muted-foreground/30"}`}
+                        />
+                      </button>
+                    ))}
+                  </div>
+
+                  <Button
+                    variant="ghostGold"
+                    size="sm"
+                    onClick={() => removeDetailedSkill(idx)}
+                    className="text-destructive h-9 px-2 hover:bg-destructive/10"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-2 flex flex-wrap gap-2">
+              {Object.entries(SKILL_CATEGORY_META).map(([k, meta]) => (
+                <Button
+                  key={k}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addDetailedSkill(k as any)}
+                  className="text-xs border-primary/30 text-primary hover:bg-primary/10"
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1" />
+                  <span>{meta.emoji} {ar ? `إضافة مهارة (${meta.labelAr.slice(0, 12)})` : `Add (${meta.labelEn.slice(0, 12)})`}</span>
+                </Button>
+              ))}
+            </div>
+          </Section>
+
+          {/* PROFESSIONAL EDIT 3: PROFESSIONAL & PORTFOLIO LINKS */}
+          <Section title={ar ? "الروابط المهنية ومعرض الأعمال (LinkedIn / Portfolio)" : "Professional Links & Portfolio"} alignClass={alignClass}>
+            <InlineLinksManager
+              links={extrasDraft.links}
+              onChange={handleUpdateLinksDirectly}
+              persona="professional"
+            />
+          </Section>
+
+          {/* PROFESSIONAL EDIT 4: ACADEMIC BACKGROUND (SECONDARY) */}
+          <Section title={ar ? "المؤهلات الأكاديمية والتعليم (اختياري)" : "Academic Background (Optional)"} alignClass={alignClass}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Field icon={GraduationCap} label={ar ? "الدرجة العلمية" : "Degree"}>
+                <Select
+                  value={extrasDraft.degree || "bachelor"}
+                  onValueChange={(val: any) => setExtrasDraft(d => ({ ...d, degree: val }))}
+                >
+                  <SelectTrigger className="bg-input border-gold/30">
+                    <SelectValue placeholder={ar ? "اختر الدرجة العلمية" : "Select Degree"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DEGREE_OPTIONS.map(d => (
+                      <SelectItem key={d.value} value={d.value}>
+                        {ar ? d.labelAr : d.labelEn}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+
+              <Field icon={Building} label={ar ? "الجامعة / الكلية" : "University / College"}>
+                <Input
+                  value={extrasDraft.university}
+                  onChange={e => setExtrasDraft(d => ({ ...d, university: e.target.value }))}
+                  placeholder={ar ? "اسم الجامعة أو المعهد" : "University name"}
+                  className="bg-input border-gold/30"
+                />
+              </Field>
+
+              <Field icon={BookOpen} label={ar ? "التخصص أو المجال" : "Field / Major"}>
+                <Input
+                  value={extrasDraft.major}
+                  onChange={e => setExtrasDraft(d => ({ ...d, major: e.target.value }))}
+                  placeholder={ar ? "مثل: هندسة برمجيات، تسويق، إدارة" : "e.g. Software Engineering, Marketing"}
+                  className="bg-input border-gold/30"
+                />
+              </Field>
+
+              <Field icon={Award} label={ar ? "المعدل التراكمي (إن وجد)" : "GPA (If applicable)"}>
+                <div className="flex gap-2">
+                  <Input
+                    value={extrasDraft.gpa}
+                    onChange={e => setExtrasDraft(d => ({ ...d, gpa: e.target.value }))}
+                    placeholder={ar ? "مثال: 3.85 أو 88" : "e.g. 3.85 or 88"}
+                    className="bg-input border-gold/30 flex-1"
+                  />
+                  <Select
+                    value={extrasDraft.gpaScale}
+                    onValueChange={(val: any) => setExtrasDraft(d => ({ ...d, gpaScale: val }))}
+                  >
+                    <SelectTrigger className="w-[100px] bg-input border-gold/30">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="4">/ 4.0</SelectItem>
+                      <SelectItem value="5">/ 5.0</SelectItem>
+                      <SelectItem value="100">%</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </Field>
+            </div>
+
+            <Field icon={GraduationCap} label={t("eduLabel")}>
+              <Textarea
+                value={draft.education}
+                onChange={e => setDraft({ ...draft, education: e.target.value })}
+                className={`bg-input border-gold/30 ${alignClass} min-h-20`}
+                placeholder={t("eduHolder")}
+              />
+            </Field>
+          </Section>
+        </>
+      ) : (
+        <>
+          {/* STUDENT EDIT 1: ACADEMIC QUALIFICATIONS & DEGREES */}
+          <Section title={ar ? "المؤهلات الأكاديمية والتعليم (أساسي للفرص والمنح)" : "Academic Background & Education"} alignClass={alignClass}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Field icon={GraduationCap} label={ar ? "المستوى الأكاديمي الحالي" : "Academic Level"}>
+                <Select
+                  value={extrasDraft.degree || "bachelor"}
+                  onValueChange={(val: any) => setExtrasDraft(d => ({ ...d, degree: val }))}
+                >
+                  <SelectTrigger className="bg-input border-gold/30">
+                    <SelectValue placeholder={ar ? "اختر الدرجة العلمية" : "Select Degree"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DEGREE_OPTIONS.map(d => (
+                      <SelectItem key={d.value} value={d.value}>
+                        {ar ? d.labelAr : d.labelEn}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+
+              <Field icon={Building} label={ar ? "الجامعة / الكلية" : "University / College"}>
+                <Input
+                  value={extrasDraft.university}
+                  onChange={e => setExtrasDraft(d => ({ ...d, university: e.target.value }))}
+                  placeholder={ar ? "اسم الجامعة أو المعهد" : "University name"}
+                  className="bg-input border-gold/30"
+                />
+              </Field>
+
+              <Field icon={Building} label={ar ? "المدرسة الثانوية" : "High School"}>
+                <Input
+                  value={extrasDraft.highSchool}
+                  onChange={e => setExtrasDraft(d => ({ ...d, highSchool: e.target.value }))}
+                  placeholder={ar ? "اسم المدرسة الثانوية (لطلاب البكالوريوس)" : "High school name"}
+                  className="bg-input border-gold/30"
+                />
+              </Field>
+
+              <Field icon={BookOpen} label={ar ? "التخصص أو الشعبة" : "Field of Study / Major"}>
+                <Input
+                  value={extrasDraft.major}
+                  onChange={e => setExtrasDraft(d => ({ ...d, major: e.target.value }))}
+                  placeholder={ar ? "مثل: هندسة، طب، اقتصاد، لغات" : "e.g. Computer Science, Medicine"}
+                  className="bg-input border-gold/30"
+                />
+              </Field>
+
+              <Field icon={Award} label={ar ? "المعدل التراكمي أو النسبة المئوية" : "GPA / Grade Percentage"}>
+                <div className="flex gap-2">
+                  <Input
+                    value={extrasDraft.gpa}
+                    onChange={e => setExtrasDraft(d => ({ ...d, gpa: e.target.value }))}
+                    placeholder={ar ? "مثال: 3.85 أو 92" : "e.g. 3.85 or 92"}
+                    className="bg-input border-gold/30 flex-1"
+                  />
+                  <Select
+                    value={extrasDraft.gpaScale}
+                    onValueChange={(val: any) => setExtrasDraft(d => ({ ...d, gpaScale: val }))}
+                  >
+                    <SelectTrigger className="w-[100px] bg-input border-gold/30">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="4">/ 4.0</SelectItem>
+                      <SelectItem value="5">/ 5.0</SelectItem>
+                      <SelectItem value="100">%</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </Field>
+            </div>
+
+            <Field icon={GraduationCap} label={t("eduLabel")}>
+              <Textarea
+                value={draft.education}
+                onChange={e => setDraft({ ...draft, education: e.target.value })}
+                className={`bg-input border-gold/30 ${alignClass} min-h-20`}
+                placeholder={t("eduHolder")}
+              />
+            </Field>
+          </Section>
+
+          {/* STUDENT EDIT 2: LINKS & RESUME */}
+          <Section title={ar ? "الروابط وملف السيرة الذاتية (CV / Portfolio)" : "Links & Resume (CV / Portfolio)"} alignClass={alignClass}>
+            <InlineLinksManager
+              links={extrasDraft.links}
+              onChange={handleUpdateLinksDirectly}
+              persona="student"
+            />
+          </Section>
+
+          {/* STUDENT EDIT 3: DETAILED SKILLS */}
+          <Section title={ar ? "المهارات الأكاديمية واللغات ومستوى الإتقان" : "Academic Skills & Languages"} alignClass={alignClass}>
+            <div className="space-y-2.5">
+              {extrasDraft.detailedSkills.map((sk, idx) => (
+                <div key={idx} className="flex flex-wrap sm:flex-nowrap gap-2 items-center bg-background/50 p-2.5 rounded-2xl border border-border/80">
+                  <Input
+                    value={sk.name}
+                    onChange={e => updateDetailedSkill(idx, { name: e.target.value })}
+                    placeholder={ar ? "اسم المهارة أو اللغة (مثل: الإنجليزية، البحث العلمي...)" : "Skill/Language (e.g. English, Academic Writing...)"}
+                    className="bg-input border-gold/30 flex-1 text-xs"
+                  />
+                  <Select
+                    value={sk.category}
+                    onValueChange={(val: any) => updateDetailedSkill(idx, { category: val })}
+                  >
+                    <SelectTrigger className="w-[140px] bg-input border-gold/30 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(SKILL_CATEGORY_META).map(([k, meta]) => (
+                        <SelectItem key={k} value={k}>
+                          <span>{meta.emoji} {ar ? meta.labelAr : meta.labelEn}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <div className="flex gap-1 items-center px-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => updateDetailedSkill(idx, { level: star })}
+                        className="p-0.5 hover:scale-125 transition-transform"
+                      >
+                        <Star
+                          className={`w-4 h-4 ${star <= sk.level ? "fill-primary text-primary" : "text-muted-foreground/30"}`}
+                        />
+                      </button>
+                    ))}
+                  </div>
+
+                  <Button
+                    variant="ghostGold"
+                    size="sm"
+                    onClick={() => removeDetailedSkill(idx)}
+                    className="text-destructive h-9 px-2 hover:bg-destructive/10"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-2 flex flex-wrap gap-2">
+              {Object.entries(SKILL_CATEGORY_META).map(([k, meta]) => (
+                <Button
+                  key={k}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addDetailedSkill(k as any)}
+                  className="text-xs border-primary/30 text-primary hover:bg-primary/10"
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1" />
+                  <span>{meta.emoji} {ar ? `إضافة (${meta.labelAr.slice(0, 12)})` : `Add (${meta.labelEn.slice(0, 12)})`}</span>
+                </Button>
+              ))}
+            </div>
+          </Section>
+
+          {/* STUDENT EDIT 4: WORK EXPERIENCE (SECONDARY) */}
+          <Section title={ar ? "الخبرات والتدريب العملي (إن وجد)" : "Work & Internship Experience (Optional)"} alignClass={alignClass}>
+            <Field icon={Briefcase} label={ar ? "سنوات الخبرة أو التدريب" : "Years of Experience / Internship"}>
+              <Select
+                value={extrasDraft.experienceYears || "none"}
+                onValueChange={(val: any) => setExtrasDraft(d => ({ ...d, experienceYears: val }))}
+              >
+                <SelectTrigger className="bg-input border-gold/30">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {EXPERIENCE_OPTIONS.map(e => (
+                    <SelectItem key={e.value} value={e.value}>
+                      {ar ? e.labelAr : e.labelEn}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          </Section>
+        </>
+      )}
 
       {/* 6. GENERAL SKILLS & INTERESTS */}
       <Section title={ar ? "الكلمات المفتاحية والاهتمامات العامة" : "Tags & General Interests"} alignClass={alignClass}>

@@ -3,6 +3,7 @@ import { ShieldCheck, Mail, ArrowRight, ArrowLeft, RefreshCw, KeyRound, Check, X
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { StarMaskedInput } from "@/components/foras/StarMaskedInput";
 
 interface SecurityPasswordManagerProps {
   currentUserId: string;
@@ -244,19 +245,21 @@ export const SecurityPasswordManager: React.FC<SecurityPasswordManagerProps> = (
               <span className="text-[10px] text-gray-400 font-normal">{isRtl ? "مطلوبة للتحقق من هويتك" : "Required for verification"}</span>
             </label>
             <div className="relative">
-              <input
-                type={showOldPass ? "text" : "password"}
+              <StarMaskedInput
                 value={oldPassword}
-                onChange={e => setOldPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full py-2.5 px-3.5 pr-10 pl-10 rounded-xl bg-background border border-primary/30 text-white text-sm focus:border-primary outline-none transition-all"
+                onChange={setOldPassword}
+                showPlain={showOldPass}
+                placeholder="★ ★ ★ ★ ★ ★"
+                className={`w-full py-2.5 px-3.5 rounded-xl bg-background border border-primary/30 text-white text-sm focus:border-primary outline-none transition-all ${
+                  isRtl ? "pl-10 pr-3.5" : "pr-10 pl-3.5"
+                }`}
               />
               <button
                 type="button"
                 onClick={() => setShowOldPass(!showOldPass)}
-                className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? "left-3" : "right-3"} text-gray-400 hover:text-white transition-colors`}
+                className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? "left-3" : "right-3"} text-gray-400 hover:text-white transition-colors cursor-pointer p-1`}
               >
-                {showOldPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4 text-primary" />}
+                {showOldPass ? <EyeOff className="w-4 h-4 text-gray-300" /> : <Eye className="w-4 h-4 text-primary" />}
               </button>
             </div>
           </div>
@@ -267,19 +270,21 @@ export const SecurityPasswordManager: React.FC<SecurityPasswordManagerProps> = (
               {isRtl ? "كلمة المرور الجديدة" : "New Password"} <span className="text-destructive">*</span>
             </label>
             <div className="relative">
-              <input
-                type={showNewPass ? "text" : "password"}
+              <StarMaskedInput
                 value={newPassword}
-                onChange={e => setNewPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full py-2.5 px-3.5 pr-10 pl-10 rounded-xl bg-background border border-primary/30 text-white text-sm focus:border-primary outline-none transition-all"
+                onChange={setNewPassword}
+                showPlain={showNewPass}
+                placeholder="★ ★ ★ ★ ★ ★"
+                className={`w-full py-2.5 px-3.5 rounded-xl bg-background border border-primary/30 text-white text-sm focus:border-primary outline-none transition-all ${
+                  isRtl ? "pl-10 pr-3.5" : "pr-10 pl-3.5"
+                }`}
               />
               <button
                 type="button"
                 onClick={() => setShowNewPass(!showNewPass)}
-                className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? "left-3" : "right-3"} text-gray-400 hover:text-white transition-colors`}
+                className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? "left-3" : "right-3"} text-gray-400 hover:text-white transition-colors cursor-pointer p-1`}
               >
-                {showNewPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4 text-primary" />}
+                {showNewPass ? <EyeOff className="w-4 h-4 text-gray-300" /> : <Eye className="w-4 h-4 text-primary" />}
               </button>
             </div>
 
@@ -303,19 +308,21 @@ export const SecurityPasswordManager: React.FC<SecurityPasswordManagerProps> = (
               {isRtl ? "تأكيد كلمة المرور الجديدة" : "Confirm New Password"} <span className="text-destructive">*</span>
             </label>
             <div className="relative">
-              <input
-                type={showConfirmPass ? "text" : "password"}
+              <StarMaskedInput
                 value={confirmPassword}
-                onChange={e => setConfirmPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full py-2.5 px-3.5 pr-10 pl-10 rounded-xl bg-background border border-primary/30 text-white text-sm focus:border-primary outline-none transition-all"
+                onChange={setConfirmPassword}
+                showPlain={showConfirmPass}
+                placeholder="★ ★ ★ ★ ★ ★"
+                className={`w-full py-2.5 px-3.5 rounded-xl bg-background border border-primary/30 text-white text-sm focus:border-primary outline-none transition-all ${
+                  isRtl ? "pl-10 pr-3.5" : "pr-10 pl-3.5"
+                }`}
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPass(!showConfirmPass)}
-                className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? "left-3" : "right-3"} text-gray-400 hover:text-white transition-colors`}
+                className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? "left-3" : "right-3"} text-gray-400 hover:text-white transition-colors cursor-pointer p-1`}
               >
-                {showConfirmPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4 text-primary" />}
+                {showConfirmPass ? <EyeOff className="w-4 h-4 text-gray-300" /> : <Eye className="w-4 h-4 text-primary" />}
               </button>
             </div>
           </div>
@@ -366,7 +373,7 @@ export const SecurityPasswordManager: React.FC<SecurityPasswordManagerProps> = (
           </div>
 
           {/* 6 Digit Input Boxes */}
-          <div className="flex justify-center items-center gap-2 sm:gap-3 direction-ltr" dir="ltr">
+          <div className="flex justify-center items-center gap-1.5 xs:gap-2 sm:gap-2.5 py-1" dir="ltr">
             {otpDigits.map((digit, idx) => (
               <input
                 key={idx}
@@ -380,7 +387,7 @@ export const SecurityPasswordManager: React.FC<SecurityPasswordManagerProps> = (
                 onKeyDown={e => handleOtpKeyDown(idx, e)}
                 onPaste={handleOtpPaste}
                 autoFocus={idx === 0}
-                className="w-11 h-13 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-black rounded-2xl bg-background border-2 border-primary/50 text-white focus:border-primary focus:ring-2 focus:ring-primary/40 focus:scale-105 outline-none transition-all shadow-md"
+                className="w-8 h-10 xs:w-9 xs:h-11 sm:w-10 sm:h-12 text-center text-base sm:text-lg font-bold rounded-lg sm:rounded-xl bg-background border-2 border-primary/50 text-white focus:border-primary focus:ring-1.5 focus:ring-primary/40 outline-none transition-all shadow-md flex-shrink-0"
               />
             ))}
           </div>
