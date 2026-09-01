@@ -5,10 +5,12 @@ export type Lang = "ar" | "en";
 
 interface LanguageCtx {
   lang: Lang;
+  language: Lang;
   dir: "rtl" | "ltr";
+  isRtl: boolean;
   setLang: (l: Lang) => void;
   toggleLang: () => void;
-  t: (key: string) => string;
+  t: (key: string, params?: Record<string, string | number>) => string;
 }
 
 const STRINGS: Record<Lang, Record<string, string>> = {
@@ -102,7 +104,7 @@ const STRINGS: Record<Lang, Record<string, string>> = {
     arabUniType: "النوع",
     arabUniLanguage: "لغة الدراسة",
     arabUniFaculties: "الكليات والتخصصات",
-    arabUniVisit: "زيارة الموقع الرسمي",
+    arabUniVisit: "الموقع الرسمي",
     arabUniCountriesTitle: "اختر الدولة",
     arabUniYourCountry: "دولتك",
     arabUniUnisCount: "{n} جامعة",
@@ -116,7 +118,7 @@ const STRINGS: Record<Lang, Record<string, string>> = {
     arabUniSeasons: "مواعيد التقديم",
     arabUniDocs: "المستندات المطلوبة",
     arabUniSteps: "خطوات التقديم",
-    arabUniMap: "الموقع على الخريطة",
+    arabUniMap: "الخريطة",
     arabUniOverview: "نظرة عامة",
     arabUniCosts: "التكاليف",
     arabUniAdmission: "القبول",
@@ -143,12 +145,27 @@ const STRINGS: Record<Lang, Record<string, string>> = {
     arabUniAssociatedGovGrant: "المنحة الحكومية المعتمدة والتغطية",
     arabUniRequiredDocsTitle: "المستندات المطلوبة",
     arabUniApplicationStepsTitle: "خطوات التقديم",
-    arabUniLocationMapBtn: "الموقع على الخريطة",
-    arabUniOfficialSiteBtn: "زيارة الموقع الرسمي",
+    arabUniLocationMapBtn: "الخريطة",
+    arabUniOfficialSiteBtn: "الموقع الرسمي",
+    arabUniDirectScholarshipFilter: "منح مباشرة نشطة 🔥",
+    arabUniAlumniFilter: "خريجون ورواد 🎓",
+    arabUniPresenceFilter: "تواجد طلابي 👥",
+    arabUniSearchPlaceholder: "ابحث باسم الجامعة، التخصص، المنحة، أو الرواد...",
     // Global Universities Tab Keys
     globalUniSelectCountry: "اختر الدولة العالمية",
     globalUniCountryCount: "{n} دولة",
     globalUniAllCountries: "كافة الدول المانحة",
+    globalUniCategoryAll: "الكل",
+    globalUniFilterAll: "جميع الصروح",
+    globalUniFilterScholarships: "منح مباشرة نشطة 🔥",
+    globalUniFilterAlumni: "خريجون ورواد 🎓",
+    globalUniFilterPresence: "تواجد طلابي 👥",
+    globalUniDirectGrantBadge: "منحة مباشرة نشطة 🔥",
+    globalUniCategoryArabPopular: "الوجهات الأكثر طلباً للطلاب العرب",
+    globalUniCategoryEuGrants: "منح الاتحاد الأوروبي والتمويل الكامل",
+    globalUniCategoryAnglophone: "الدول الإنجليزية والآيفي ليغ",
+    globalUniCategoryEurasiaEastAsia: "أوراسيا وشرق آسيا وجنوب أوروبا",
+    globalUniCategoryAdvancedEurope: "أوروبا المتقدمة وأوقيانوسيا",
     globalUniGuaranteed: "منح سنوية مضمونة",
     globalUniPeriodic: "دورية / نخبوية",
     globalUniGuaranteedBadge: "سنوية مضمونة",
@@ -180,8 +197,16 @@ const STRINGS: Record<Lang, Record<string, string>> = {
     globalUniFacultiesTitle: "الكليات والتخصصات",
     globalUniDocsTitle: "المستندات المطلوبة",
     globalUniStepsTitle: "خطوات التقديم",
-    globalUniLocationMap: "الموقع على الخريطة",
-    globalUniVisitOfficialSite: "زيارة الموقع الرسمي",
+    globalUniLocationMap: "الخريطة",
+    globalUniVisitOfficialSite: "الموقع الرسمي",
+    // Scholarship Academy Keys
+    academyTitle: "أكاديمية المنح والقبول",
+    academyBadge: "أكاديمية القبول",
+    academySubtitle: "مسارات تدريبية ونماذج معتمدة لرفع نسبة قبولك في كبرى المنح الدولية إلى +85%",
+    academyOpenBtn: "🎓 أكاديمية المنح والقبول",
+    academyBannerTitle: "أكاديمية المنح والقبول",
+    academyBannerDesc: "نماذج خطابات نوايا معتمدة، إتيكيت مراسلة المشرفين، ومحاكي المقابلات.",
+    academyExploreTracks: "تصفح المسارات",
     // Admin Dashboard Keys
     adminTitle: "لوحة تحكم إدارة منصة الفُرَص",
     adminActiveSession: "الجلسة نشطة: {name} ({role})",
@@ -659,12 +684,15 @@ const STRINGS: Record<Lang, Record<string, string>> = {
     landingFreelanceViewAll: "استكشف كافة وظائف العمل الحر",
     landingArabHubTitle: "دليل الجامعات العربية والعالمية",
     landingArabHubSubtitle: "استكشف بوابات الجامعات والمنح المعتمدة عبر 8 دول عربية وكبرى الدول المانحة عالمياً",
-    landingArabHubViewAll: "تصفح الدليل الأكاديمي الشامل",
+    landingArabHubViewAll: "تصفح الدليل الأكاديمي",
     landingExploreHub: "دخول ركن الدولة",
     landingGlobalHubTitle: "ركن الجامعات العالمية والمنح الدولية",
     landingGlobalHubSubtitle: "استكشف بوابات المنح السنوية المضمونة ومواعيد التقديم وشروط القبول في كبرى الدول العالمية",
     landingGlobalHubViewAll: "استكشف جميع الدول والجامعات العالمية",
-    landingViewAll: "استعرض جميع المنح وفرص العمل",
+    landingViewAll: "استعرض جميع المنح",
+    academyBadge: "أكاديمية المنح والقبول",
+    academyTitle: "أكاديمية المنح والقبول",
+    academySubtitle: "مسارات تدريبية ونماذج جاهزة لرفع نسبة قبولك في كبرى المنح الدولية إلى +85%",
     landingFooter: "© 2026 الفُرَص — جميع الحقوق محفوظة",
   },
   en: {
@@ -798,12 +826,27 @@ const STRINGS: Record<Lang, Record<string, string>> = {
     arabUniAssociatedGovGrant: "Associated Government Scholarship & Coverage",
     arabUniRequiredDocsTitle: "Required Documents",
     arabUniApplicationStepsTitle: "Application Steps",
-    arabUniLocationMapBtn: "Location on Map",
-    arabUniOfficialSiteBtn: "Visit Official Website",
+    arabUniLocationMapBtn: "Map",
+    arabUniOfficialSiteBtn: "Official Website",
+    arabUniDirectScholarshipFilter: "Active Direct Grants 🔥",
+    arabUniAlumniFilter: "Notable Alumni 🎓",
+    arabUniPresenceFilter: "Arab Presence 👥",
+    arabUniSearchPlaceholder: "Search by university, major, grant, or pioneers...",
     // Global Universities Tab Keys
     globalUniSelectCountry: "Select Global Country",
     globalUniCountryCount: "{n} countries",
     globalUniAllCountries: "All Donor Nations",
+    globalUniCategoryAll: "All",
+    globalUniFilterAll: "All Universities",
+    globalUniFilterScholarships: "Active Grants 🔥",
+    globalUniFilterAlumni: "Notable Alumni 🎓",
+    globalUniFilterPresence: "Arab Presence 👥",
+    globalUniDirectGrantBadge: "Active Direct Grant 🔥",
+    globalUniCategoryArabPopular: "Top Arab Student Destinations",
+    globalUniCategoryEuGrants: "EU & Full-Funding Grants",
+    globalUniCategoryAnglophone: "Premier Anglophone & Ivy League",
+    globalUniCategoryEurasiaEastAsia: "Eurasia, East Asia & Southern Europe",
+    globalUniCategoryAdvancedEurope: "Advanced Western Europe & Oceania",
     globalUniGuaranteed: "Annual Guaranteed Grants",
     globalUniPeriodic: "Periodic / Elite",
     globalUniGuaranteedBadge: "Annual Guaranteed",
@@ -835,8 +878,16 @@ const STRINGS: Record<Lang, Record<string, string>> = {
     globalUniFacultiesTitle: "Faculties & Disciplines",
     globalUniDocsTitle: "Required Documents",
     globalUniStepsTitle: "Application Steps",
-    globalUniLocationMap: "Location on Map",
-    globalUniVisitOfficialSite: "Visit Official Website",
+    globalUniLocationMap: "Map",
+    globalUniVisitOfficialSite: "Official Website",
+    // Scholarship Academy Keys
+    academyTitle: "Scholarships & Admissions Academy",
+    academyBadge: "Admissions Academy",
+    academySubtitle: "Certified training modules & blueprints to boost your acceptance rate to +85%",
+    academyOpenBtn: "🎓 Scholarships & Admissions Academy",
+    academyBannerTitle: "Scholarships & Admissions Academy",
+    academyBannerDesc: "Certified SOP templates, supervisor outreach blueprints, and interview simulator.",
+    academyExploreTracks: "Explore Modules",
     // Admin Dashboard Keys
     adminTitle: "Al-Foras Management Control Panel",
     adminActiveSession: "Active Session: {name} ({role})",
@@ -1315,12 +1366,15 @@ const STRINGS: Record<Lang, Record<string, string>> = {
     landingFreelanceViewAll: "Explore All Freelance Jobs",
     landingArabHubTitle: "Arab & World Universities Guide",
     landingArabHubSubtitle: "Explore accredited institutions and government scholarship portals across 8 Arab nations and major donor countries worldwide",
-    landingArabHubViewAll: "Browse Full Academic Directory",
+    landingArabHubViewAll: "Browse Academic Directory",
     landingExploreHub: "Explore Country Hub",
     landingGlobalHubTitle: "World Universities & International Scholarships Hub",
     landingGlobalHubSubtitle: "Explore annual guaranteed scholarship portals, application windows, and admission requirements worldwide",
     landingGlobalHubViewAll: "Explore All Global Countries & Universities",
-    landingViewAll: "Browse All Opportunities & Jobs",
+    landingViewAll: "Browse All Scholarships",
+    academyBadge: "Scholarships & Admissions Academy",
+    academyTitle: "Scholarships & Admissions Academy",
+    academySubtitle: "Masterclass guides & blueprints to boost your acceptance rate to +85%",
     landingFooter: "© 2026 Al-Foras — All rights reserved",
   },
 };
@@ -1375,18 +1429,32 @@ const detectInitialLang = (): Lang => {
 };
 
 const Ctx = createContext<LanguageCtx>({
-  lang: "ar", dir: "rtl",
-  setLang: () => {}, toggleLang: () => {},
+  lang: "ar",
+  language: "ar",
+  dir: "rtl",
+  isRtl: true,
+  setLang: () => {},
+  toggleLang: () => {},
   t: (k) => k,
 });
 
 export const LanguageProvider = ({ children }: { children: ReactNode }) => {
   const [lang, setLangState] = useState<Lang>(() => detectInitialLang());
   const dir: "rtl" | "ltr" = lang === "ar" ? "rtl" : "ltr";
+  const isRtl = lang === "ar";
 
   useEffect(() => {
     document.documentElement.lang = lang;
     document.documentElement.dir = dir;
+    document.documentElement.setAttribute("dir", dir);
+    document.documentElement.setAttribute("lang", lang);
+    if (lang === "ar") {
+      document.documentElement.classList.add("rtl");
+      document.documentElement.classList.remove("ltr");
+    } else {
+      document.documentElement.classList.add("ltr");
+      document.documentElement.classList.remove("rtl");
+    }
     try {
       localStorage.setItem("foras-lang", lang);
     } catch {}
@@ -1418,6 +1486,10 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
     try {
       localStorage.setItem("foras-lang", l);
       localStorage.setItem("foras-lang-manual", "true");
+      document.documentElement.lang = l;
+      document.documentElement.dir = l === "ar" ? "rtl" : "ltr";
+      document.documentElement.setAttribute("dir", l === "ar" ? "rtl" : "ltr");
+      document.documentElement.setAttribute("lang", l);
       window.dispatchEvent(new CustomEvent("foras:langchange", { detail: { lang: l } }));
     } catch {}
   }, []);
@@ -1428,19 +1500,33 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
       try {
         localStorage.setItem("foras-lang", next);
         localStorage.setItem("foras-lang-manual", "true");
+        document.documentElement.lang = next;
+        document.documentElement.dir = next === "ar" ? "rtl" : "ltr";
+        document.documentElement.setAttribute("dir", next === "ar" ? "rtl" : "ltr");
+        document.documentElement.setAttribute("lang", next);
         window.dispatchEvent(new CustomEvent("foras:langchange", { detail: { lang: next } }));
       } catch {}
       return next;
     });
   }, []);
 
-  const t = useCallback((key: string) => STRINGS[lang]?.[key] ?? key, [lang]);
+  const t = useCallback((key: string, params?: Record<string, string | number>) => {
+    let text = STRINGS[lang]?.[key] ?? STRINGS["ar"]?.[key] ?? key;
+    if (params) {
+      Object.entries(params).forEach(([paramKey, paramValue]) => {
+        text = text.replace(new RegExp(`\\{${paramKey}\\}`, "g"), String(paramValue));
+      });
+    }
+    return text;
+  }, [lang]);
 
   // touch COUNTRIES so tree-shaker keeps the import side-effect-free
   void COUNTRIES;
 
   return (
-    <Ctx.Provider value={{ lang, dir, setLang, toggleLang, t }}>{children}</Ctx.Provider>
+    <Ctx.Provider value={{ lang, language: lang, dir, isRtl, setLang, toggleLang, t }}>
+      {children}
+    </Ctx.Provider>
   );
 };
 

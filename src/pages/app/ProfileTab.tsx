@@ -31,6 +31,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { LuxeAvatar } from "@/components/foras/LuxeAvatar";
+import { ScholarshipAcademyModal } from "@/components/foras/ScholarshipAcademyModal";
+import { SCHOLARSHIP_ACADEMY_TRACKS } from "@/lib/scholarshipAcademyData";
 
 interface ProfileState {
   full_name: string; bio: string; education: string; location: string; avatar_url: string; phone: string;
@@ -99,6 +101,8 @@ export const ProfileTab = () => {
   const [uploading, setUploading] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [geoHelpOpen, setGeoHelpOpen] = useState(false);
+  const [academyModalOpen, setAcademyModalOpen] = useState(false);
+  const [selectedAcademyTrack, setSelectedAcademyTrack] = useState<string | undefined>(undefined);
 
   const handleCopyPhone = (numberToCopy?: string) => {
     const raw = numberToCopy || profile.phone || (phoneLocal ? `${extrasDraft.phoneCountryCode} ${phoneLocal}` : "");
@@ -563,6 +567,75 @@ export const ProfileTab = () => {
           </DialogContent>
         </Dialog>
 
+        {/* === ACADEMY OF SCHOLARSHIPS & ADMISSIONS (أكاديمية المنح والقبول) - DIRECTLY UNDER HERO AVATAR CARD === */}
+        <div className="rounded-3xl p-5 sm:p-6 bg-gradient-to-br from-amber-500/10 via-card to-card border border-amber-500/30 shadow-luxe relative overflow-hidden">
+          <div className="absolute top-0 end-0 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+          
+          <div className="relative z-10 space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-500 shadow-inner">
+                  <GraduationCap className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
+                      {ar ? "أكاديمية القبول" : "Academy"}
+                    </span>
+                  </div>
+                  <h3 className="text-sm sm:text-base font-bold text-foreground">
+                    {ar ? "أكاديمية المنح والقبول" : "Scholarships & Admissions Academy"}
+                  </h3>
+                </div>
+              </div>
+
+              <Button
+                size="sm"
+                onClick={() => {
+                  setSelectedAcademyTrack(undefined);
+                  setAcademyModalOpen(true);
+                }}
+                className="text-xs h-8 sm:h-9 rounded-xl bg-gold-gradient text-primary-foreground font-bold shadow-gold gap-1.5 px-3.5 hover:opacity-95"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>{ar ? "استعراض كافة المسارات" : "Explore All Tracks"}</span>
+              </Button>
+            </div>
+
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {ar
+                ? "دليلك الشامل ونماذج معتمدة لخطابات النوايا، مراسلة المشرفين، واجتياز المقابلات لرفع فرص قبولك الأكاديمي."
+                : "Your comprehensive guide & blueprints for Motivation Letters, Supervisor Cold Emails, and Interviews."}
+            </p>
+
+            {/* Quick Tracks Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+              {SCHOLARSHIP_ACADEMY_TRACKS.map((track) => (
+                <button
+                  key={track.id}
+                  onClick={() => {
+                    setSelectedAcademyTrack(track.id);
+                    setAcademyModalOpen(true);
+                  }}
+                  className="p-3 rounded-2xl border border-border/80 bg-background/60 hover:bg-background hover:border-amber-500/40 transition-all text-start group flex items-center justify-between gap-2.5 shadow-sm"
+                >
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-foreground group-hover:text-amber-500 transition-colors truncate">
+                      {ar ? track.title : track.titleEn}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
+                      {ar ? track.subtitle : track.subtitleEn}
+                    </p>
+                  </div>
+                  <span className="text-[10px] text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md font-semibold border border-amber-500/20 shrink-0">
+                    {ar ? track.duration : track.durationEn}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
         {/* === AI MATCHING PRECISION & READINESS CARD (PRO AI ADVISOR) === */}
         {!hideProfile && (
           <AIMatchingReadinessCard
@@ -991,21 +1064,12 @@ export const ProfileTab = () => {
           </div>
         )}
 
-        {/* === SECTION 7: INTERESTS & FIELDS === */}
-        {(profile.interests.length > 0 && !hideProfile) && (
-          <div className="bg-card-gradient border border-border rounded-2xl p-4 space-y-2">
-            <p className="text-xs text-primary font-bold flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5" /> {t("interests")}
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {profile.interests.map(i => (
-                <span key={i} className="text-xs bg-gold-gradient text-primary-foreground font-medium px-2.5 py-1 rounded-full shadow-gold">
-                  {getInterestLabel(i, lang)}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Academy Modal Component */}
+        <ScholarshipAcademyModal
+          isOpen={academyModalOpen}
+          onClose={() => setAcademyModalOpen(false)}
+          initialTrackId={selectedAcademyTrack}
+        />
       </div>
     );
   }
@@ -1223,126 +1287,134 @@ export const ProfileTab = () => {
       {extrasDraft.persona === "professional" ? (
         <>
           {/* PROFESSIONAL EDIT 1: WORK EXPERIENCE */}
-          <Section title={ar ? "الخبرات العملية والمسار المهني" : "Work Experience & Professional Path"} alignClass={alignClass}>
-            <Field icon={Briefcase} label={ar ? "سنوات الخبرة الإجمالية" : "Years of Experience"}>
-              <Select
-                value={extrasDraft.experienceYears || "none"}
-                onValueChange={(val: any) => setExtrasDraft(d => ({ ...d, experienceYears: val }))}
-              >
-                <SelectTrigger className="bg-input border-gold/30">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {EXPERIENCE_OPTIONS.map(e => (
-                    <SelectItem key={e.value} value={e.value}>
-                      {ar ? e.labelAr : e.labelEn}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-          </Section>
-
-          {/* PROFESSIONAL EDIT 2: DETAILED SKILLS WITH RATINGS */}
-          <Section title={ar ? "المهارات المتقدمة ومستوى الإتقان (1 - 5 نجوم)" : "Detailed Skills & Proficiency (1 - 5 Stars)"} alignClass={alignClass}>
-            <div className="space-y-2.5">
-              {extrasDraft.detailedSkills.map((sk, idx) => (
-                <div key={idx} className="flex flex-wrap sm:flex-nowrap gap-2 items-center bg-background/50 p-2.5 rounded-2xl border border-border/80">
-                  <Input
-                    value={sk.name}
-                    onChange={e => updateDetailedSkill(idx, { name: e.target.value })}
-                    placeholder={ar ? "اسم المهارة (مثل: Python, Figma, إدارة مشاريع...)" : "Skill name (e.g. Python, Figma, Project Management...)"}
-                    className="bg-input border-gold/30 flex-1 text-xs"
-                  />
-                  <Select
-                    value={sk.category}
-                    onValueChange={(val: any) => updateDetailedSkill(idx, { category: val })}
-                  >
-                    <SelectTrigger className="w-[140px] bg-input border-gold/30 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(SKILL_CATEGORY_META).map(([k, meta]) => (
-                        <SelectItem key={k} value={k}>
-                          <span>{meta.emoji} {ar ? meta.labelAr : meta.labelEn}</span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  <div className="flex gap-1 items-center px-2">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        type="button"
-                        onClick={() => updateDetailedSkill(idx, { level: star })}
-                        className="p-0.5 hover:scale-125 transition-transform"
-                      >
-                        <Star
-                          className={`w-4 h-4 ${star <= sk.level ? "fill-primary text-primary" : "text-muted-foreground/30"}`}
-                        />
-                      </button>
-                    ))}
-                  </div>
-
-                  <Button
-                    variant="ghostGold"
-                    size="sm"
-                    onClick={() => removeDetailedSkill(idx)}
-                    className="text-destructive h-9 px-2 hover:bg-destructive/10"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-
-            <div className="pt-2 flex flex-wrap gap-2">
-              {Object.entries(SKILL_CATEGORY_META).map(([k, meta]) => (
-                <Button
-                  key={k}
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => addDetailedSkill(k as any)}
-                  className="text-xs border-primary/30 text-primary hover:bg-primary/10"
-                >
-                  <Plus className="w-3.5 h-3.5 mr-1" />
-                  <span>{meta.emoji} {ar ? `إضافة مهارة (${meta.labelAr.slice(0, 12)})` : `Add (${meta.labelEn.slice(0, 12)})`}</span>
-                </Button>
-              ))}
-            </div>
-          </Section>
-
-          {/* PROFESSIONAL EDIT 3: PROFESSIONAL & PORTFOLIO LINKS */}
-          <Section title={ar ? "الروابط المهنية ومعرض الأعمال (LinkedIn / Portfolio)" : "Professional Links & Portfolio"} alignClass={alignClass}>
-            <InlineLinksManager
-              links={extrasDraft.links}
-              onChange={handleUpdateLinksDirectly}
-              persona="professional"
-            />
-          </Section>
-
-          {/* PROFESSIONAL EDIT 4: ACADEMIC BACKGROUND (SECONDARY) */}
-          <Section title={ar ? "المؤهلات الأكاديمية والتعليم (اختياري)" : "Academic Background (Optional)"} alignClass={alignClass}>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Field icon={GraduationCap} label={ar ? "الدرجة العلمية" : "Degree"}>
+          <div id="field-experience">
+            <Section title={ar ? "الخبرات العملية والمسار المهني" : "Work Experience & Professional Path"} alignClass={alignClass}>
+              <Field icon={Briefcase} label={ar ? "سنوات الخبرة الإجمالية" : "Years of Experience"}>
                 <Select
-                  value={extrasDraft.degree || "bachelor"}
-                  onValueChange={(val: any) => setExtrasDraft(d => ({ ...d, degree: val }))}
+                  value={extrasDraft.experienceYears || "none"}
+                  onValueChange={(val: any) => setExtrasDraft(d => ({ ...d, experienceYears: val }))}
                 >
                   <SelectTrigger className="bg-input border-gold/30">
-                    <SelectValue placeholder={ar ? "اختر الدرجة العلمية" : "Select Degree"} />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {DEGREE_OPTIONS.map(d => (
-                      <SelectItem key={d.value} value={d.value}>
-                        {ar ? d.labelAr : d.labelEn}
+                    {EXPERIENCE_OPTIONS.map(e => (
+                      <SelectItem key={e.value} value={e.value}>
+                        {ar ? e.labelAr : e.labelEn}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </Field>
+            </Section>
+          </div>
+
+          {/* PROFESSIONAL EDIT 2: DETAILED SKILLS WITH RATINGS */}
+          <div id="field-skills">
+            <Section title={ar ? "المهارات المتقدمة ومستوى الإتقان (1 - 5 نجوم)" : "Detailed Skills & Proficiency (1 - 5 Stars)"} alignClass={alignClass}>
+              <div className="space-y-2.5">
+                {extrasDraft.detailedSkills.map((sk, idx) => (
+                  <div key={idx} className="flex flex-wrap sm:flex-nowrap gap-2 items-center bg-background/50 p-2.5 rounded-2xl border border-border/80">
+                    <Input
+                      value={sk.name}
+                      onChange={e => updateDetailedSkill(idx, { name: e.target.value })}
+                      placeholder={ar ? "اسم المهارة (مثل: Python, Figma, إدارة مشاريع...)" : "Skill name (e.g. Python, Figma, Project Management...)"}
+                      className="bg-input border-gold/30 flex-1 text-xs"
+                    />
+                    <Select
+                      value={sk.category}
+                      onValueChange={(val: any) => updateDetailedSkill(idx, { category: val })}
+                    >
+                      <SelectTrigger className="w-[140px] bg-input border-gold/30 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(SKILL_CATEGORY_META).map(([k, meta]) => (
+                          <SelectItem key={k} value={k}>
+                            <span>{meta.emoji} {ar ? meta.labelAr : meta.labelEn}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <div className="flex gap-1 items-center px-2">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => updateDetailedSkill(idx, { level: star })}
+                          className="p-0.5 hover:scale-125 transition-transform"
+                        >
+                          <Star
+                            className={`w-4 h-4 ${star <= sk.level ? "fill-primary text-primary" : "text-muted-foreground/30"}`}
+                          />
+                        </button>
+                      ))}
+                    </div>
+
+                    <Button
+                      variant="ghostGold"
+                      size="sm"
+                      onClick={() => removeDetailedSkill(idx)}
+                      className="text-destructive h-9 px-2 hover:bg-destructive/10"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-2 flex flex-wrap gap-2">
+                {Object.entries(SKILL_CATEGORY_META).map(([k, meta]) => (
+                  <Button
+                    key={k}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addDetailedSkill(k as any)}
+                    className="text-xs border-primary/30 text-primary hover:bg-primary/10"
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1" />
+                    <span>{meta.emoji} {ar ? `إضافة مهارة (${meta.labelAr.slice(0, 12)})` : `Add (${meta.labelEn.slice(0, 12)})`}</span>
+                  </Button>
+                ))}
+              </div>
+            </Section>
+          </div>
+
+          {/* PROFESSIONAL EDIT 3: PROFESSIONAL & PORTFOLIO LINKS */}
+          <div id="field-links">
+            <Section title={ar ? "الروابط المهنية ومعرض الأعمال (LinkedIn / Portfolio)" : "Professional Links & Portfolio"} alignClass={alignClass}>
+              <InlineLinksManager
+                links={extrasDraft.links}
+                onChange={handleUpdateLinksDirectly}
+                persona="professional"
+              />
+            </Section>
+          </div>
+
+          {/* PROFESSIONAL EDIT 4: ACADEMIC BACKGROUND (SECONDARY) */}
+          <Section title={ar ? "المؤهلات الأكاديمية والتعليم (اختياري)" : "Academic Background (Optional)"} alignClass={alignClass}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div id="field-degree">
+                <Field icon={GraduationCap} label={ar ? "الدرجة العلمية" : "Degree"}>
+                  <Select
+                    value={extrasDraft.degree || "bachelor"}
+                    onValueChange={(val: any) => setExtrasDraft(d => ({ ...d, degree: val }))}
+                  >
+                    <SelectTrigger className="bg-input border-gold/30">
+                      <SelectValue placeholder={ar ? "اختر الدرجة العلمية" : "Select Degree"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DEGREE_OPTIONS.map(d => (
+                        <SelectItem key={d.value} value={d.value}>
+                          {ar ? d.labelAr : d.labelEn}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </div>
 
               <Field icon={Building} label={ar ? "الجامعة / الكلية" : "University / College"}>
                 <Input
@@ -1353,38 +1425,42 @@ export const ProfileTab = () => {
                 />
               </Field>
 
-              <Field icon={BookOpen} label={ar ? "التخصص أو المجال" : "Field / Major"}>
-                <Input
-                  value={extrasDraft.major}
-                  onChange={e => setExtrasDraft(d => ({ ...d, major: e.target.value }))}
-                  placeholder={ar ? "مثل: هندسة برمجيات، تسويق، إدارة" : "e.g. Software Engineering, Marketing"}
-                  className="bg-input border-gold/30"
-                />
-              </Field>
-
-              <Field icon={Award} label={ar ? "المعدل التراكمي (إن وجد)" : "GPA (If applicable)"}>
-                <div className="flex gap-2">
+              <div id="field-major">
+                <Field icon={BookOpen} label={ar ? "التخصص أو المجال" : "Field / Major"}>
                   <Input
-                    value={extrasDraft.gpa}
-                    onChange={e => setExtrasDraft(d => ({ ...d, gpa: e.target.value }))}
-                    placeholder={ar ? "مثال: 3.85 أو 88" : "e.g. 3.85 or 88"}
-                    className="bg-input border-gold/30 flex-1"
+                    value={extrasDraft.major}
+                    onChange={e => setExtrasDraft(d => ({ ...d, major: e.target.value }))}
+                    placeholder={ar ? "مثل: هندسة برمجيات، تسويق، إدارة" : "e.g. Software Engineering, Marketing"}
+                    className="bg-input border-gold/30"
                   />
-                  <Select
-                    value={extrasDraft.gpaScale}
-                    onValueChange={(val: any) => setExtrasDraft(d => ({ ...d, gpaScale: val }))}
-                  >
-                    <SelectTrigger className="w-[100px] bg-input border-gold/30">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="4">/ 4.0</SelectItem>
-                      <SelectItem value="5">/ 5.0</SelectItem>
-                      <SelectItem value="100">%</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </Field>
+                </Field>
+              </div>
+
+              <div id="field-gpa">
+                <Field icon={Award} label={ar ? "المعدل التراكمي (إن وجد)" : "GPA (If applicable)"}>
+                  <div className="flex gap-2">
+                    <Input
+                      value={extrasDraft.gpa}
+                      onChange={e => setExtrasDraft(d => ({ ...d, gpa: e.target.value }))}
+                      placeholder={ar ? "مثال: 3.85 أو 88" : "e.g. 3.85 or 88"}
+                      className="bg-input border-gold/30 flex-1"
+                    />
+                    <Select
+                      value={extrasDraft.gpaScale}
+                      onValueChange={(val: any) => setExtrasDraft(d => ({ ...d, gpaScale: val }))}
+                    >
+                      <SelectTrigger className="w-[100px] bg-input border-gold/30">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="4">/ 4.0</SelectItem>
+                        <SelectItem value="5">/ 5.0</SelectItem>
+                        <SelectItem value="100">%</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </Field>
+              </div>
             </div>
 
             <Field icon={GraduationCap} label={t("eduLabel")}>
@@ -1402,23 +1478,25 @@ export const ProfileTab = () => {
           {/* STUDENT EDIT 1: ACADEMIC QUALIFICATIONS & DEGREES */}
           <Section title={ar ? "المؤهلات الأكاديمية والتعليم (أساسي للفرص والمنح)" : "Academic Background & Education"} alignClass={alignClass}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Field icon={GraduationCap} label={ar ? "المستوى الأكاديمي الحالي" : "Academic Level"}>
-                <Select
-                  value={extrasDraft.degree || "bachelor"}
-                  onValueChange={(val: any) => setExtrasDraft(d => ({ ...d, degree: val }))}
-                >
-                  <SelectTrigger className="bg-input border-gold/30">
-                    <SelectValue placeholder={ar ? "اختر الدرجة العلمية" : "Select Degree"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DEGREE_OPTIONS.map(d => (
-                      <SelectItem key={d.value} value={d.value}>
-                        {ar ? d.labelAr : d.labelEn}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
+              <div id="field-degree">
+                <Field icon={GraduationCap} label={ar ? "المستوى الأكاديمي الحالي" : "Academic Level"}>
+                  <Select
+                    value={extrasDraft.degree || "bachelor"}
+                    onValueChange={(val: any) => setExtrasDraft(d => ({ ...d, degree: val }))}
+                  >
+                    <SelectTrigger className="bg-input border-gold/30">
+                      <SelectValue placeholder={ar ? "اختر الدرجة العلمية" : "Select Degree"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DEGREE_OPTIONS.map(d => (
+                        <SelectItem key={d.value} value={d.value}>
+                          {ar ? d.labelAr : d.labelEn}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </div>
 
               <Field icon={Building} label={ar ? "الجامعة / الكلية" : "University / College"}>
                 <Input
@@ -1438,38 +1516,42 @@ export const ProfileTab = () => {
                 />
               </Field>
 
-              <Field icon={BookOpen} label={ar ? "التخصص أو الشعبة" : "Field of Study / Major"}>
-                <Input
-                  value={extrasDraft.major}
-                  onChange={e => setExtrasDraft(d => ({ ...d, major: e.target.value }))}
-                  placeholder={ar ? "مثل: هندسة، طب، اقتصاد، لغات" : "e.g. Computer Science, Medicine"}
-                  className="bg-input border-gold/30"
-                />
-              </Field>
-
-              <Field icon={Award} label={ar ? "المعدل التراكمي أو النسبة المئوية" : "GPA / Grade Percentage"}>
-                <div className="flex gap-2">
+              <div id="field-major">
+                <Field icon={BookOpen} label={ar ? "التخصص أو الشعبة" : "Field of Study / Major"}>
                   <Input
-                    value={extrasDraft.gpa}
-                    onChange={e => setExtrasDraft(d => ({ ...d, gpa: e.target.value }))}
-                    placeholder={ar ? "مثال: 3.85 أو 92" : "e.g. 3.85 or 92"}
-                    className="bg-input border-gold/30 flex-1"
+                    value={extrasDraft.major}
+                    onChange={e => setExtrasDraft(d => ({ ...d, major: e.target.value }))}
+                    placeholder={ar ? "مثل: هندسة، طب، اقتصاد، لغات" : "e.g. Computer Science, Medicine"}
+                    className="bg-input border-gold/30"
                   />
-                  <Select
-                    value={extrasDraft.gpaScale}
-                    onValueChange={(val: any) => setExtrasDraft(d => ({ ...d, gpaScale: val }))}
-                  >
-                    <SelectTrigger className="w-[100px] bg-input border-gold/30">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="4">/ 4.0</SelectItem>
-                      <SelectItem value="5">/ 5.0</SelectItem>
-                      <SelectItem value="100">%</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </Field>
+                </Field>
+              </div>
+
+              <div id="field-gpa">
+                <Field icon={Award} label={ar ? "المعدل التراكمي أو النسبة المئوية" : "GPA / Grade Percentage"}>
+                  <div className="flex gap-2">
+                    <Input
+                      value={extrasDraft.gpa}
+                      onChange={e => setExtrasDraft(d => ({ ...d, gpa: e.target.value }))}
+                      placeholder={ar ? "مثال: 3.85 أو 92" : "e.g. 3.85 or 92"}
+                      className="bg-input border-gold/30 flex-1"
+                    />
+                    <Select
+                      value={extrasDraft.gpaScale}
+                      onValueChange={(val: any) => setExtrasDraft(d => ({ ...d, gpaScale: val }))}
+                    >
+                      <SelectTrigger className="w-[100px] bg-input border-gold/30">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="4">/ 4.0</SelectItem>
+                        <SelectItem value="5">/ 5.0</SelectItem>
+                        <SelectItem value="100">%</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </Field>
+              </div>
             </div>
 
             <Field icon={GraduationCap} label={t("eduLabel")}>
@@ -1483,105 +1565,111 @@ export const ProfileTab = () => {
           </Section>
 
           {/* STUDENT EDIT 2: LINKS & RESUME */}
-          <Section title={ar ? "الروابط وملف السيرة الذاتية (CV / Portfolio)" : "Links & Resume (CV / Portfolio)"} alignClass={alignClass}>
-            <InlineLinksManager
-              links={extrasDraft.links}
-              onChange={handleUpdateLinksDirectly}
-              persona="student"
-            />
-          </Section>
+          <div id="field-links">
+            <Section title={ar ? "الروابط وملف السيرة الذاتية (CV / Portfolio)" : "Links & Resume (CV / Portfolio)"} alignClass={alignClass}>
+              <InlineLinksManager
+                links={extrasDraft.links}
+                onChange={handleUpdateLinksDirectly}
+                persona="student"
+              />
+            </Section>
+          </div>
 
           {/* STUDENT EDIT 3: DETAILED SKILLS */}
-          <Section title={ar ? "المهارات الأكاديمية واللغات ومستوى الإتقان" : "Academic Skills & Languages"} alignClass={alignClass}>
-            <div className="space-y-2.5">
-              {extrasDraft.detailedSkills.map((sk, idx) => (
-                <div key={idx} className="flex flex-wrap sm:flex-nowrap gap-2 items-center bg-background/50 p-2.5 rounded-2xl border border-border/80">
-                  <Input
-                    value={sk.name}
-                    onChange={e => updateDetailedSkill(idx, { name: e.target.value })}
-                    placeholder={ar ? "اسم المهارة أو اللغة (مثل: الإنجليزية، البحث العلمي...)" : "Skill/Language (e.g. English, Academic Writing...)"}
-                    className="bg-input border-gold/30 flex-1 text-xs"
-                  />
-                  <Select
-                    value={sk.category}
-                    onValueChange={(val: any) => updateDetailedSkill(idx, { category: val })}
-                  >
-                    <SelectTrigger className="w-[140px] bg-input border-gold/30 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(SKILL_CATEGORY_META).map(([k, meta]) => (
-                        <SelectItem key={k} value={k}>
-                          <span>{meta.emoji} {ar ? meta.labelAr : meta.labelEn}</span>
-                        </SelectItem>
+          <div id="field-skills">
+            <Section title={ar ? "المهارات الأكاديمية واللغات ومستوى الإتقان" : "Academic Skills & Languages"} alignClass={alignClass}>
+              <div className="space-y-2.5">
+                {extrasDraft.detailedSkills.map((sk, idx) => (
+                  <div key={idx} className="flex flex-wrap sm:flex-nowrap gap-2 items-center bg-background/50 p-2.5 rounded-2xl border border-border/80">
+                    <Input
+                      value={sk.name}
+                      onChange={e => updateDetailedSkill(idx, { name: e.target.value })}
+                      placeholder={ar ? "اسم المهارة أو اللغة (مثل: الإنجليزية، البحث العلمي...)" : "Skill/Language (e.g. English, Academic Writing...)"}
+                      className="bg-input border-gold/30 flex-1 text-xs"
+                    />
+                    <Select
+                      value={sk.category}
+                      onValueChange={(val: any) => updateDetailedSkill(idx, { category: val })}
+                    >
+                      <SelectTrigger className="w-[140px] bg-input border-gold/30 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(SKILL_CATEGORY_META).map(([k, meta]) => (
+                          <SelectItem key={k} value={k}>
+                            <span>{meta.emoji} {ar ? meta.labelAr : meta.labelEn}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <div className="flex gap-1 items-center px-2">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => updateDetailedSkill(idx, { level: star })}
+                          className="p-0.5 hover:scale-125 transition-transform"
+                        >
+                          <Star
+                            className={`w-4 h-4 ${star <= sk.level ? "fill-primary text-primary" : "text-muted-foreground/30"}`}
+                          />
+                        </button>
                       ))}
-                    </SelectContent>
-                  </Select>
+                    </div>
 
-                  <div className="flex gap-1 items-center px-2">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        type="button"
-                        onClick={() => updateDetailedSkill(idx, { level: star })}
-                        className="p-0.5 hover:scale-125 transition-transform"
-                      >
-                        <Star
-                          className={`w-4 h-4 ${star <= sk.level ? "fill-primary text-primary" : "text-muted-foreground/30"}`}
-                        />
-                      </button>
-                    ))}
+                    <Button
+                      variant="ghostGold"
+                      size="sm"
+                      onClick={() => removeDetailedSkill(idx)}
+                      className="text-destructive h-9 px-2 hover:bg-destructive/10"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
+                ))}
+              </div>
 
+              <div className="pt-2 flex flex-wrap gap-2">
+                {Object.entries(SKILL_CATEGORY_META).map(([k, meta]) => (
                   <Button
-                    variant="ghostGold"
+                    key={k}
+                    type="button"
+                    variant="outline"
                     size="sm"
-                    onClick={() => removeDetailedSkill(idx)}
-                    className="text-destructive h-9 px-2 hover:bg-destructive/10"
+                    onClick={() => addDetailedSkill(k as any)}
+                    className="text-xs border-primary/30 text-primary hover:bg-primary/10"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Plus className="w-3.5 h-3.5 mr-1" />
+                    <span>{meta.emoji} {ar ? `إضافة (${meta.labelAr.slice(0, 12)})` : `Add (${meta.labelEn.slice(0, 12)})`}</span>
                   </Button>
-                </div>
-              ))}
-            </div>
-
-            <div className="pt-2 flex flex-wrap gap-2">
-              {Object.entries(SKILL_CATEGORY_META).map(([k, meta]) => (
-                <Button
-                  key={k}
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => addDetailedSkill(k as any)}
-                  className="text-xs border-primary/30 text-primary hover:bg-primary/10"
-                >
-                  <Plus className="w-3.5 h-3.5 mr-1" />
-                  <span>{meta.emoji} {ar ? `إضافة (${meta.labelAr.slice(0, 12)})` : `Add (${meta.labelEn.slice(0, 12)})`}</span>
-                </Button>
-              ))}
-            </div>
-          </Section>
+                ))}
+              </div>
+            </Section>
+          </div>
 
           {/* STUDENT EDIT 4: WORK EXPERIENCE (SECONDARY) */}
-          <Section title={ar ? "الخبرات والتدريب العملي (إن وجد)" : "Work & Internship Experience (Optional)"} alignClass={alignClass}>
-            <Field icon={Briefcase} label={ar ? "سنوات الخبرة أو التدريب" : "Years of Experience / Internship"}>
-              <Select
-                value={extrasDraft.experienceYears || "none"}
-                onValueChange={(val: any) => setExtrasDraft(d => ({ ...d, experienceYears: val }))}
-              >
-                <SelectTrigger className="bg-input border-gold/30">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {EXPERIENCE_OPTIONS.map(e => (
-                    <SelectItem key={e.value} value={e.value}>
-                      {ar ? e.labelAr : e.labelEn}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-          </Section>
+          <div id="field-experience">
+            <Section title={ar ? "الخبرات والتدريب العملي (إن وجد)" : "Work & Internship Experience (Optional)"} alignClass={alignClass}>
+              <Field icon={Briefcase} label={ar ? "سنوات الخبرة أو التدريب" : "Years of Experience / Internship"}>
+                <Select
+                  value={extrasDraft.experienceYears || "none"}
+                  onValueChange={(val: any) => setExtrasDraft(d => ({ ...d, experienceYears: val }))}
+                >
+                  <SelectTrigger className="bg-input border-gold/30">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EXPERIENCE_OPTIONS.map(e => (
+                      <SelectItem key={e.value} value={e.value}>
+                        {ar ? e.labelAr : e.labelEn}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+            </Section>
+          </div>
         </>
       )}
 

@@ -5,7 +5,7 @@ import {
   GraduationCap, ExternalLink, MapPin, Languages as LangIcon,
   Award, SlidersHorizontal, Building2, ChevronRight, Sparkles, Target, Filter,
   Wallet, Home, CalendarDays, FileText, ListChecks, Map as MapIcon, Scale, X,
-  Info, Users, Quote, CheckCircle2, ShieldCheck,
+  Info, Users, Quote, CheckCircle2, ShieldCheck, Search, Flame, Compass,
 } from "lucide-react";
 import {
   ARAB_UNIVERSITIES, ARAB_COUNTRY_STATS, ARAB_FACULTIES,
@@ -18,6 +18,7 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { LuxeAlumniPresenceCard } from "@/components/foras/LuxeAlumniPresenceCard";
 
 const PCT_KEY = "foras-student-percentage";
 
@@ -42,6 +43,10 @@ export const ArabUniversitiesTab = () => {
   const [faculty, setFaculty] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<ArabUniType | "">("");
   const [scholarshipOnly, setScholarshipOnly] = useState(false);
+  const [activeScholarshipOnly, setActiveScholarshipOnly] = useState(false);
+  const [alumniOnly, setAlumniOnly] = useState(false);
+  const [presenceOnly, setPresenceOnly] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [pct, setPct] = useState(() => (typeof window !== "undefined" ? localStorage.getItem(PCT_KEY) ?? "" : ""));
   const [eligibleOnly, setOnlyEligible] = useState(false);
   const [selected, setSelected] = useState<ArabUniversity | null>(null);
@@ -118,13 +123,65 @@ export const ArabUniversitiesTab = () => {
   }, [countryCode]);
 
   const list = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+
     let items = ARAB_UNIVERSITIES.filter((u) => {
       if (country && u.country !== country) return false;
       if (faculty && !u.faculties.includes(faculty)) return false;
       if (typeFilter && u.type !== typeFilter) return false;
       if (scholarshipOnly && !u.scholarships) return false;
+      if (activeScholarshipOnly && !u.activeScholarship) return false;
+      if (alumniOnly && (!u.notableAlumni || u.notableAlumni.length === 0)) return false;
+      if (presenceOnly && !u.studentPresence) return false;
       if (eligibleOnly && effectivePct !== undefined && effectivePct < u.minPercentage) return false;
-      return true;
+
+      if (!q) return true;
+
+      // Deep text matching
+      const matchesStandard = (
+        u.name.toLowerCase().includes(q) ||
+        (u.nameEn && u.nameEn.toLowerCase().includes(q)) ||
+        u.city.toLowerCase().includes(q) ||
+        (u.cityEn && u.cityEn.toLowerCase().includes(q)) ||
+        u.country.toLowerCase().includes(q) ||
+        (u.countryEn && u.countryEn.toLowerCase().includes(q)) ||
+        u.highlights.toLowerCase().includes(q) ||
+        (u.highlightsEn && u.highlightsEn.toLowerCase().includes(q)) ||
+        u.faculties.some((f) => f.toLowerCase().includes(q))
+      );
+      if (matchesStandard) return true;
+
+      if (u.activeScholarship) {
+        if (
+          u.activeScholarship.name.toLowerCase().includes(q) ||
+          (u.activeScholarship.nameEn && u.activeScholarship.nameEn.toLowerCase().includes(q)) ||
+          u.activeScholarship.monthlyStipend.toLowerCase().includes(q) ||
+          (u.activeScholarship.monthlyStipendEn && u.activeScholarship.monthlyStipendEn.toLowerCase().includes(q))
+        ) return true;
+      }
+
+      if (u.notableAlumni && u.notableAlumni.length > 0) {
+        const matchesAlumni = u.notableAlumni.some((a) =>
+          a.pioneerName.toLowerCase().includes(q) ||
+          (a.pioneerNameEn && a.pioneerNameEn.toLowerCase().includes(q)) ||
+          a.currentRole.toLowerCase().includes(q) ||
+          (a.currentRoleEn && a.currentRoleEn.toLowerCase().includes(q)) ||
+          a.achievementShort.toLowerCase().includes(q) ||
+          (a.achievementShortEn && a.achievementShortEn.toLowerCase().includes(q))
+        );
+        if (matchesAlumni) return true;
+      }
+
+      if (u.studentPresence) {
+        if (
+          (u.studentPresence.studentUnionOrClub && u.studentPresence.studentUnionOrClub.toLowerCase().includes(q)) ||
+          (u.studentPresence.studentUnionOrClubEn && u.studentPresence.studentUnionOrClubEn.toLowerCase().includes(q)) ||
+          (u.studentPresence.communityHighlight && u.studentPresence.communityHighlight.toLowerCase().includes(q)) ||
+          (u.studentPresence.communityHighlightEn && u.studentPresence.communityHighlightEn.toLowerCase().includes(q))
+        ) return true;
+      }
+
+      return false;
     });
 
     if (effectivePct !== undefined) {
@@ -137,7 +194,7 @@ export const ArabUniversitiesTab = () => {
     }
 
     return items;
-  }, [country, faculty, typeFilter, scholarshipOnly, eligibleOnly, effectivePct]);
+  }, [country, faculty, typeFilter, scholarshipOnly, activeScholarshipOnly, alumniOnly, presenceOnly, eligibleOnly, effectivePct, searchQuery]);
 
   const eligibleCount = useMemo(() => {
     if (effectivePct === undefined) return 0;
@@ -171,10 +228,14 @@ export const ArabUniversitiesTab = () => {
     setFaculty(null);
     setTypeFilter("");
     setScholarshipOnly(false);
+    setActiveScholarshipOnly(false);
+    setAlumniOnly(false);
+    setPresenceOnly(false);
     setOnlyEligible(false);
+    setSearchQuery("");
   };
 
-  const hasActiveFilters = faculty || typeFilter || scholarshipOnly || eligibleOnly;
+  const hasActiveFilters = faculty || typeFilter || scholarshipOnly || activeScholarshipOnly || alumniOnly || presenceOnly || eligibleOnly || searchQuery;
 
   return (
     <div className="space-y-4 w-full" dir={dir}>
@@ -436,6 +497,27 @@ export const ArabUniversitiesTab = () => {
 
           {/* Advanced Dropdown & Pill Filter Controls */}
           <div className="space-y-2.5 rounded-2xl border border-primary/20 bg-card/60 backdrop-blur-md p-3">
+            {/* Search Input Bar */}
+            <div className="relative">
+              <Search className={`absolute top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground ${isRtl ? "right-3" : "left-3"}`} />
+              <Input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={t("arabUniSearchPlaceholder")}
+                className={`bg-background/70 border-border text-xs h-9 ${isRtl ? "pr-9 pl-3" : "pl-9 pr-3"} ${alignClass}`}
+                dir={dir}
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className={`absolute top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground ${isRtl ? "left-3" : "right-3"}`}
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
             <div className="flex flex-wrap gap-2">
               {/* Major / Faculty Dropdown Filter */}
               <select
@@ -464,9 +546,62 @@ export const ArabUniversitiesTab = () => {
               </select>
             </div>
 
-            {/* Quick Toggle Chips: Scholarships & Compare Status */}
-            <div className="flex items-center justify-between gap-2 pt-1 flex-wrap">
-              <div className="flex items-center gap-2">
+            {/* Quick Toggle Chips: Scholarships & Flagships & Compare Status */}
+            <div className="flex items-center justify-between gap-1.5 pt-1 flex-wrap">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button
+                  onClick={() => {
+                    setActiveScholarshipOnly(false);
+                    setAlumniOnly(false);
+                    setPresenceOnly(false);
+                    setScholarshipOnly(false);
+                  }}
+                  className={`h-7 px-2.5 rounded-full text-[11px] font-bold border transition-all flex items-center gap-1 ${
+                    !activeScholarshipOnly && !alumniOnly && !presenceOnly && !scholarshipOnly
+                      ? "bg-primary/20 border-primary text-primary shadow-sm"
+                      : "bg-background/50 border-border text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Compass className="w-3 h-3" />
+                  <span>{t("globalUniFilterAll")}</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveScholarshipOnly((v) => !v)}
+                  className={`h-7 px-2.5 rounded-full text-[11px] font-bold border transition-all flex items-center gap-1 ${
+                    activeScholarshipOnly
+                      ? "bg-emerald-500/20 border-emerald-500 text-emerald-400 shadow-sm"
+                      : "bg-background/50 border-border text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Flame className="w-3 h-3 text-emerald-400" />
+                  <span>{t("globalUniFilterScholarships")}</span>
+                </button>
+
+                <button
+                  onClick={() => setAlumniOnly((v) => !v)}
+                  className={`h-7 px-2.5 rounded-full text-[11px] font-bold border transition-all flex items-center gap-1 ${
+                    alumniOnly
+                      ? "bg-amber-500/20 border-amber-500 text-amber-300 shadow-sm"
+                      : "bg-background/50 border-border text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <GraduationCap className="w-3 h-3 text-amber-400" />
+                  <span>{t("globalUniFilterAlumni")}</span>
+                </button>
+
+                <button
+                  onClick={() => setPresenceOnly((v) => !v)}
+                  className={`h-7 px-2.5 rounded-full text-[11px] font-bold border transition-all flex items-center gap-1 ${
+                    presenceOnly
+                      ? "bg-blue-500/20 border-blue-500 text-blue-300 shadow-sm"
+                      : "bg-background/50 border-border text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Users className="w-3 h-3 text-blue-400" />
+                  <span>{t("globalUniFilterPresence")}</span>
+                </button>
+
                 <button
                   onClick={() => setScholarshipOnly((v) => !v)}
                   className={`h-7 px-2.5 rounded-full text-[11px] font-bold border transition-all flex items-center gap-1 ${
@@ -476,17 +611,17 @@ export const ArabUniversitiesTab = () => {
                   }`}
                 >
                   <Award className="w-3 h-3" />
-                  {t("arabUniHasScholarships")}
+                  <span>{t("arabUniHasScholarships")}</span>
                 </button>
               </div>
 
               {hasActiveFilters && (
                 <button
                   onClick={clearAllFilters}
-                  className="text-[11px] text-primary flex items-center gap-1 hover:underline"
+                  className="text-[11px] text-primary flex items-center gap-1 hover:underline ml-auto"
                 >
                   <Filter className="w-3 h-3" />
-                  {t("arabUniClearFilters")}
+                  <span>{t("arabUniClearFilters")}</span>
                 </button>
               )}
             </div>
@@ -547,6 +682,12 @@ export const ArabUniversitiesTab = () => {
                       <span className={`text-[10px] px-2 py-0.5 rounded-full border font-bold ${typeBadgeClass[u.type]}`}>
                         {typeLabel(u.type)}
                       </span>
+                      {u.activeScholarship && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-bold flex items-center gap-1 shadow-sm">
+                          <Sparkles className="w-2.5 h-2.5 text-emerald-400" />
+                          <span>{ar ? "منحة مباشرة نشطة 🔥" : "Active Direct Grant 🔥"}</span>
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -555,18 +696,38 @@ export const ArabUniversitiesTab = () => {
                     {ar ? u.highlights : (u.highlightsEn || u.highlights)}
                   </p>
 
-                  {/* Meta Badges: Language, Scholarships, Faculties */}
+                  {/* Meta Badges: Language, Scholarships, Alumni, Presence, Faculties */}
                   <div className="flex flex-wrap gap-1.5 mb-3">
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted/40 border border-primary/10 text-muted-foreground flex items-center gap-1">
                       <LangIcon className="w-3 h-3 text-primary" />
                       {langLabel(u.language)}
                     </span>
-                    {u.scholarships && (
+                    {u.activeScholarship ? (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold flex items-center gap-1">
+                        <Award className="w-3 h-3 text-emerald-400" />
+                        <span>{ar ? u.activeScholarship.name : (u.activeScholarship.nameEn || u.activeScholarship.name)}</span>
+                      </span>
+                    ) : u.scholarships ? (
                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 border border-primary/30 text-primary font-medium flex items-center gap-1">
                         <Award className="w-3 h-3" />
                         {t("arabUniHasScholarships")}
                       </span>
+                    ) : null}
+
+                    {u.notableAlumni && u.notableAlumni.length > 0 && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 font-bold flex items-center gap-1">
+                        <GraduationCap className="w-3 h-3 text-amber-400" />
+                        <span>{isRtl ? `رائد: ${u.notableAlumni[0].pioneerName}` : `Alumni: ${u.notableAlumni[0].pioneerNameEn || u.notableAlumni[0].pioneerName}`}</span>
+                      </span>
                     )}
+
+                    {u.studentPresence && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-300 font-bold flex items-center gap-1">
+                        <Users className="w-3 h-3 text-blue-400" />
+                        <span>{isRtl ? (u.studentPresence.studentUnionOrClub || "تواجد طلابي عربي") : (u.studentPresence.studentUnionOrClubEn || u.studentPresence.studentUnionOrClub || "Arab Student Presence")}</span>
+                      </span>
+                    )}
+
                     {u.faculties.slice(0, 5).map((f) => (
                       <span
                         key={f}
@@ -805,6 +966,14 @@ export const ArabUniversitiesTab = () => {
                     </p>
                     <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{ar ? d.seasons : d.seasonsEn}</p>
                   </div>
+
+                  {/* Luxe Alumni & Student Presence Spotlight */}
+                  <LuxeAlumniPresenceCard
+                    activeScholarship={selected.activeScholarship}
+                    studentPresence={selected.studentPresence}
+                    notableAlumni={selected.notableAlumni}
+                    universityName={ar ? selected.name : (selected.nameEn || selected.name)}
+                  />
 
                   <div>
                     <p className="text-xs font-bold text-foreground flex items-center gap-1.5 mb-2">

@@ -1,7 +1,22 @@
 // دليل الجامعات العربية المعتمدة — الدول الـ 8 الفعالة
 // يتضمن البوابات الرسمية الحكومية والمصادر المعتمدة وشروط القبول وتفاصيل المنح.
 
+import type {
+  NotableAlumniRecord,
+  StudentPresenceData,
+  ActiveScholarshipProgram,
+  PeerConnectionType,
+} from "./globalUniversities";
+import { ARAB_FLAGSHIP_ENRICHMENTS } from "./arabFlagshipEnrichments.ts";
+
 export type ArabUniType = "government" | "private" | "technical";
+
+export type {
+  NotableAlumniRecord,
+  StudentPresenceData,
+  ActiveScholarshipProgram,
+  PeerConnectionType,
+};
 
 export interface OfficialPortal {
   name: string;
@@ -28,6 +43,9 @@ export interface ArabUniversity {
   scholarships: boolean;
   highlights: string;
   highlightsEn: string;
+  activeScholarship?: ActiveScholarshipProgram;
+  studentPresence?: StudentPresenceData;
+  notableAlumni?: NotableAlumniRecord[];
 }
 
 export interface ArabCountryMeta {
@@ -260,7 +278,7 @@ export const ARAB_COUNTRIES_META: Record<string, ArabCountryMeta> = {
   },
 };
 
-export const ARAB_UNIVERSITIES: ArabUniversity[] = [
+const RAW_ARAB_UNIVERSITIES: ArabUniversity[] = [
   // ==========================================
   // 1. المملكة العربية السعودية (Saudi Arabia)
   // ==========================================
@@ -5603,7 +5621,32 @@ export const ARAB_UNIVERSITIES: ArabUniversity[] = [
   },
 ];
 
-// Order of the 8 countries: Sudan first (Permanent Anchor), followed by Saudi Arabia, Qatar, UAE, Egypt, Morocco, Oman, Jordan
+// Enriched and sorted ARAB_UNIVERSITIES with active scholarships appearing at the top
+export const ARAB_UNIVERSITIES: ArabUniversity[] = (() => {
+  const enriched = RAW_ARAB_UNIVERSITIES.map((uni) => {
+    const enrichment = ARAB_FLAGSHIP_ENRICHMENTS[uni.id];
+    return enrichment ? { ...uni, ...enrichment } : uni;
+  });
+
+  // Group by country preserving original country order, with activeScholarship items at top of each country
+  const countryOrder: string[] = Array.from(new Set(RAW_ARAB_UNIVERSITIES.map((u) => u.country)));
+  const result: ArabUniversity[] = [];
+
+  countryOrder.forEach((cntry) => {
+    const list = enriched.filter((u) => u.country === cntry);
+    // Sort: activeScholarship items first (score 0), then others (score 1)
+    list.sort((a, b) => {
+      const aScore = a.activeScholarship ? 0 : 1;
+      const bScore = b.activeScholarship ? 0 : 1;
+      return aScore - bScore;
+    });
+    result.push(...list);
+  });
+
+  return result;
+})();
+
+// Order of the 8 countries: Saudi Arabia, Qatar, UAE, Egypt, Morocco, Oman, Jordan, Sudan
 export const ORDERED_COUNTRY_NAMES = [
   "المملكة العربية السعودية",
   "قطر",
