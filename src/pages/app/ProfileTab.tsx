@@ -31,8 +31,6 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { LuxeAvatar } from "@/components/foras/LuxeAvatar";
-import { ScholarshipAcademyModal } from "@/components/foras/ScholarshipAcademyModal";
-import { SCHOLARSHIP_ACADEMY_TRACKS } from "@/lib/scholarshipAcademyData";
 
 interface ProfileState {
   full_name: string; bio: string; education: string; location: string; avatar_url: string; phone: string;
@@ -101,8 +99,6 @@ export const ProfileTab = () => {
   const [uploading, setUploading] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [geoHelpOpen, setGeoHelpOpen] = useState(false);
-  const [academyModalOpen, setAcademyModalOpen] = useState(false);
-  const [selectedAcademyTrack, setSelectedAcademyTrack] = useState<string | undefined>(undefined);
 
   const handleCopyPhone = (numberToCopy?: string) => {
     const raw = numberToCopy || profile.phone || (phoneLocal ? `${extrasDraft.phoneCountryCode} ${phoneLocal}` : "");
@@ -567,75 +563,6 @@ export const ProfileTab = () => {
           </DialogContent>
         </Dialog>
 
-        {/* === ACADEMY OF SCHOLARSHIPS & ADMISSIONS (أكاديمية المنح والقبول) - DIRECTLY UNDER HERO AVATAR CARD === */}
-        <div className="rounded-3xl p-5 sm:p-6 bg-gradient-to-br from-amber-500/10 via-card to-card border border-amber-500/30 shadow-luxe relative overflow-hidden">
-          <div className="absolute top-0 end-0 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-          
-          <div className="relative z-10 space-y-4">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-500 shadow-inner">
-                  <GraduationCap className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
-                      {ar ? "أكاديمية القبول" : "Academy"}
-                    </span>
-                  </div>
-                  <h3 className="text-sm sm:text-base font-bold text-foreground">
-                    {ar ? "أكاديمية المنح والقبول" : "Scholarships & Admissions Academy"}
-                  </h3>
-                </div>
-              </div>
-
-              <Button
-                size="sm"
-                onClick={() => {
-                  setSelectedAcademyTrack(undefined);
-                  setAcademyModalOpen(true);
-                }}
-                className="text-xs h-8 sm:h-9 rounded-xl bg-gold-gradient text-primary-foreground font-bold shadow-gold gap-1.5 px-3.5 hover:opacity-95"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>{ar ? "استعراض كافة المسارات" : "Explore All Tracks"}</span>
-              </Button>
-            </div>
-
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              {ar
-                ? "دليلك الشامل ونماذج معتمدة لخطابات النوايا، مراسلة المشرفين، واجتياز المقابلات لرفع فرص قبولك الأكاديمي."
-                : "Your comprehensive guide & blueprints for Motivation Letters, Supervisor Cold Emails, and Interviews."}
-            </p>
-
-            {/* Quick Tracks Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-              {SCHOLARSHIP_ACADEMY_TRACKS.map((track) => (
-                <button
-                  key={track.id}
-                  onClick={() => {
-                    setSelectedAcademyTrack(track.id);
-                    setAcademyModalOpen(true);
-                  }}
-                  className="p-3 rounded-2xl border border-border/80 bg-background/60 hover:bg-background hover:border-amber-500/40 transition-all text-start group flex items-center justify-between gap-2.5 shadow-sm"
-                >
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-foreground group-hover:text-amber-500 transition-colors truncate">
-                      {ar ? track.title : track.titleEn}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
-                      {ar ? track.subtitle : track.subtitleEn}
-                    </p>
-                  </div>
-                  <span className="text-[10px] text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md font-semibold border border-amber-500/20 shrink-0">
-                    {ar ? track.duration : track.durationEn}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
         {/* === AI MATCHING PRECISION & READINESS CARD (PRO AI ADVISOR) === */}
         {!hideProfile && (
           <AIMatchingReadinessCard
@@ -1063,13 +990,6 @@ export const ProfileTab = () => {
             </div>
           </div>
         )}
-
-        {/* Academy Modal Component */}
-        <ScholarshipAcademyModal
-          isOpen={academyModalOpen}
-          onClose={() => setAcademyModalOpen(false)}
-          initialTrackId={selectedAcademyTrack}
-        />
       </div>
     );
   }

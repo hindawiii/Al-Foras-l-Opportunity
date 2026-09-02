@@ -199,14 +199,6 @@ const STRINGS: Record<Lang, Record<string, string>> = {
     globalUniStepsTitle: "خطوات التقديم",
     globalUniLocationMap: "الخريطة",
     globalUniVisitOfficialSite: "الموقع الرسمي",
-    // Scholarship Academy Keys
-    academyTitle: "أكاديمية المنح والقبول",
-    academyBadge: "أكاديمية القبول",
-    academySubtitle: "مسارات تدريبية ونماذج معتمدة لرفع نسبة قبولك في كبرى المنح الدولية إلى +85%",
-    academyOpenBtn: "🎓 أكاديمية المنح والقبول",
-    academyBannerTitle: "أكاديمية المنح والقبول",
-    academyBannerDesc: "نماذج خطابات نوايا معتمدة، إتيكيت مراسلة المشرفين، ومحاكي المقابلات.",
-    academyExploreTracks: "تصفح المسارات",
     // Admin Dashboard Keys
     adminTitle: "لوحة تحكم إدارة منصة الفُرَص",
     adminActiveSession: "الجلسة نشطة: {name} ({role})",
@@ -690,9 +682,6 @@ const STRINGS: Record<Lang, Record<string, string>> = {
     landingGlobalHubSubtitle: "استكشف بوابات المنح السنوية المضمونة ومواعيد التقديم وشروط القبول في كبرى الدول العالمية",
     landingGlobalHubViewAll: "استكشف جميع الدول والجامعات العالمية",
     landingViewAll: "استعرض جميع المنح",
-    academyBadge: "أكاديمية المنح والقبول",
-    academyTitle: "أكاديمية المنح والقبول",
-    academySubtitle: "مسارات تدريبية ونماذج جاهزة لرفع نسبة قبولك في كبرى المنح الدولية إلى +85%",
     landingFooter: "© 2026 الفُرَص — جميع الحقوق محفوظة",
   },
   en: {
@@ -880,14 +869,6 @@ const STRINGS: Record<Lang, Record<string, string>> = {
     globalUniStepsTitle: "Application Steps",
     globalUniLocationMap: "Map",
     globalUniVisitOfficialSite: "Official Website",
-    // Scholarship Academy Keys
-    academyTitle: "Scholarships & Admissions Academy",
-    academyBadge: "Admissions Academy",
-    academySubtitle: "Certified training modules & blueprints to boost your acceptance rate to +85%",
-    academyOpenBtn: "🎓 Scholarships & Admissions Academy",
-    academyBannerTitle: "Scholarships & Admissions Academy",
-    academyBannerDesc: "Certified SOP templates, supervisor outreach blueprints, and interview simulator.",
-    academyExploreTracks: "Explore Modules",
     // Admin Dashboard Keys
     adminTitle: "Al-Foras Management Control Panel",
     adminActiveSession: "Active Session: {name} ({role})",
@@ -1372,9 +1353,6 @@ const STRINGS: Record<Lang, Record<string, string>> = {
     landingGlobalHubSubtitle: "Explore annual guaranteed scholarship portals, application windows, and admission requirements worldwide",
     landingGlobalHubViewAll: "Explore All Global Countries & Universities",
     landingViewAll: "Browse All Scholarships",
-    academyBadge: "Scholarships & Admissions Academy",
-    academyTitle: "Scholarships & Admissions Academy",
-    academySubtitle: "Masterclass guides & blueprints to boost your acceptance rate to +85%",
     landingFooter: "© 2026 Al-Foras — All rights reserved",
   },
 };

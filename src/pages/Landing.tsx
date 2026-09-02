@@ -40,8 +40,6 @@ import { JOBS, Job } from "@/lib/jobsData";
 import { ARAB_COUNTRY_STATS } from "@/lib/arabUniversities";
 import { GLOBAL_COUNTRIES } from "@/lib/globalUniversities";
 import { dynamicStore } from "@/lib/dynamicStore";
-import { ScholarshipAcademyModal } from "@/components/foras/ScholarshipAcademyModal";
-import { SCHOLARSHIP_ACADEMY_TRACKS } from "@/lib/scholarshipAcademyData";
 
 // Render Arabic text with diacritics (tashkeel) highlighted in a lighter gold/white
 const TashkeelText = ({ children, className = "" }: { children: string; className?: string }) => {
@@ -80,10 +78,6 @@ const Landing = () => {
   // Show more / less state for Arab & Global countries on Landing page
   const [showAllArabCountries, setShowAllArabCountries] = useState(false);
   const [showAllGlobalCountries, setShowAllGlobalCountries] = useState(false);
-  
-  // 🎓 Scholarship Academy Modal State
-  const [academyOpen, setAcademyOpen] = useState(false);
-  const [selectedAcademyTrack, setSelectedAcademyTrack] = useState<string | null>(null);
 
   const loadScholarships = () => {
     const all = dynamicStore.getScholarships();
@@ -543,80 +537,6 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* 🎓 ELITE SECTION: أكاديمية المنح والقبول الجامعي (Scholarship Readiness Academy Showcase) */}
-      <section className="relative z-10 px-5 sm:px-10 py-12 max-w-5xl mx-auto">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-500 text-2xs font-bold mb-2.5 shadow-sm">
-            <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
-            <span>{t("academyBadge")}</span>
-          </div>
-          <h2
-            className="font-bold text-2xl sm:text-3xl text-gold-gradient"
-            style={{ fontFamily: "'Tajawal', sans-serif" }}
-          >
-            {lang === "ar" ? <TashkeelText>{t("academyTitle")}</TashkeelText> : t("academyTitle")}
-          </h2>
-          <p className="text-muted-foreground text-xs sm:text-sm mt-1.5 max-w-xl mx-auto leading-relaxed">
-            {t("academySubtitle")}
-          </p>
-        </div>
-
-        {/* 4 Interactive Track Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {SCHOLARSHIP_ACADEMY_TRACKS.map((tr) => (
-            <motion.div
-              key={tr.id}
-              whileHover={{ y: -3 }}
-              onClick={() => {
-                setSelectedAcademyTrack(tr.id);
-                setAcademyOpen(true);
-              }}
-              className="glass rounded-2xl p-5 border-amber-500/25 cursor-pointer transition-all hover:border-amber-500/60 shadow-luxe flex flex-col justify-between bg-card/85 group"
-            >
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-500 shadow-inner group-hover:scale-110 transition-transform">
-                    <GraduationCap className="w-5 h-5" />
-                  </div>
-                  <span className="text-2xs font-bold text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-lg border border-border/40">
-                    ⏱️ {lang === "ar" ? tr.estimatedReadTime : tr.estimatedReadTimeEn}
-                  </span>
-                </div>
-
-                <div>
-                  <h3 className="font-bold text-foreground text-sm sm:text-base group-hover:text-amber-500 transition-colors line-clamp-1">
-                    {lang === "ar" ? tr.title : tr.titleEn}
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
-                    {lang === "ar" ? tr.subtitle : tr.subtitleEn}
-                  </p>
-                </div>
-              </div>
-
-              <div className="pt-3.5 mt-3 border-t border-amber-500/15 flex items-center justify-between text-2xs font-bold text-amber-500">
-                <span>{lang === "ar" ? "قراءة الدليل ونسخ النماذج" : "Read Guide & Copy Templates"}</span>
-                <ArrowRight className={`w-3.5 h-3.5 transition-transform group-hover:translate-x-1 ${isRtl ? "rotate-180 group-hover:-translate-x-1" : ""}`} />
-              </div>
-            </motion.div>
-          ))}
-        </div>
-
-        <div className="mt-6 text-center">
-          <Button 
-            variant="luxe" 
-            size="lg" 
-            onClick={() => {
-              setSelectedAcademyTrack(null);
-              setAcademyOpen(true);
-            }} 
-            className="px-8 shadow-gold font-bold text-xs sm:text-sm"
-          >
-            <Sparkles className="w-4 h-4 text-primary" />
-            <span>{t("academyOpenBtn")}</span>
-          </Button>
-        </div>
-      </section>
-
       {/* 💼 NEW SECTION: أحدث فرص العمل الحر وعن بُعد (Freelance & Remote Work Hub) */}
       <section className="relative z-10 px-5 sm:px-10 py-12 max-w-5xl mx-auto">
         <div className="text-center mb-8">
@@ -794,13 +714,6 @@ const Landing = () => {
           <p className="text-2xs text-muted-foreground">{t("landingFooter")}</p>
         </div>
       </footer>
-
-      {/* 🎓 Scholarship Readiness Academy Modal */}
-      <ScholarshipAcademyModal
-        isOpen={academyOpen}
-        onClose={() => setAcademyOpen(false)}
-        initialTrackId={selectedAcademyTrack || undefined}
-      />
     </div>
   );
 };
