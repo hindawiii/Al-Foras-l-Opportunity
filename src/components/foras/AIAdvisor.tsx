@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { chatStorage, type ChatMessage } from "@/lib/aiChatStorage";
 import { guestStorage } from "@/lib/guestStorage";
-import { generateLocalAIResponse } from "@/lib/aiLocalEngine";
+import { generateLocalAIResponse, getDailyQuotaStatus, incrementDailyQuota, type QuotaStatus } from "@/lib/aiLocalEngine";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { toast } from "sonner";
@@ -27,32 +27,39 @@ type AdvisorMode = "chat" | "voice" | "cv" | "essay";
 
 const QUICK_ACTIONS = [
   {
+    icon: Sparkles,
+    labelAr: "🎙️ بدء محاكاة مقابلة حية (منح / عمل)",
+    labelEn: "🎙️ Start Live Mock Interview (STAR)",
+    promptAr: "أريد بدء محاكاة مقابلة رسمية تفاعلية لمنحة دراسية وفرصة عمل الآن. اسألني السؤال الأول وانتظر إجابتي لتقييمها.",
+    promptEn: "I want to start an interactive mock interview for scholarships and career opportunities. Ask me the first question and evaluate my answer.",
+  },
+  {
     icon: GraduationCap,
-    labelAr: "ما هي المنح المناسبة لي؟",
-    labelEn: "What scholarships fit me?",
-    promptAr: "بناءً على ملفي الشخصي، ما هي أفضل 3 منح دراسية مناسبة لي حاليًا؟ اذكر الاسم، الدولة، والمتطلبات الأساسية.",
-    promptEn: "Based on my profile, what are the best 3 scholarships for me right now? List name, country, and key requirements."
+    labelAr: "ما هي المنح المناسبة لملفي ومعدلي؟",
+    labelEn: "What scholarships fit my GPA & field?",
+    promptAr: "بناءً على ملفي الشخصي ومعدلي، ما هي أفضل المنح الدراسية المتاحة والممولة بالكامل المناسبة لي حاليًا؟ اذكر الشروط وطريقة القبول.",
+    promptEn: "Based on my profile and GPA, what are the best fully funded scholarships available for me right now? List key requirements.",
   },
   {
-    icon: Calculator,
-    labelAr: "احسب نتيجتي المتوقعة",
-    labelEn: "Calculate expected GPA/Score",
-    promptAr: "أريد أن أحسب نتيجتي وأعرف تقديري. اسألني عن درجاتي في المواد الأساسية ثم احسب النسبة والتقدير.",
-    promptEn: "I want to calculate my score and know my grade. Ask me for my marks in core subjects then calculate the percentage and grade."
+    icon: Briefcase,
+    labelAr: "تطوير مساري المهني والشهادات (PMP/AI)",
+    labelEn: "Career shift & high-ROI certifications",
+    promptAr: "أريد خطة عملية لتطوير مساري المهني، والشهادات الاحترافية الأكثر طلباً في سوق العمل المحلي والدولي، وكيفية الحصول على عمل عن بعد.",
+    promptEn: "I want an actionable career development plan, in-demand professional certifications (PMP/AWS/AI), and how to land remote jobs.",
   },
   {
-    icon: University,
-    labelAr: "ما الجامعات المناسبة لي؟",
-    labelEn: "What universities fit me?",
-    promptAr: "ما هي الجامعات السودانية والعربية المناسبة لملفي؟ صنّفها إلى: مضمونة القبول، تنافسية، وطموحة.",
-    promptEn: "Which Sudanese and Arab universities match my profile? Categorize them into: safe, target, and reach."
+    icon: Languages,
+    labelAr: "🇸🇩 🇪🇬 استشارة باللهجة السودانية أو المصرية",
+    labelEn: "🇸🇩 🇪🇬 Dialect consultation (Sudanese/Egyptian)",
+    promptAr: "داير أستفسر عن التقديم للمنح وشروط القبول وتوثيق الشهادات بطريقة مبسطة وواضحة جداً.",
+    promptEn: "Explain scholarship requirements and document authentication in clear, practical steps.",
   },
   {
     icon: FileText,
-    labelAr: "كيف أُحسّن ملفي؟",
-    labelEn: "How to improve my profile?",
-    promptAr: "قيّم ملفي الشخصي واذكر نقاط القوة والضعف واقتراحات محددة للتحسين.",
-    promptEn: "Evaluate my personal profile, list strengths, weaknesses, and specific tips for improvement."
+    labelAr: "فحص خطاب الدافع والسيرة الذاتية (ATS)",
+    labelEn: "Review Motivation Letter & ATS CV",
+    promptAr: "كيف أصيغ خطاب دافع (Motivation Letter) قوي ومميز يقنع لجنة المنحة؟ واشرح لي كيفية اجتياز فحص أنظمة الـ ATS.",
+    promptEn: "How to draft a compelling Statement of Purpose (SOP) and ensure my CV passes international ATS filters?",
   },
 ];
 
@@ -76,13 +83,18 @@ export const AIAdvisor = () => {
   const [busy, setBusy] = useState(false);
   const [visible, setVisible] = useState(true);
 
-  // Global event listener for opening AI advisor directly into specific mode
+  // Global event listener for opening AI advisor directly into specific mode and auto-sending custom prompt
   useEffect(() => {
     const handler = (e: Event) => {
-      const custom = e as CustomEvent<{ mode?: AdvisorMode }>;
+      const custom = e as CustomEvent<{ mode?: AdvisorMode; prompt?: string }>;
       setOpen(true);
       if (custom.detail?.mode) {
         setMode(custom.detail.mode);
+      }
+      if (custom.detail?.prompt) {
+        setTimeout(() => {
+          sendRef.current(custom.detail.prompt);
+        }, 150);
       }
     };
     window.addEventListener("open-ai-advisor", handler as EventListener);
@@ -118,6 +130,13 @@ export const AIAdvisor = () => {
   const [atsResult, setAtsResult] = useState<AtsAnalysisResult | null>(null);
   const [isEvaluatingCv, setIsEvaluatingCv] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Daily Fair-Share Quota State
+  const [quota, setQuota] = useState<QuotaStatus>(getDailyQuotaStatus());
+
+  useEffect(() => {
+    setQuota(getDailyQuotaStatus());
+  }, [open]);
 
   // Essay / SOP Checker States
   const [essayText, setEssayText] = useState("");
@@ -317,6 +336,22 @@ export const AIAdvisor = () => {
   const send = async (text: string) => {
     const content = text.trim();
     if (!content || busy) return;
+
+    // Check quota
+    const currentQuota = getDailyQuotaStatus();
+    if (!currentQuota.isAllowed) {
+      toast.error(
+        isRtl
+          ? "لقد استهلكت رصيدك المجاني اليومي (20 استفساراً). يتجدد الرصيد تلقائياً عند منتصف الليل 00:00."
+          : "You have used your daily free quota (20 queries). Resets at midnight 00:00."
+      );
+      return;
+    }
+
+    // Increment and update state
+    const updatedQuota = incrementDailyQuota();
+    setQuota(updatedQuota);
+
     setInput("");
     const userMsg: ChatMessage = { id: uid(), role: "user", content, createdAt: Date.now() };
     const assistantMsg: ChatMessage = { id: uid(), role: "assistant", content: "", createdAt: Date.now() };
@@ -533,38 +568,64 @@ export const AIAdvisor = () => {
     setShowTip(false);
   };
 
-  const dragConstraints = useMemo(() => {
-    if (typeof window === "undefined") return undefined;
-    return { left: -window.innerWidth + 80, right: 10, top: -window.innerHeight + 140, bottom: 10 };
+  // Universal cross-device dynamic drag constraints based on live window dimensions
+  const [windowDimensions, setWindowDimensions] = useState({
+    width: typeof window !== "undefined" ? window.innerWidth : 1200,
+    height: typeof window !== "undefined" ? window.innerHeight : 800,
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleResize = () => {
+      setWindowDimensions({ width: window.innerWidth, height: window.innerHeight });
+    };
+    window.addEventListener("resize", handleResize, { passive: true });
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  const dragConstraints = useMemo(() => {
+    const w = windowDimensions.width;
+    const h = windowDimensions.height;
+    // Allow dragging freely to all 4 corners across mobile, tablet, and desktop
+    return {
+      left: -w + 72,
+      right: 16,
+      top: -h + 120,
+      bottom: 24,
+    };
+  }, [windowDimensions]);
+
+  // Track whether dragging occurred to differentiate click vs drag
+  const isDraggingRef = useRef(false);
 
   return (
     <>
-      {/* Sleek, Professional Resized Floating Action Button with Pulsing Glow & Hover Note */}
+      {/* Sleek, Professional Resized Floating Action Button with Universal Free Drag (All Devices) */}
       <motion.div
         ref={fabContainerRef}
         drag
         dragMomentum={false}
+        dragElastic={0.1}
         dragConstraints={dragConstraints}
-        style={{ x, y }}
+        style={{ x, y, touchAction: "none" }}
         onDragStart={() => {
+          isDraggingRef.current = true;
           setIsHovered(false);
           setShowTip(false);
         }}
         onDragEnd={() => {
+          setTimeout(() => {
+            isDraggingRef.current = false;
+          }, 60);
           chatStorage.saveFabPosition({ x: x.get(), y: y.get() });
           updateTooltipPosition();
         }}
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: visible ? 1 : 0, scale: visible ? 1 : 0.6, pointerEvents: visible ? "auto" : "none" }}
         transition={{ type: "spring", stiffness: 300, damping: 24 }}
-        className="fixed bottom-24 right-4 z-40 cursor-grab active:cursor-grabbing select-none"
+        className="fixed bottom-24 right-4 z-[9999] cursor-grab active:cursor-grabbing select-none"
         onMouseEnter={handleFabMouseEnter}
         onMouseLeave={handleFabMouseLeave}
-        onTouchStart={() => {
-          updateTooltipPosition();
-          setIsHovered(true);
-        }}
       >
         <div className="relative flex items-center justify-center">
           {/* Hover / Hint Tooltip Note with Viewport Edge Collision Detection & Smart Flipping */}
@@ -609,10 +670,13 @@ export const AIAdvisor = () => {
 
           {/* Floating Action Button */}
           <button
-            onClick={() => setOpen(v => !v)}
+            onClick={() => {
+              if (isDraggingRef.current) return;
+              setOpen(v => !v);
+            }}
             aria-label={isRtl ? "مستشار الفرص الذكي" : "AI Advisor"}
             style={{ borderRadius: 18 }}
-            className="relative w-14 h-14 bg-gradient-to-br from-[#123816] via-[#1B5E20] to-[#B8860B] border-2 border-primary/70 flex items-center justify-center shadow-[0_8px_25px_-4px_rgba(0,0,0,0.7),0_0_20px_rgba(212,175,55,0.45)] hover:scale-105 active:scale-95 transition-all duration-300 group"
+            className="relative w-14 h-14 bg-gradient-to-br from-[#123816] via-[#1B5E20] to-[#B8860B] border-2 border-primary/70 flex items-center justify-center shadow-[0_8px_25px_-4px_rgba(0,0,0,0.7),0_0_20px_rgba(212,175,55,0.45)] hover:scale-105 active:scale-95 transition-all duration-300 group cursor-pointer"
           >
             <AnimatePresence mode="wait">
               {open ? (
@@ -739,6 +803,22 @@ export const AIAdvisor = () => {
                     </button>
                   );
                 })}
+              </div>
+
+              {/* Fair-Share Quota & Dialect Indicator */}
+              <div className="mt-2 px-1 flex items-center justify-between text-[10px]">
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="font-semibold text-primary/90">
+                    {isRtl ? "مستشار ذكي فوري (فصحى • سوداني • مصري)" : "Multi-Dialect Advisor (Sudanese/Egyptian/EN)"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/15 border border-primary/30">
+                  <span className="text-primary font-bold">⚡ {quota.remaining} / {quota.max}</span>
+                  <span className="text-muted-foreground font-medium">
+                    {isRtl ? "استفسار متبقٍ اليوم" : "queries left"}
+                  </span>
+                </div>
               </div>
             </div>
 

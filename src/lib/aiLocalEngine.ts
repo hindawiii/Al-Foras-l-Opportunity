@@ -146,6 +146,145 @@ export const generateLocalAIResponse = (
     query.includes("لو سمحت") ||
     query.includes("عندي سؤال");
 
+  // Motivation Letter / SOP / Recommendation Letter Keywords
+  const isSopRequest =
+    query.includes("خطاب") ||
+    query.includes("دافع") ||
+    query.includes("رسالة") ||
+    query.includes("توصية") ||
+    query.includes("تزكية") ||
+    query.includes("motivation") ||
+    query.includes("sop") ||
+    query.includes("statement") ||
+    query.includes("cover letter") ||
+    query.includes("recommendation");
+
+  // CV / Resume / ATS Keywords
+  const isCvRequest =
+    query.includes("سيرة") ||
+    query.includes("ذاتية") ||
+    query.includes("ats") ||
+    query.includes("cv") ||
+    query.includes("resume") ||
+    query.includes("بروفايل");
+
+  // Specific Opportunity Inquiries (Triggered via Copilot or Direct Titles)
+  const isOpportunityInquiry =
+    query.includes("الاستفسار بالتفصيل عن فرصة") ||
+    query.includes("قارن ملفي الشخصي") ||
+    query.includes("مقارنة ملفي") ||
+    query.includes("inquiry regarding") ||
+    query.includes("compare my profile");
+
+  // ==========================================
+  // 1. SPECIFIC OPPORTUNITY INQUIRY (From Copilot)
+  // ==========================================
+  if (isOpportunityInquiry) {
+    if (isEn) {
+      return `📋 **AI Opportunity Analysis & Acceptance Roadmap:**
+
+1. **Eligibility & Matching Status:**
+   - **Academic Alignment:** High compatibility with your background ${userMajorEn}.
+   - **Acceptance Probability:** Estimated at **85% - 92%** when supported with verified documents and an ATS-compliant CV.
+
+2. **Essential Checklist to Guarantee Acceptance:**
+   - 📄 Authenticated official transcripts & certified translations.
+   - 🎯 Tailored Statement of Purpose (SOP) citing exact faculty or operational needs.
+   - ✉️ Two recommendation letters demonstrating academic rigor or practical leadership.
+
+3. **Next Recommended Action:**
+   - You can test your readiness by starting a **Mock Interview** or clicking **«Check Motivation Letter»** above!`;
+    }
+
+    const copilotIntro = isSudanese
+      ? `يا هلا بيك! فحصت تفاصيل الفرصة دي بدقة وقارنتها بملفك:`
+      : isEgyptian
+      ? `أهلاً بحضرتك! فحصت بيانات الفرصة ومتطلبات القبول بالتفصيل:`
+      : `📋 **تقرير التحليل الذكي للفرصة وخارطة ضمان القبول:**`;
+
+    return `${copilotIntro}
+
+1. **نسبة القبول ومطابقة الملف:**
+   - **التوافق الأكاديمي:** توافق عالٍ جداً مع تخصصك ${userMajorAr}.
+   - **نسبة القبول المتوقعة:** تتراوح بين **85% إلى 92%** عند استيفاء كامل المستندات بصيغة معتمدة.
+
+2. **أهم متطلبات النجاح في هذه الفرصة:**
+   - 📄 ترجمة وتوثيق كشوف الدرجات والشهادات رسمياً.
+   - 🎯 صياغة خطاب دافع (Motivation Letter) مخصص يذكر أهدافك المباشرة من هذه الفرصة.
+   - ✉️ رسالتا توصية أكاديمية أو مهنية تثبت كفاءتك.
+
+3. **الخطوة العملية التالية:**
+   - يمكنك الضغط على **«محاكاة مقابلة»** للتدريب على أسئلة القبول، أو فحص مسودة خطابك فوراً!`;
+  }
+
+  // ==========================================
+  // 2. MOTIVATION LETTER / SOP / RECOMMENDATION
+  // ==========================================
+  if (isSopRequest) {
+    if (isEn) {
+      return `📝 **Comprehensive SOP & Motivation Letter Architecture ${userMajorEn}:**
+
+### 🏛️ The 5 Golden Pillars for Winning Approval:
+1. **The Spark (Hook):** Open with the specific problem in your field that drives your academic curiosity.
+2. **Academic Rigor:** Highlight your graduation project, lab work, or high-impact assignments.
+3. **Institutional Fit:** Name specific professors, research tracks, or unique modules at the target university.
+4. **Community Footprint:** Clearly explain how this degree will enable you to solve tangible challenges in your home country.
+5. **Decisive Conclusion:** Reaffirm your readiness, dedication, and gratitude.
+
+💡 **ATS & Reviewer Tip:** Keep it between 600–800 words, use concise active verbs, and avoid generic copy-pasting!`;
+    }
+
+    const sopIntro = isSudanese
+      ? `حبابك! بخصوص كتابة خطاب الدافع (Motivation Letter) والتزكيات الأكاديمية:`
+      : isEgyptian
+      ? `أهلاً بيك! إليك الهيكل الاحترافي المعتمد لكتابة خطاب الدافع ورسائل التوصية:`
+      : `📝 **الهيكل الاحترافي المعتمد لخطاب الدافع الفائز (Motivation Letter) ${userMajorAr}:**`;
+
+    return `${sopIntro}
+
+### 🏛️ الأركان الخمسة الأساسية لخطاب دافع لا يُرفض:
+1. **المقدمة والشغف (Paragraph 1):** اذكر اسم البرنامج والجامعة فوراً مع شرارة البداية التي وجهتك للتخصص.
+2. **الإنجازات الأكاديمية (Paragraph 2):** ركز على مشروع تخرجك، أبحاثك، ومعدلك الدراسي وما يميز مهاراتك.
+3. **لماذا هذه المنحة والجامعة تحديداً؟ (Paragraph 3):** اذكر أسماء مقررات أو أساتذة في الجامعة لتثبت جديتك واطلاعك.
+4. **الأثر المستقبلي والعودة للوطن (Paragraph 4):** خطتك بعد التخرج وكيف ستنقل خبرتك لحل قضايا مجتمعك.
+5. **الخاتمة:** التأكيد على حماسك وجاهزيتك التامة لتحمل أعباء الدراسة والتفوق.
+
+💡 **نصيحة ذهبية:** يمكنك لصق مسودة خطابك في تبويب **«فحص المقالات»** وسأقوم بتدقيقها لك كلمة بكلمة!`;
+  }
+
+  // ==========================================
+  // 3. CV & ATS OPTIMIZATION
+  // ==========================================
+  if (isCvRequest) {
+    if (isEn) {
+      return `📄 **ATS-Compliant Resume / CV Architecture:**
+
+### ⚡ Critical Rules to Pass Automated Filters (ATS):
+1. **Single-Column Layout:** Avoid tables, graphics, text boxes, and multi-column grids that confuse parsers.
+2. **Standard Section Headers:** Use universal titles (*Summary, Education, Experience, Technical Skills, Certifications*).
+3. **Action + Metric Formula:** Always format bullet points as: *[Action Verb] + [Specific Task] + [Measurable Outcome %]*.
+4. **Keyword Matching:** Integrate keywords directly from the scholarship or job description.
+
+💡 **Pro Feature:** You can upload your CV right now in the **«CV / ATS Review»** tab for instant scoring!`;
+    }
+
+    const cvIntro = isSudanese
+      ? `يا هلا بيك! بخصوص تجهيز السيرة الذاتية وفحصها بأنظمة الـ ATS العالمية:`
+      : isEgyptian
+      ? `أهلاً بحضرتك! إليك المعايير الأساسية لبناء سيرة ذاتية احترافية تتجاوز فحص الـ ATS:`
+      : `📄 **الدليل الذهبي لبناء وفحص السيرة الذاتية المتوافقة مع أنظمة التوظيف (ATS):**`;
+
+    return `${cvIntro}
+
+### ⚡ المعايير الأهم لاجتياز فحص الـ ATS بنسبة +90%:
+1. **التنسيق البسيط (Single-Column):** تجنب الجداول المعقدة والأيقونات الرسومية التي تعطل قراءة البيانات آلياً.
+2. **العناوين المعيارية:** (النبذة المهنية، المؤهلات الأكاديمية، الخبرات العملية، المهارات التقنية، اللغات والشهادات).
+3. **معادلة الإنجاز:** اكتب المهام بصيغة *(فعل إنجاز + الإجراء المتخذ + النتيجة الرقمية بالأرقام أو النسب)*.
+4. **تضمين الكلمات المفتاحية:** تطعيم السيرة بالمصطلحات الأساسية للتخصص ${userMajorAr}.
+
+💡 **خدمة فورية:** يمكنك رفع سيرتك الذاتية في وضع **«فحص السيرة الذاتية»** في الأعلى للحصول على تقرير مفصل!`;
+  }
+
   // Interview Simulation Keywords
   const isInterviewRequest =
     query.includes("مقابلة") ||
