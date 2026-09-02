@@ -6,51 +6,51 @@
 
 @layer base {
   :root {
-    /* Al-Foras Luxury Theme — Permanent Dark (OLED Black & Matte Gold) */
-    --background: 0 0% 0%;            /* OLED Black #000000 */
-    --foreground: 0 0% 100%;          /* Pure White #FFFFFF */
+    /* Al-Foras Haute Couture Theme — Royal Obsidian & Imperial Warm Champagne Gold */
+    --background: 222 47% 7%;         /* Deep Royal Obsidian Navy #0A0F1D */
+    --foreground: 210 40% 98%;        /* Pristine Ivory White #F8FAFC */
 
-    --card: 0 0% 7%;                  /* #121212 */
-    --card-foreground: 0 0% 100%;
+    --card: 222 40% 11%;              /* Royal Card Slate #101726 */
+    --card-foreground: 210 40% 98%;
 
-    --popover: 0 0% 7%;
-    --popover-foreground: 0 0% 100%;
+    --popover: 222 42% 12%;           /* Elevated Popover #121A2B */
+    --popover-foreground: 210 40% 98%;
 
-    --primary: 43 74% 38%;          /* Matte Gold #B8860B */
-    --primary-foreground: 0 0% 6%;
-    --primary-glow: 43 80% 55%;
-    --primary-deep: 38 65% 28%;
+    --primary: 44 68% 46%;            /* Imperial Warm Champagne Gold #C99E2A */
+    --primary-foreground: 222 47% 8%; /* High contrast deep navy text on gold */
+    --primary-glow: 44 78% 58%;       /* Glowing gold accent */
+    --primary-deep: 42 65% 32%;
 
-    --secondary: 0 0% 7%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 222 35% 15%;         /* Subtle secondary slate #192338 */
+    --secondary-foreground: 210 40% 98%;
 
-    --muted: 0 0% 10%;
-    --muted-foreground: 220 20% 95%;  /* Ultra-sharp legible text #F1F5F9 */
+    --muted: 222 30% 16%;
+    --muted-foreground: 215 25% 82%;  /* Soft ivory slate silver #C5CEE0 */
 
-    --accent: 43 74% 38%;
-    --accent-foreground: 0 0% 6%;
+    --accent: 44 68% 46%;
+    --accent-foreground: 222 47% 8%;
 
-    --destructive: 0 75% 50%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 75% 58%;
+    --destructive-foreground: 210 40% 98%;
 
-    --success: 145 60% 40%;
-    --verified: 210 90% 55%;        /* Verified blue badge */
-    --review: 35 85% 55%;           /* Manual review badge */
+    --success: 155 65% 42%;           /* Emerald green */
+    --verified: 215 88% 60%;          /* Sapphire blue */
+    --review: 270 60% 65%;            /* Royal Amethyst */
 
-    --border: 43 30% 20%;
-    --input: 0 0% 12%;
-    --ring: 43 74% 45%;
+    --border: 222 30% 20%;            /* Refined subtle slate border */
+    --input: 222 38% 12%;
+    --ring: 44 68% 48%;
 
     --radius: 1rem;
 
-    --gradient-gold: linear-gradient(135deg, hsl(43 74% 38%), hsl(43 80% 55%) 50%, hsl(43 74% 38%));
-    --gradient-dark: linear-gradient(180deg, hsl(0 0% 6%) 0%, hsl(0 0% 3%) 100%);
-    --gradient-card: linear-gradient(145deg, hsl(0 0% 9%) 0%, hsl(0 0% 5%) 100%);
-    --gradient-radial-gold: radial-gradient(circle at 30% 0%, hsl(43 74% 38% / 0.25), transparent 60%);
+    --gradient-gold: linear-gradient(135deg, hsl(44 68% 44%), hsl(44 78% 58%) 50%, hsl(44 68% 42%));
+    --gradient-dark: linear-gradient(180deg, hsl(222 47% 9%) 0%, hsl(222 47% 6%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(222 40% 12%) 0%, hsl(222 45% 8%) 100%);
+    --gradient-radial-gold: radial-gradient(circle at 35% 0%, hsl(44 68% 46% / 0.16), transparent 65%);
 
-    --shadow-gold: 0 10px 40px -10px hsl(43 74% 38% / 0.45);
-    --shadow-luxe: 0 25px 60px -20px hsl(0 0% 0% / 0.8);
-    --shadow-inner-gold: inset 0 1px 0 0 hsl(43 80% 55% / 0.3);
+    --shadow-gold: 0 10px 40px -10px hsl(44 68% 46% / 0.4);
+    --shadow-luxe: 0 25px 60px -20px hsl(222 47% 4% / 0.85);
+    --shadow-inner-gold: inset 0 1px 0 0 hsl(44 78% 58% / 0.35);
 
     --transition-smooth: cubic-bezier(0.22, 1, 0.36, 1);
   }
@@ -107,10 +107,10 @@
   .glow-gold { box-shadow: 0 0 30px hsl(var(--primary) / 0.3); }
   .font-display { font-family: 'Amiri', 'Tajawal', serif; }
   .glass {
-    background: hsl(0 0% 8% / 0.6);
+    background: hsl(222 45% 10% / 0.72);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border: 1px solid hsl(var(--primary) / 0.15);
+    border: 1px solid hsl(var(--primary) / 0.2);
   }
 }
 
