@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ShieldCheck, Sparkles, Plus, Trash2, Edit3, ExternalLink, Check, X,
@@ -7,7 +8,8 @@ import {
   KeyRound, Mail, UserCheck, ShieldAlert, CheckCircle2, XCircle,
   Archive, RotateCcw, Menu, ChevronRight, ChevronLeft, AlertTriangle,
   Upload, Layers, CheckSquare, Square, MinusSquare, Building2, Globe2,
-  Crown, Shield, Unlock, HelpCircle, LockKeyhole
+  Crown, Shield, Unlock, HelpCircle, LockKeyhole, Smartphone, Tablet,
+  Laptop, Monitor, SlidersHorizontal, BarChart3, Copy, Link2
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Scholarship } from "@/lib/mockData";
@@ -40,7 +42,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
     | "security";
 
   const [activeTab, setActiveTab] = useState<AdminTab>("scholarships");
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => typeof window !== "undefined" && window.innerWidth >= 768);
   const [sidebarSearch, setSidebarSearch] = useState("");
 
   // Current session & Users
@@ -249,6 +251,12 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
   const [jobs, setJobs] = useState<CustomJobItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Multi-Pane Adaptive Layout States (Responsive Grid from Video)
+  const [deviceSimulator, setDeviceSimulator] = useState<"auto" | "phone" | "tablet" | "laptop" | "desktop">("auto");
+  const [isInspectorOpen, setIsInspectorOpen] = useState(true);
+  const [mobileViewPane, setMobileViewPane] = useState<"list" | "detail">("list");
+  const [activeEditorTab, setActiveEditorTab] = useState<"info" | "financials" | "eligibility" | "custom_fields" | "urls">("info");
+
   // Multi-Selection State (Selection System from Video 1)
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
@@ -409,6 +417,46 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
     setLastSelectedIndex(index);
   };
 
+  // AI Quality & Completeness Scoring for Context / Inspector Pane (Pane 4)
+  const calculateScholarshipScore = (s: Scholarship | null) => {
+    if (!s) return { score: 0, grade: "N/A", missing: [isRtl ? "لم يتم تحديد منحة" : "No scholarship selected"] };
+    let score = 0;
+    const missing: string[] = [];
+    if (s.title || (s as any).title_ar) score += 15; else missing.push(isRtl ? "عنوان المنحة بالعربية" : "Arabic Title");
+    if ((s as any).title_en || (s as any).titleEn) score += 10; else missing.push(isRtl ? "عنوان المنحة بالإنجليزية" : "English Title");
+    if (s.university || s.org) score += 15; else missing.push(isRtl ? "اسم الجامعة أو الجهة" : "University");
+    if (s.country) score += 10; else missing.push(isRtl ? "الدولة والوجهة" : "Country");
+    if (s.deadline) score += 15; else missing.push(isRtl ? "الموعد النهائي للتقديم" : "Deadline");
+    if (s.coverage) score += 15; else missing.push(isRtl ? "نوع التمويل" : "Coverage type");
+    if (s.apply_url && s.apply_url.startsWith("http")) score += 10; else missing.push(isRtl ? "رابط التقديم الرسمي" : "Official Apply URL");
+    if (s.description || (s as any).description_ar) score += 10; else missing.push(isRtl ? "الوصف والشروط" : "Description");
+
+    let grade = "A+";
+    if (score < 50) grade = "C";
+    else if (score < 75) grade = "B";
+    else if (score < 90) grade = "A";
+
+    return { score, grade, missing };
+  };
+
+  const calculateJobScore = (j: CustomJobItem | null) => {
+    if (!j) return { score: 0, grade: "N/A", missing: [isRtl ? "لم يتم تحديد وظيفة" : "No job selected"] };
+    let score = 0;
+    const missing: string[] = [];
+    if (j.title_ar) score += 20; else missing.push(isRtl ? "المسمى الوظيفي" : "Job Title");
+    if (j.company) score += 20; else missing.push(isRtl ? "اسم الشركة" : "Company Name");
+    if (j.salary) score += 20; else missing.push(isRtl ? "الراتب بالدولار" : "Salary in USD");
+    if (j.apply_url && j.apply_url.startsWith("http")) score += 20; else missing.push(isRtl ? "رابط التقديم المباشر" : "Apply URL");
+    if (j.description_ar) score += 20; else missing.push(isRtl ? "الوصف والمهام" : "Job Description");
+
+    let grade = "A+";
+    if (score < 50) grade = "C";
+    else if (score < 80) grade = "B";
+    else if (score < 95) grade = "A";
+
+    return { score, grade, missing };
+  };
+
   // Perform single delete/archive with strict permission check
   const requestDelete = (id: string, type: "scholarship" | "job", title: string) => {
     if (!adminAuthStore.canUserPerform(currentUser, "delete")) {
@@ -556,25 +604,26 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
 
   if (!isOpen) return null;
 
-  return (
+  const content = (
     <div
       dir={dir}
-      className="fixed inset-0 z-50 flex items-center justify-center p-1.5 xs:p-2 sm:p-4 md:p-6 bg-black/85 backdrop-blur-md overflow-hidden"
+      className="fixed inset-0 z-[999999] w-screen h-screen max-w-none max-h-none flex items-center justify-center p-0 bg-black/95 backdrop-blur-xl overflow-hidden"
+      style={{ width: "100vw", height: "100vh", position: "fixed", top: 0, left: 0, right: 0, bottom: 0 }}
     >
       {/* Backdrop Click Dismiss */}
       <div className="fixed inset-0" onClick={onClose} />
 
-      {/* Main Slide-Sidebar Dashboard Window */}
+      {/* Main Slide-Sidebar Dashboard Window - 100% Fullscreen on all devices */}
       <motion.div
-        initial={{ scale: 0.94, opacity: 0, y: 15 }}
+        initial={{ scale: 0.98, opacity: 0, y: 10 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
-        exit={{ scale: 0.94, opacity: 0, y: 15 }}
-        transition={{ type: "spring", damping: 28, stiffness: 320 }}
-        className="relative w-full max-w-6xl h-[96vh] sm:h-[92vh] max-h-[920px] bg-card/95 border-2 border-primary/40 rounded-2xl sm:rounded-3xl shadow-[0_0_60px_-10px_hsl(43_74%_49%/0.35)] backdrop-blur-2xl overflow-hidden z-10 flex flex-col"
+        exit={{ scale: 0.98, opacity: 0, y: 10 }}
+        transition={{ type: "spring", damping: 30, stiffness: 350 }}
+        className="relative w-full h-full max-w-none max-h-none bg-card/98 border-0 rounded-none shadow-[0_0_80px_rgba(0,0,0,0.95)] backdrop-blur-3xl overflow-hidden z-10 flex flex-col"
         onClick={e => e.stopPropagation()}
       >
-        {/* Top Header Bar */}
-        <header className="relative flex items-center justify-between gap-2 px-3 sm:px-6 py-2.5 sm:py-3.5 border-b border-primary/20 bg-background/50 flex-shrink-0">
+        {/* Top Header Bar with Multi-Pane Controls */}
+        <header className="relative flex items-center justify-between gap-2 px-3 sm:px-6 py-2 sm:py-3 border-b border-primary/20 bg-background/50 flex-shrink-0">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
             {currentUser && (
               <button
@@ -595,14 +644,14 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
               <ShieldCheck className="w-4 h-4 sm:w-6 sm:h-6 text-primary-foreground" />
             </div>
 
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0">
               <h2
-                className="font-bold text-xs xs:text-sm sm:text-base md:text-xl text-gold-gradient leading-tight truncate"
+                className="font-bold text-xs xs:text-sm sm:text-base md:text-lg text-gold-gradient leading-tight truncate"
                 style={{ fontFamily: "'Tajawal', sans-serif" }}
               >
                 {t("adminTitle")}
               </h2>
-              <span className="text-[10px] sm:text-xs font-semibold text-gray-200 block truncate">
+              <span className="text-[10px] sm:text-xs font-semibold text-gray-300 block truncate">
                 {currentUser
                   ? t("adminActiveSession")
                       .replace("{name}", currentUser.name)
@@ -611,6 +660,99 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
               </span>
             </div>
           </div>
+
+          {/* Interactive CSS Grid Breakpoint Switcher (From Video) */}
+          {currentUser && (
+            <div className="hidden lg:flex items-center gap-1 p-1 rounded-xl bg-background/80 border border-primary/30 text-xs">
+              <span className="text-[10px] font-bold text-gray-400 px-1.5 uppercase tracking-wider">
+                {isRtl ? "تخطيط الألواح:" : "Grid Panes:"}
+              </span>
+              <button
+                type="button"
+                onClick={() => setDeviceSimulator("auto")}
+                className={`px-2 py-1 rounded-lg text-2xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                  deviceSimulator === "auto"
+                    ? "bg-primary text-primary-foreground shadow-gold"
+                    : "text-gray-300 hover:text-white hover:bg-white/10"
+                }`}
+                title={isRtl ? "تلقائي حسب الشاشة" : "Auto responsive"}
+              >
+                <RefreshCw className="w-3 h-3" />
+                <span>{isRtl ? "تلقائي" : "Auto"}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setDeviceSimulator("phone");
+                  setMobileViewPane("list");
+                }}
+                className={`px-2 py-1 rounded-lg text-2xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                  deviceSimulator === "phone"
+                    ? "bg-primary text-primary-foreground shadow-gold"
+                    : "text-gray-300 hover:text-white hover:bg-white/10"
+                }`}
+                title="Phone Grid (<560px)"
+              >
+                <Smartphone className="w-3 h-3" />
+                <span>Phone</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeviceSimulator("tablet")}
+                className={`px-2 py-1 rounded-lg text-2xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                  deviceSimulator === "tablet"
+                    ? "bg-primary text-primary-foreground shadow-gold"
+                    : "text-gray-300 hover:text-white hover:bg-white/10"
+                }`}
+                title="Tablet Grid (560px - 900px)"
+              >
+                <Tablet className="w-3 h-3" />
+                <span>Tablet</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeviceSimulator("laptop")}
+                className={`px-2 py-1 rounded-lg text-2xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                  deviceSimulator === "laptop"
+                    ? "bg-primary text-primary-foreground shadow-gold"
+                    : "text-gray-300 hover:text-white hover:bg-white/10"
+                }`}
+                title="Laptop Grid (900px - 1280px)"
+              >
+                <Laptop className="w-3 h-3" />
+                <span>Laptop</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeviceSimulator("desktop")}
+                className={`px-2 py-1 rounded-lg text-2xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                  deviceSimulator === "desktop"
+                    ? "bg-primary text-primary-foreground shadow-gold"
+                    : "text-gray-300 hover:text-white hover:bg-white/10"
+                }`}
+                title="Desktop 4-Panes (≥1280px)"
+              >
+                <Monitor className="w-3 h-3" />
+                <span>Desktop</span>
+              </button>
+
+              <div className="w-[1px] h-4 bg-primary/20 mx-1" />
+
+              <button
+                type="button"
+                onClick={() => setIsInspectorOpen(prev => !prev)}
+                className={`px-2 py-1 rounded-lg text-2xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                  isInspectorOpen
+                    ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                    : "text-gray-400 hover:text-white hover:bg-white/10"
+                }`}
+                title={isRtl ? "لوح السياق والذكاء الاصطناعي (Pane 4)" : "Context & AI Inspector (Pane 4)"}
+              >
+                <Sparkles className="w-3 h-3 text-amber-400" />
+                <span>{isRtl ? "لوح السياق" : "Context"}</span>
+              </button>
+            </div>
+          )}
 
           <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
             {currentUser && (
@@ -909,73 +1051,54 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
           </div>
         ) : (
           <div className="flex-1 flex overflow-hidden relative">
-            {/* Mobile Sidebar Overlay Backdrop */}
-            <AnimatePresence>
-              {sidebarOpen && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  onClick={() => setSidebarOpen(false)}
-                  className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-xs z-20"
-                />
-              )}
-            </AnimatePresence>
-
-            {/* Slide-in Sidebar (Responsive Drawer on Mobile, Column on Desktop) */}
-            <AnimatePresence initial={false}>
-              {sidebarOpen && (
-                <motion.aside
-                  initial={{ width: 0, opacity: 0 }}
-                  animate={{ width: 280, opacity: 1 }}
-                  exit={{ width: 0, opacity: 0 }}
-                  transition={{ duration: 0.25, ease: "easeInOut" }}
-                  className="absolute md:relative inset-y-0 start-0 z-30 w-72 max-w-[85vw] md:w-64 lg:w-72 h-full bg-card border-l border-r md:border-r-0 border-primary/20 flex-shrink-0 flex flex-col overflow-hidden shadow-2xl md:shadow-none"
-                >
-                  {/* Sidebar Header on Mobile with Close Button */}
-                  <div className="flex items-center justify-between p-3 border-b border-primary/20 md:hidden">
-                    <span className="text-xs font-bold text-gold-gradient">{t("adminTitle")}</span>
-                    <button
-                      onClick={() => setSidebarOpen(false)}
-                      className="p-1 rounded-lg text-gray-400 hover:text-white"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
+            {/* Seamless Inline Collapsible Navigation Rail (Integrated Pure Inline Flex Element) */}
+            <motion.aside
+              initial={false}
+              animate={{
+                width: sidebarOpen
+                  ? (typeof window !== "undefined" && window.innerWidth < 640 ? 230 : 260)
+                  : 0,
+                opacity: sidebarOpen ? 1 : 0,
+              }}
+              transition={{ duration: 0.22, ease: "easeInOut" }}
+              className="relative inset-y-0 start-0 z-10 h-full bg-card/95 border-e border-primary/20 flex-shrink-0 flex flex-col overflow-hidden select-none"
+            >
+              {/* Inner wrapper with fixed width so contents animate gracefully without wrapping during collapse */}
+              <div className="w-[230px] sm:w-[260px] h-full flex flex-col overflow-hidden">
+                {/* Sidebar Search Section */}
+                <div className="p-2 sm:p-2.5 border-b border-primary/20 w-full flex-shrink-0">
+                  <div className="relative">
+                    <Search className={`w-3.5 h-3.5 absolute top-1/2 -translate-y-1/2 ${isRtl ? "right-2.5" : "left-2.5"} text-gray-400`} />
+                    <input
+                      type="text"
+                      value={sidebarSearch}
+                      onChange={e => setSidebarSearch(e.target.value)}
+                      placeholder={t("adminSearchMenu")}
+                      className={`w-full py-1.5 ${isRtl ? "pr-8 pl-2.5" : "pl-8 pr-2.5"} rounded-xl bg-background/80 border border-primary/30 text-xs text-white focus:border-primary outline-none`}
+                      dir={dir}
+                    />
                   </div>
+                </div>
 
-                  {/* Sidebar Search */}
-                  <div className="p-3 border-b border-primary/20">
-                    <div className="relative">
-                      <Search className={`w-4 h-4 absolute top-1/2 -translate-y-1/2 ${isRtl ? "right-3" : "left-3"} text-gray-400`} />
-                      <input
-                        type="text"
-                        value={sidebarSearch}
-                        onChange={e => setSidebarSearch(e.target.value)}
-                        placeholder={t("adminSearchMenu")}
-                        className={`w-full py-2 ${isRtl ? "pr-9 pl-3" : "pl-9 pr-3"} rounded-xl bg-background border border-primary/30 text-xs text-white focus:border-primary outline-none`}
-                        dir={dir}
-                      />
-                    </div>
-                  </div>
+                {/* Sidebar Task Groups & Nav Items */}
+                <div className="flex-1 overflow-y-auto w-full p-2 space-y-3 scrollbar-thin scrollbar-thumb-primary/20">
+                  {menuGroups.map((grp, gIdx) => {
+                    const filteredItems = grp.items.filter(
+                      it =>
+                        !sidebarSearch.trim() ||
+                        it.labelAr.toLowerCase().includes(sidebarSearch.toLowerCase()) ||
+                        it.labelEn.toLowerCase().includes(sidebarSearch.toLowerCase())
+                    );
 
-                  {/* Sidebar Task Groups */}
-                  <div className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-thin scrollbar-thumb-primary/20">
-                    {menuGroups.map((grp, gIdx) => {
-                      const filteredItems = grp.items.filter(
-                        it =>
-                          !sidebarSearch.trim() ||
-                          it.labelAr.toLowerCase().includes(sidebarSearch.toLowerCase()) ||
-                          it.labelEn.toLowerCase().includes(sidebarSearch.toLowerCase())
-                      );
+                    if (filteredItems.length === 0) return null;
 
-                      if (filteredItems.length === 0) return null;
+                    return (
+                      <div key={gIdx} className="space-y-1 w-full">
+                        <span className="text-[10px] font-extrabold text-gray-400 px-2 uppercase tracking-wider block mb-1 opacity-75">
+                          {isRtl ? grp.groupTitleAr : grp.groupTitleEn}
+                        </span>
 
-                      return (
-                        <div key={gIdx} className="space-y-1">
-                          <span className="text-[11px] font-bold text-gray-400 px-3 uppercase tracking-wider block mb-1">
-                            {isRtl ? grp.groupTitleAr : grp.groupTitleEn}
-                          </span>
-
+                        <div className="space-y-1">
                           {filteredItems.map(item => {
                             const Icon = item.icon;
                             const isActive = activeTab === item.id;
@@ -984,22 +1107,22 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                                 key={item.id}
                                 onClick={() => {
                                   setActiveTab(item.id);
-                                  if (window.innerWidth < 768) setSidebarOpen(false);
                                 }}
-                                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+                                className={`w-full flex items-center justify-between px-2.5 py-2 text-xs font-semibold transition-all cursor-pointer rounded-xl relative ${
                                   isActive
-                                    ? "bg-primary text-primary-foreground shadow-gold font-bold"
-                                    : "text-gray-300 hover:text-white hover:bg-primary/10 border border-transparent hover:border-primary/25"
+                                    ? "bg-primary text-primary-foreground shadow-gold font-bold ring-1 ring-primary/40"
+                                    : "text-gray-300 hover:text-white hover:bg-primary/15 border border-transparent hover:border-primary/20"
                                 }`}
                               >
-                                <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="flex items-center gap-2 min-w-0">
                                   <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? "text-primary-foreground" : "text-primary"}`} />
                                   <span className="truncate">{isRtl ? item.labelAr : item.labelEn}</span>
                                 </div>
 
+                                {/* Badge Indicator */}
                                 {item.badge !== undefined && (
                                   <span
-                                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex-shrink-0 ${
+                                    className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold flex-shrink-0 ${
                                       item.badgeColor || (isActive ? "bg-black/30 text-white" : "bg-primary/20 text-primary")
                                     }`}
                                   >
@@ -1010,12 +1133,12 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                             );
                           })}
                         </div>
-                      );
-                    })}
-                  </div>
-                </motion.aside>
-              )}
-            </AnimatePresence>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </motion.aside>
 
             {/* Main Active Tab Content View */}
             <main className="flex-1 flex flex-col overflow-hidden bg-background/30">
@@ -1129,173 +1252,1238 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
               </div>
 
               {/* Tab Views */}
-              <div className="flex-1 overflow-y-auto p-4 sm:p-6 scrollbar-thin scrollbar-thumb-primary/20">
-                {/* 1. Scholarships Management */}
+              <div className="flex-1 overflow-hidden p-2 sm:p-4 bg-background/20">
+                {/* 1. Scholarships Management - Multi-Pane Responsive Adaptive Grid (Video 2) */}
                 {activeTab === "scholarships" && (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between text-xs text-gray-300 mb-2">
-                      <span>{t("adminActiveScholarshipsCount").replace("{count}", String(filteredScholarships.length))}</span>
-                      <span className="text-primary font-semibold">
-                        {t("adminRangeHint")}
-                      </span>
-                    </div>
-
-                    {filteredScholarships.length === 0 ? (
-                      <div className="text-center py-16 p-6 rounded-2xl bg-card/60 border border-primary/20">
-                        <GraduationCap className="w-12 h-12 text-primary mx-auto mb-3 opacity-60" />
-                        <h4 className="text-base font-bold text-white mb-1">
-                          {t("adminNoScholarships")}
-                        </h4>
-                        <p className="text-xs text-gray-300">
-                          {t("adminNoScholarshipsDesc")}
-                        </p>
-                      </div>
-                    ) : (
-                      filteredScholarships.map((s, idx) => {
-                        const isSelected = selectedIds.includes(s.id);
-                        return (
-                          <div
-                            key={s.id}
-                            onClick={e => handleToggleSelectItem(s.id, idx, e)}
-                            className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
-                              isSelected
-                                ? "bg-primary/15 border-primary shadow-gold"
-                                : "bg-card/70 border-primary/20 hover:border-primary/50 hover:bg-card"
-                            }`}
+                  <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 overflow-hidden">
+                    {/* Pane 2: List Pane (Width: 4/12 on lg, 5/12 on xl, 12/12 on mobile list view) */}
+                    <div
+                      className={`h-full flex flex-col bg-card/60 border border-primary/25 rounded-2xl overflow-hidden shadow-lg transition-all duration-300 ${
+                        deviceSimulator === "phone" && mobileViewPane === "detail"
+                          ? "hidden"
+                          : "lg:col-span-4 xl:col-span-4 flex"
+                      }`}
+                    >
+                      {/* List Header */}
+                      <div className="p-3 border-b border-primary/20 bg-card/80 flex items-center justify-between gap-2 flex-shrink-0">
+                        <div className="flex items-center gap-2">
+                          <GraduationCap className="w-4 h-4 text-primary" />
+                          <span className="text-xs font-bold text-white">
+                            {t("adminActiveScholarshipsCount").replace("{count}", String(filteredScholarships.length))}
+                          </span>
+                        </div>
+                        {adminAuthStore.canUserPerform(currentUser, "create") && (
+                          <button
+                            onClick={() => {
+                              const newSch = {
+                                id: `sch_${Date.now()}`,
+                                title_ar: "منحة دراسية جديدة ممولة بالكامل",
+                                title_en: "New Fully Funded Scholarship",
+                                university: isRtl ? "جامعة دولية معتمدة" : "Accredited International University",
+                                country: isRtl ? "عالمي" : "International",
+                                flag: "🌍",
+                                degree: "bachelor_master",
+                                coverage: "full" as any,
+                                deadline: new Date(Date.now() + 45 * 86400000).toISOString().split("T")[0],
+                                majors: ["الهندسة والتقنية", "الطب والعلوم"],
+                                apply_url: "https://example.com",
+                                official_website: "https://example.com",
+                                description_ar: "وصف المنحة وتفاصيل الدعم المالي والرسوم والتذاكر والسكن.",
+                                description_en: "Scholarship description and full financial coverage details.",
+                                benefits_ar: ["إعفاء كامل من المصروفات", "راتب شهري", "سكن مجاني"],
+                                benefits_en: ["Full tuition waiver", "Monthly stipend"],
+                              };
+                              setEditingScholarship(newSch as any);
+                              setMobileViewPane("detail");
+                            }}
+                            className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-gold hover:opacity-90 transition-all cursor-pointer"
                           >
-                            <div className="flex items-start sm:items-center gap-3">
-                              <div className="pt-1 sm:pt-0">
-                                {isSelected ? (
-                                  <CheckSquare className="w-5 h-5 text-primary flex-shrink-0" />
-                                ) : (
-                                  <Square className="w-5 h-5 text-gray-400 flex-shrink-0" />
-                                )}
-                              </div>
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>{isRtl ? "إضافة منحة" : "New"}</span>
+                          </button>
+                        )}
+                      </div>
 
-                              <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center text-primary flex-shrink-0">
-                                <GraduationCap className="w-5 h-5" />
-                              </div>
+                      {/* Scrollable List Items */}
+                      <div className="flex-1 overflow-y-auto p-2 space-y-2 scrollbar-thin scrollbar-thumb-primary/20">
+                        {filteredScholarships.length === 0 ? (
+                          <div className="text-center py-12 p-4 rounded-xl bg-card/40 border border-primary/20">
+                            <GraduationCap className="w-8 h-8 text-primary mx-auto mb-2 opacity-50" />
+                            <p className="text-xs text-gray-300 font-bold">{t("adminNoScholarships")}</p>
+                          </div>
+                        ) : (
+                          filteredScholarships.map((s, idx) => {
+                            const isSelected = selectedIds.includes(s.id);
+                            const isActiveEdit = editingScholarship?.id === s.id;
+                            const scoreData = calculateScholarshipScore(s);
 
-                              <div>
-                                <h4 className="text-sm sm:text-base font-bold text-white leading-tight">
-                                  {isRtl ? s.title || (s as any).title_ar : (s as any).title_en || s.title}
-                                </h4>
-                                <div className="flex items-center gap-2 flex-wrap text-xs text-gray-300 mt-1">
-                                  <span>{s.university || s.org}</span>
-                                  <span>•</span>
-                                  <span>{s.country}</span>
-                                  <span>•</span>
-                                  <span className="text-amber-300">{s.coverage === "full" ? (isRtl ? "ممولة بالكامل" : "Full") : s.coverage}</span>
+                            return (
+                              <div
+                                key={s.id}
+                                onClick={() => {
+                                  setEditingScholarship(s);
+                                  setMobileViewPane("detail");
+                                }}
+                                className={`p-3 rounded-xl border-2 transition-all cursor-pointer flex flex-col gap-2 relative ${
+                                  isActiveEdit
+                                    ? "bg-primary/20 border-primary shadow-gold"
+                                    : isSelected
+                                    ? "bg-primary/10 border-primary/50"
+                                    : "bg-card/70 border-primary/15 hover:border-primary/40 hover:bg-card"
+                                }`}
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex items-start gap-2.5 min-w-0">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleToggleSelectItem(s.id, idx, e);
+                                      }}
+                                      className="pt-0.5 text-gray-400 hover:text-primary transition-colors cursor-pointer"
+                                    >
+                                      {isSelected ? (
+                                        <CheckSquare className="w-4 h-4 text-primary" />
+                                      ) : (
+                                        <Square className="w-4 h-4 text-gray-400" />
+                                      )}
+                                    </button>
+
+                                    <div className="min-w-0">
+                                      <h4 className="text-xs sm:text-sm font-bold text-white leading-snug line-clamp-1">
+                                        {isRtl ? s.title || (s as any).title_ar : (s as any).title_en || s.title}
+                                      </h4>
+                                      <p className="text-[11px] text-gray-400 line-clamp-1 mt-0.5">
+                                        {s.university || s.org} • {s.country}
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <span
+                                    className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold flex-shrink-0 ${
+                                      scoreData.score >= 85
+                                        ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                                        : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                                    }`}
+                                  >
+                                    {scoreData.score}%
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center justify-between text-[11px] pt-1 border-t border-primary/10 text-gray-400">
+                                  <span className="text-amber-300 font-medium">
+                                    {s.coverage === "full" ? (isRtl ? "ممولة بالكامل" : "Fully Funded") : s.coverage}
+                                  </span>
+                                  <span className="text-gray-400 text-[10px]">
+                                    {s.deadline ? s.deadline : isRtl ? "مفتوح دائماً" : "Open"}
+                                  </span>
                                 </div>
                               </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Pane 3: Detail Workspace Pane (Width: 8/12 on lg, 5/12 on xl when Inspector is open, 12/12 on mobile detail view) */}
+                    <div
+                      className={`h-full flex flex-col bg-card/75 border border-primary/30 rounded-2xl overflow-hidden shadow-2xl transition-all duration-300 ${
+                        deviceSimulator === "phone" && mobileViewPane === "list"
+                          ? "hidden"
+                          : isInspectorOpen
+                          ? "lg:col-span-8 xl:col-span-5 flex"
+                          : "lg:col-span-8 xl:col-span-8 flex"
+                      }`}
+                    >
+                      {editingScholarship ? (
+                        <div className="h-full flex flex-col overflow-hidden">
+                          {/* Workspace Header with Tabs & Actions */}
+                          <div className="p-3 border-b border-primary/20 bg-card flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 flex-shrink-0">
+                            <div className="flex items-center gap-2">
+                              {deviceSimulator === "phone" && (
+                                <button
+                                  onClick={() => setMobileViewPane("list")}
+                                  className="p-1.5 rounded-xl bg-primary/15 border border-primary/30 text-primary hover:bg-primary/25 transition-all text-xs font-bold flex items-center gap-1 cursor-pointer"
+                                >
+                                  {isRtl ? <ArrowRight className="w-3.5 h-3.5" /> : <ArrowLeft className="w-3.5 h-3.5" />}
+                                  <span>{isRtl ? "القائمة" : "List"}</span>
+                                </button>
+                              )}
+                              <div className="w-7 h-7 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center text-primary flex-shrink-0">
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </div>
+                              <div className="min-w-0">
+                                <h3 className="text-xs sm:text-sm font-bold text-white truncate max-w-[200px] sm:max-w-xs">
+                                  {isRtl ? editingScholarship.title || (editingScholarship as any).title_ar : (editingScholarship as any).title_en || editingScholarship.title}
+                                </h3>
+                                <p className="text-[10px] text-gray-400">
+                                  {editingScholarship.id}
+                                </p>
+                              </div>
                             </div>
 
-                            <div className="flex items-center gap-2 self-end sm:self-center" onClick={e => e.stopPropagation()}>
-                              {adminAuthStore.canUserPerform(currentUser, "edit") && (
-                                <button
-                                  onClick={() => setEditingScholarship(s)}
-                                  className="p-2 rounded-xl bg-primary/10 border border-primary/30 hover:bg-primary/20 text-primary transition-all cursor-pointer"
-                                  title={t("adminEdit")}
-                                >
-                                  <Edit3 className="w-4 h-4" />
-                                </button>
-                              )}
-
-                              {adminAuthStore.canUserPerform(currentUser, "delete") && (
-                                <button
-                                  onClick={() => requestDelete(s.id, "scholarship", s.title || (s as any).title_ar)}
-                                  className="p-2 rounded-xl bg-destructive/15 border border-destructive/30 hover:bg-destructive/25 text-destructive transition-all cursor-pointer"
-                                  title={t("adminArchive")}
-                                >
-                                  <Archive className="w-4 h-4" />
-                                </button>
-                              )}
+                            {/* Actions & Tab Switchers */}
+                            <div className="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setEditingScholarship(null)}
+                                className="h-8 px-2.5 rounded-xl text-xs cursor-pointer text-gray-300 hover:text-white"
+                              >
+                                {isRtl ? "إغلاق" : "Close"}
+                              </Button>
+                              <Button
+                                variant="luxe"
+                                size="sm"
+                                onClick={() => {
+                                  dynamicStore.saveScholarship(editingScholarship);
+                                  toast.success(isRtl ? "تم الحفظ والنشر الفوري بنجاح" : "Saved & Published successfully");
+                                }}
+                                className="h-8 px-3 rounded-xl text-xs font-bold shadow-gold cursor-pointer"
+                              >
+                                <Check className="w-3.5 h-3.5 me-1" />
+                                {t("adminSavePublish")}
+                              </Button>
                             </div>
                           </div>
-                        );
-                      })
+
+                          {/* Editor Tabs Navigation (Pane 3 Tabs) */}
+                          <div className="flex items-center gap-1 p-2 bg-background/50 border-b border-primary/15 overflow-x-auto flex-shrink-0">
+                            {[
+                              { id: "info", labelAr: "البيانات الأساسية", labelEn: "Basic Info" },
+                              { id: "financials", labelAr: "التمويل والمزايا", labelEn: "Financials & Benefits" },
+                              { id: "eligibility", labelAr: "الشروط والمواعيد", labelEn: "Eligibility & Dates" },
+                              { id: "custom_fields", labelAr: "حقول مخصصة", labelEn: "Custom Fields" },
+                              { id: "urls", labelAr: "روابط التقديم", labelEn: "Application Links" },
+                            ].map((tb) => (
+                              <button
+                                key={tb.id}
+                                onClick={() => setActiveEditorTab(tb.id as any)}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                                  activeEditorTab === tb.id
+                                    ? "bg-primary text-primary-foreground shadow-gold"
+                                    : "text-gray-400 hover:text-white hover:bg-primary/10"
+                                }`}
+                              >
+                                {isRtl ? tb.labelAr : tb.labelEn}
+                              </button>
+                            ))}
+                          </div>
+
+                          {/* Editor Tab Content */}
+                          <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3.5 scrollbar-thin scrollbar-thumb-primary/20" dir={dir}>
+                            {activeEditorTab === "info" && (
+                              <div className="space-y-3">
+                                <div>
+                                  <label className="block text-xs font-bold text-gray-300 mb-1">
+                                    {t("adminSchTitleAr")} <span className="text-destructive">*</span>
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={(editingScholarship as any).title_ar || editingScholarship.title || ""}
+                                    onChange={(e) =>
+                                      setEditingScholarship({
+                                        ...editingScholarship,
+                                        title: e.target.value,
+                                        title_ar: e.target.value,
+                                      } as any)
+                                    }
+                                    className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs sm:text-sm text-white outline-none focus:border-primary"
+                                    dir="rtl"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="block text-xs font-bold text-gray-300 mb-1">
+                                    {t("adminSchTitleEn")}
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={(editingScholarship as any).title_en || (editingScholarship as any).titleEn || ""}
+                                    onChange={(e) =>
+                                      setEditingScholarship({
+                                        ...editingScholarship,
+                                        title_en: e.target.value,
+                                        titleEn: e.target.value,
+                                      } as any)
+                                    }
+                                    className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs sm:text-sm text-white outline-none focus:border-primary"
+                                    dir="ltr"
+                                  />
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                  <div>
+                                    <label className="block text-xs font-bold text-gray-300 mb-1">
+                                      {t("adminUniversity")}
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={editingScholarship.university || editingScholarship.org || ""}
+                                      onChange={(e) =>
+                                        setEditingScholarship({
+                                          ...editingScholarship,
+                                          university: e.target.value,
+                                          org: e.target.value,
+                                        })
+                                      }
+                                      className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs sm:text-sm text-white outline-none focus:border-primary"
+                                      dir={dir}
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <label className="block text-xs font-bold text-gray-300 mb-1">
+                                      {t("adminCountry")}
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={editingScholarship.country || ""}
+                                      onChange={(e) =>
+                                        setEditingScholarship({
+                                          ...editingScholarship,
+                                          country: e.target.value,
+                                        })
+                                      }
+                                      className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs sm:text-sm text-white outline-none focus:border-primary"
+                                      dir={dir}
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                  <div>
+                                    <label className="block text-xs font-bold text-gray-300 mb-1">
+                                      {t("adminDegree")}
+                                    </label>
+                                    <select
+                                      value={editingScholarship.degree || "bachelor_master"}
+                                      onChange={(e) =>
+                                        setEditingScholarship({
+                                          ...editingScholarship,
+                                          degree: e.target.value as any,
+                                        })
+                                      }
+                                      className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs sm:text-sm text-white outline-none focus:border-primary"
+                                    >
+                                      <option value="bachelor">{isRtl ? "بكالوريوس" : "Bachelor"}</option>
+                                      <option value="master">{isRtl ? "ماجستير" : "Master"}</option>
+                                      <option value="phd">{isRtl ? "دكتوراه" : "PhD"}</option>
+                                      <option value="bachelor_master">{isRtl ? "بكالوريوس + ماجستير" : "Bachelor + Master"}</option>
+                                      <option value="all">{isRtl ? "جميع المراحل الأكاديمية" : "All Degrees"}</option>
+                                    </select>
+                                  </div>
+
+                                  <div>
+                                    <label className="block text-xs font-bold text-gray-300 mb-1">
+                                      {t("adminCoverage")}
+                                    </label>
+                                    <select
+                                      value={editingScholarship.coverage || "full"}
+                                      onChange={(e) =>
+                                        setEditingScholarship({
+                                          ...editingScholarship,
+                                          coverage: e.target.value as any,
+                                        })
+                                      }
+                                      className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs sm:text-sm text-white outline-none focus:border-primary"
+                                    >
+                                      <option value="full">{isRtl ? "ممولة بالكامل (شاملة السكن والتذاكر)" : "Fully Funded"}</option>
+                                      <option value="partial">{isRtl ? "تمويل جزئي (رسوم دراسية فقط)" : "Partial"}</option>
+                                      <option value="tuition_only">{isRtl ? "إعفاء من الرسوم" : "Tuition Only"}</option>
+                                    </select>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {activeEditorTab === "financials" && (
+                              <div className="space-y-3">
+                                <div>
+                                  <label className="block text-xs font-bold text-gray-300 mb-1">
+                                    {isRtl ? "تفاصيل التمويل والمزايا المالية (بالعربية)" : "Benefits in Arabic (one per line)"}
+                                  </label>
+                                  <textarea
+                                    rows={4}
+                                    value={
+                                      Array.isArray((editingScholarship as any).benefits_ar)
+                                        ? (editingScholarship as any).benefits_ar.join("\n")
+                                        : ""
+                                    }
+                                    onChange={(e) =>
+                                      setEditingScholarship({
+                                        ...editingScholarship,
+                                        benefits_ar: e.target.value.split("\n").filter((b) => b.trim()),
+                                      } as any)
+                                    }
+                                    placeholder={isRtl ? "إعفاء كامل من المصروفات الدراسية\nراتب شهري بقيمة 1200 يورو\nتذاكر طيران ذهاب وإياب\nسكن جامعي وتأمين صحي شامل" : "Full tuition waiver\nMonthly stipend\nRoundtrip airfare"}
+                                    className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs text-white outline-none focus:border-primary"
+                                    dir="rtl"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="block text-xs font-bold text-gray-300 mb-1">
+                                    {isRtl ? "الوصف التفصيلي للمنحة" : "Detailed Description"}
+                                  </label>
+                                  <textarea
+                                    rows={4}
+                                    value={(editingScholarship as any).description_ar || editingScholarship.description || ""}
+                                    onChange={(e) =>
+                                      setEditingScholarship({
+                                        ...editingScholarship,
+                                        description_ar: e.target.value,
+                                        description: e.target.value,
+                                      } as any)
+                                    }
+                                    className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs text-white outline-none focus:border-primary"
+                                    dir={dir}
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            {activeEditorTab === "eligibility" && (
+                              <div className="space-y-3">
+                                <div>
+                                  <label className="block text-xs font-bold text-gray-300 mb-1">
+                                    {t("adminDeadline")}
+                                  </label>
+                                  <input
+                                    type="date"
+                                    value={editingScholarship.deadline || ""}
+                                    onChange={(e) =>
+                                      setEditingScholarship({
+                                        ...editingScholarship,
+                                        deadline: e.target.value,
+                                      })
+                                    }
+                                    className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs text-white outline-none focus:border-primary"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="block text-xs font-bold text-gray-300 mb-1">
+                                    {isRtl ? "التخصصات المتاحة (مفصولة بفواصل)" : "Majors (comma separated)"}
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={
+                                      Array.isArray(editingScholarship.majors)
+                                        ? editingScholarship.majors.join(", ")
+                                        : ""
+                                    }
+                                    onChange={(e) =>
+                                      setEditingScholarship({
+                                        ...editingScholarship,
+                                        majors: e.target.value.split(",").map((m) => m.trim()),
+                                      })
+                                    }
+                                    placeholder={isRtl ? "الهندسة, الطب, علوم الحاسوب, إدارة الأعمال" : "Engineering, Medicine, Computer Science"}
+                                    className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs text-white outline-none focus:border-primary"
+                                    dir={dir}
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            {activeEditorTab === "custom_fields" && (
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-bold text-gray-300">
+                                    {isRtl ? "الحقول الإضافية المخصصة" : "Dynamic Custom Fields"}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const existing = (editingScholarship as any).custom_fields || [];
+                                      setEditingScholarship({
+                                        ...editingScholarship,
+                                        custom_fields: [...existing, { label: "", value: "" }],
+                                      } as any);
+                                    }}
+                                    className="flex items-center gap-1 text-[11px] font-bold text-primary hover:underline cursor-pointer"
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                    <span>{isRtl ? "+ إضافة حقل" : "+ Add Field"}</span>
+                                  </button>
+                                </div>
+
+                                {(((editingScholarship as any).custom_fields) || []).map((f: any, fIdx: number) => (
+                                  <div key={fIdx} className="flex items-center gap-2">
+                                    <input
+                                      type="text"
+                                      placeholder={isRtl ? "اسم الحقل (مثل: شرط اللغة)" : "Field Label"}
+                                      value={f.label}
+                                      onChange={(e) => {
+                                        const updated = [...((editingScholarship as any).custom_fields || [])];
+                                        updated[fIdx].label = e.target.value;
+                                        setEditingScholarship({ ...editingScholarship, custom_fields: updated } as any);
+                                      }}
+                                      className="w-1/3 px-2.5 py-1.5 rounded-lg bg-background border border-primary/30 text-white text-xs outline-none focus:border-primary"
+                                    />
+                                    <input
+                                      type="text"
+                                      placeholder={isRtl ? "القيمة أو الملاحظة" : "Value"}
+                                      value={f.value}
+                                      onChange={(e) => {
+                                        const updated = [...((editingScholarship as any).custom_fields || [])];
+                                        updated[fIdx].value = e.target.value;
+                                        setEditingScholarship({ ...editingScholarship, custom_fields: updated } as any);
+                                      }}
+                                      className="flex-1 px-2.5 py-1.5 rounded-lg bg-background border border-primary/30 text-white text-xs outline-none focus:border-primary"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const updated = ((editingScholarship as any).custom_fields || []).filter((_: any, i: number) => i !== fIdx);
+                                        setEditingScholarship({ ...editingScholarship, custom_fields: updated } as any);
+                                      }}
+                                      className="p-1 text-destructive hover:bg-destructive/10 rounded-lg cursor-pointer"
+                                    >
+                                      <X className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {activeEditorTab === "urls" && (
+                              <div className="space-y-3">
+                                <div>
+                                  <label className="block text-xs font-bold text-gray-300 mb-1">
+                                    {t("adminApplyUrl")} <span className="text-destructive">*</span>
+                                  </label>
+                                  <input
+                                    type="url"
+                                    value={editingScholarship.apply_url || ""}
+                                    onChange={(e) =>
+                                      setEditingScholarship({
+                                        ...editingScholarship,
+                                        apply_url: e.target.value,
+                                      })
+                                    }
+                                    placeholder="https://apply.university.edu/admission"
+                                    className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs text-white outline-none focus:border-primary font-mono"
+                                    dir="ltr"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="block text-xs font-bold text-gray-300 mb-1">
+                                    {t("adminOfficialWebsite")}
+                                  </label>
+                                  <input
+                                    type="url"
+                                    value={editingScholarship.official_website || ""}
+                                    onChange={(e) =>
+                                      setEditingScholarship({
+                                        ...editingScholarship,
+                                        official_website: e.target.value,
+                                      })
+                                    }
+                                    placeholder="https://university.edu"
+                                    className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs text-white outline-none focus:border-primary font-mono"
+                                    dir="ltr"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        /* Empty State in Workspace: Overview & Analytics */
+                        <div className="h-full flex flex-col items-center justify-center p-6 text-center">
+                          <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/30 flex items-center justify-center text-primary mb-3">
+                            <GraduationCap className="w-8 h-8" />
+                          </div>
+                          <h4 className="text-base font-bold text-white mb-1">
+                            {isRtl ? "مساحة تحرير وتنسيق المنح الدراسية" : "Scholarship Detail Workspace"}
+                          </h4>
+                          <p className="text-xs text-gray-400 max-w-sm mb-4">
+                            {isRtl
+                              ? "اختر منحة من القائمة الجانبية لتعديلها فوريًا أو اضغط على الزر لإنشاء منحة جديدة."
+                              : "Select a scholarship from the list to edit live, or create a new one."}
+                          </p>
+                          {adminAuthStore.canUserPerform(currentUser, "create") && (
+                            <Button
+                              variant="luxe"
+                              size="sm"
+                              onClick={() => {
+                                const newSch = {
+                                  id: `sch_${Date.now()}`,
+                                  title_ar: "منحة جديدة ممولة بالكامل",
+                                  title_en: "New Fully Funded Scholarship",
+                                  university: isRtl ? "جامعة دولية معتمدة" : "Accredited International University",
+                                  country: isRtl ? "عالمي" : "International",
+                                  flag: "🌍",
+                                  degree: "bachelor_master",
+                                  coverage: "full" as any,
+                                  deadline: new Date(Date.now() + 45 * 86400000).toISOString().split("T")[0],
+                                  majors: ["الهندسة والتقنية", "الطب والعلوم"],
+                                  apply_url: "https://example.com",
+                                  official_website: "https://example.com",
+                                  description_ar: "وصف المنحة وتفاصيل الدعم المالي والرسوم والتذاكر والسكن.",
+                                  description_en: "Scholarship description and full financial coverage details.",
+                                  benefits_ar: ["إعفاء كامل من المصروفات", "راتب شهري", "سكن مجاني"],
+                                  benefits_en: ["Full tuition waiver", "Monthly stipend"],
+                                };
+                                setEditingScholarship(newSch as any);
+                                setMobileViewPane("detail");
+                              }}
+                              className="font-bold shadow-gold cursor-pointer"
+                            >
+                              <Plus className="w-4 h-4 me-1" />
+                              <span>{t("adminAddScholarship")}</span>
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Pane 4: Context / AI Inspector Pane (Width: 3/12 on xl, toggleable) */}
+                    {isInspectorOpen && (
+                      <div className="hidden xl:flex xl:col-span-3 h-full flex-col bg-card/60 border border-primary/25 rounded-2xl overflow-hidden shadow-lg">
+                        <div className="p-3 border-b border-primary/20 bg-card/80 flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <Sparkles className="w-4 h-4 text-primary" />
+                            <span className="text-xs font-bold text-white">
+                              {isRtl ? "مستشار وفاحص المنحة" : "Context & Quality Inspector"}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => setIsInspectorOpen(false)}
+                            className="text-gray-400 hover:text-white p-1 rounded-lg"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-3 space-y-3.5 scrollbar-thin scrollbar-thumb-primary/20 text-xs">
+                          {/* AI Quality Completeness Gauge */}
+                          {(() => {
+                            const scoreData = calculateScholarshipScore(editingScholarship);
+                            return (
+                              <div className="p-3 rounded-xl bg-background/60 border border-primary/20 space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-bold text-gray-300">
+                                    {isRtl ? "جودة واكتمال البيانات" : "Data Quality Score"}
+                                  </span>
+                                  <span className="font-extrabold text-primary text-sm">
+                                    {scoreData.score}% ({scoreData.grade})
+                                  </span>
+                                </div>
+                                <div className="w-full h-2 rounded-full bg-card overflow-hidden border border-primary/20">
+                                  <div
+                                    className={`h-full transition-all duration-500 rounded-full ${
+                                      scoreData.score >= 85
+                                        ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"
+                                        : scoreData.score >= 60
+                                        ? "bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]"
+                                        : "bg-rose-500"
+                                    }`}
+                                    style={{ width: `${scoreData.score}%` }}
+                                  />
+                                </div>
+                                {scoreData.missing.length > 0 && (
+                                  <div className="pt-1">
+                                    <span className="text-[10px] text-gray-400 block mb-1">
+                                      {isRtl ? "حقول يُوصى باستكمالها:" : "Recommended to fill:"}
+                                    </span>
+                                    <div className="flex flex-wrap gap-1">
+                                      {scoreData.missing.map((m, i) => (
+                                        <span
+                                          key={i}
+                                          className="px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 text-[9px] font-bold"
+                                        >
+                                          {m}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+
+                          {/* Live Student Mobile Card Preview */}
+                          <div className="space-y-1.5">
+                            <span className="font-bold text-gray-300 block text-[11px]">
+                              {isRtl ? "معاينة بطاقة الطالب الحية:" : "Live Student Card Preview:"}
+                            </span>
+                            <div className="p-3 rounded-xl bg-background border border-primary/30 shadow-inner space-y-2">
+                              <div className="flex items-center justify-between text-[10px] text-gray-400">
+                                <span>{editingScholarship?.country || (isRtl ? "الدولة" : "Country")}</span>
+                                <span className="text-amber-300 font-bold">
+                                  {editingScholarship?.coverage === "full" ? (isRtl ? "ممولة بالكامل" : "Full") : "Partial"}
+                                </span>
+                              </div>
+                              <h5 className="font-bold text-white text-xs line-clamp-2">
+                                {isRtl
+                                  ? (editingScholarship as any)?.title_ar || editingScholarship?.title || "عنوان المنحة"
+                                  : (editingScholarship as any)?.title_en || editingScholarship?.title || "Scholarship Title"}
+                              </h5>
+                              <p className="text-[10px] text-gray-400 line-clamp-1">
+                                {editingScholarship?.university || (isRtl ? "الجامعة الرسمية" : "Official University")}
+                              </p>
+                              <div className="pt-2 border-t border-primary/20 flex items-center justify-between">
+                                <span className="text-[10px] text-gray-400">
+                                  {editingScholarship?.deadline || (isRtl ? "الموعد النهائي" : "Deadline")}
+                                </span>
+                                <span className="px-2 py-0.5 rounded-full bg-primary text-primary-foreground font-bold text-[9px]">
+                                  {isRtl ? "تفاصيل المنحة" : "View"}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Quick URL Validator & Actions */}
+                          <div className="p-3 rounded-xl bg-background/60 border border-primary/20 space-y-2">
+                            <span className="font-bold text-gray-300 block text-[11px]">
+                              {isRtl ? "إجراءات سريعة وفحص الروابط" : "Quick Actions"}
+                            </span>
+                            <div className="flex flex-col gap-1.5">
+                              <button
+                                onClick={() => {
+                                  if (editingScholarship?.apply_url) {
+                                    window.open(editingScholarship.apply_url, "_blank");
+                                  } else {
+                                    toast.error(isRtl ? "لا يوجد رابط تقديم" : "No apply URL");
+                                  }
+                                }}
+                                className="w-full py-1.5 px-2 rounded-lg bg-primary/10 border border-primary/25 hover:bg-primary/20 text-primary text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                                <span>{isRtl ? "فحص رابط التقديم" : "Test Apply URL"}</span>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (editingScholarship) {
+                                    navigator.clipboard.writeText(JSON.stringify(editingScholarship, null, 2));
+                                    toast.success(isRtl ? "تم نسخ بيانات المنحة كـ JSON" : "Copied JSON");
+                                  }
+                                }}
+                                className="w-full py-1.5 px-2 rounded-lg bg-card border border-primary/25 hover:bg-primary/10 text-gray-300 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                              >
+                                <Copy className="w-3.5 h-3.5" />
+                                <span>{isRtl ? "نسخ البيانات (JSON)" : "Copy JSON"}</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     )}
                   </div>
                 )}
 
-                {/* 2. Jobs Management */}
+                {/* 2. Jobs Management - Multi-Pane Responsive Adaptive Grid */}
                 {activeTab === "jobs" && (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between text-xs text-gray-300 mb-2">
-                      <span>{t("adminActiveJobsCount").replace("{count}", String(filteredJobs.length))}</span>
-                    </div>
-
-                    {filteredJobs.length === 0 ? (
-                      <div className="text-center py-16 p-6 rounded-2xl bg-card/60 border border-primary/20">
-                        <Briefcase className="w-12 h-12 text-primary mx-auto mb-3 opacity-60" />
-                        <h4 className="text-base font-bold text-white mb-1">
-                          {t("adminNoJobs")}
-                        </h4>
-                      </div>
-                    ) : (
-                      filteredJobs.map((j, idx) => {
-                        const isSelected = selectedIds.includes(j.id);
-                        return (
-                          <div
-                            key={j.id}
-                            onClick={e => handleToggleSelectItem(j.id, idx, e)}
-                            className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
-                              isSelected
-                                ? "bg-primary/15 border-primary shadow-gold"
-                                : "bg-card/70 border-primary/20 hover:border-primary/50 hover:bg-card"
-                            }`}
+                  <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 overflow-hidden">
+                    {/* Pane 2: List Pane */}
+                    <div
+                      className={`h-full flex flex-col bg-card/60 border border-primary/25 rounded-2xl overflow-hidden shadow-lg transition-all duration-300 ${
+                        deviceSimulator === "phone" && mobileViewPane === "detail"
+                          ? "hidden"
+                          : "lg:col-span-4 xl:col-span-4 flex"
+                      }`}
+                    >
+                      {/* List Header */}
+                      <div className="p-3 border-b border-primary/20 bg-card/80 flex items-center justify-between gap-2 flex-shrink-0">
+                        <div className="flex items-center gap-2">
+                          <Briefcase className="w-4 h-4 text-sky-400" />
+                          <span className="text-xs font-bold text-white">
+                            {t("adminActiveJobsCount").replace("{count}", String(filteredJobs.length))}
+                          </span>
+                        </div>
+                        {adminAuthStore.canUserPerform(currentUser, "create") && (
+                          <button
+                            onClick={() => {
+                              const newJob = {
+                                id: `job_${Date.now()}`,
+                                title_ar: "وظيفة عمل حر جديدة بالدولار",
+                                title_en: "New Remote USD Job",
+                                company: "Global Tech Inc.",
+                                category: "tech",
+                                type: "remote_freelance",
+                                salary: "$2,000 - $3,500",
+                                apply_url: "https://example.com",
+                                description_ar: "تفاصيل العمل والمهام المطلوبة والراتب بالدولار.",
+                                description_en: "Job details and qualifications.",
+                                skills: ["React", "TypeScript", "UI/UX"],
+                                benefits_ar: ["دخل بالدولار", "ساعات عمل مرنة"],
+                              };
+                              setEditingJob(newJob as any);
+                              setMobileViewPane("detail");
+                            }}
+                            className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-gold hover:opacity-90 transition-all cursor-pointer"
                           >
-                            <div className="flex items-start sm:items-center gap-3">
-                              <div className="pt-1 sm:pt-0">
-                                {isSelected ? (
-                                  <CheckSquare className="w-5 h-5 text-primary flex-shrink-0" />
-                                ) : (
-                                  <Square className="w-5 h-5 text-gray-400 flex-shrink-0" />
-                                )}
-                              </div>
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>{isRtl ? "إضافة وظيفة" : "New"}</span>
+                          </button>
+                        )}
+                      </div>
 
-                              <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 flex-shrink-0">
-                                <Briefcase className="w-5 h-5" />
-                              </div>
+                      {/* Scrollable List Items */}
+                      <div className="flex-1 overflow-y-auto p-2 space-y-2 scrollbar-thin scrollbar-thumb-primary/20">
+                        {filteredJobs.length === 0 ? (
+                          <div className="text-center py-12 p-4 rounded-xl bg-card/40 border border-primary/20">
+                            <Briefcase className="w-8 h-8 text-sky-400 mx-auto mb-2 opacity-50" />
+                            <p className="text-xs text-gray-300 font-bold">{t("adminNoJobs")}</p>
+                          </div>
+                        ) : (
+                          filteredJobs.map((j, idx) => {
+                            const isSelected = selectedIds.includes(j.id);
+                            const isActiveEdit = editingJob?.id === j.id;
+                            const scoreData = calculateJobScore(j);
 
-                              <div>
-                                <h4 className="text-sm sm:text-base font-bold text-white leading-tight">
-                                  {isRtl ? j.title_ar : j.title_en || j.title_ar}
-                                </h4>
-                                <div className="flex items-center gap-2 flex-wrap text-xs text-gray-300 mt-1">
-                                  <span>{j.company}</span>
-                                  <span>•</span>
-                                  <span className="text-emerald-400 font-semibold">{j.salary || (isRtl ? "بالدولار $" : "In USD $")}</span>
-                                  <span>•</span>
-                                  <span className="text-primary">{j.category}</span>
+                            return (
+                              <div
+                                key={j.id}
+                                onClick={() => {
+                                  setEditingJob(j);
+                                  setMobileViewPane("detail");
+                                }}
+                                className={`p-3 rounded-xl border-2 transition-all cursor-pointer flex flex-col gap-2 relative ${
+                                  isActiveEdit
+                                    ? "bg-primary/20 border-primary shadow-gold"
+                                    : isSelected
+                                    ? "bg-primary/10 border-primary/50"
+                                    : "bg-card/70 border-primary/15 hover:border-primary/40 hover:bg-card"
+                                }`}
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex items-start gap-2.5 min-w-0">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleToggleSelectItem(j.id, idx, e);
+                                      }}
+                                      className="pt-0.5 text-gray-400 hover:text-primary transition-colors cursor-pointer"
+                                    >
+                                      {isSelected ? (
+                                        <CheckSquare className="w-4 h-4 text-primary" />
+                                      ) : (
+                                        <Square className="w-4 h-4 text-gray-400" />
+                                      )}
+                                    </button>
+
+                                    <div className="min-w-0">
+                                      <h4 className="text-xs sm:text-sm font-bold text-white leading-snug line-clamp-1">
+                                        {isRtl ? j.title_ar : j.title_en || j.title_ar}
+                                      </h4>
+                                      <p className="text-[11px] text-gray-400 line-clamp-1 mt-0.5">
+                                        {j.company} • <span className="text-emerald-400 font-bold">{j.salary || "$ USD"}</span>
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <span
+                                    className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold flex-shrink-0 ${
+                                      scoreData.score >= 85
+                                        ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                                        : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                                    }`}
+                                  >
+                                    {scoreData.score}%
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center justify-between text-[11px] pt-1 border-t border-primary/10 text-gray-400">
+                                  <span className="text-primary font-medium">{j.category}</span>
+                                  <span className="text-gray-400 text-[10px]">
+                                    {j.type === "remote_freelance" ? (isRtl ? "عن بُعد / حر" : "Remote Freelance") : j.type}
+                                  </span>
                                 </div>
                               </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Pane 3: Detail Workspace Pane */}
+                    <div
+                      className={`h-full flex flex-col bg-card/75 border border-primary/30 rounded-2xl overflow-hidden shadow-2xl transition-all duration-300 ${
+                        deviceSimulator === "phone" && mobileViewPane === "list"
+                          ? "hidden"
+                          : isInspectorOpen
+                          ? "lg:col-span-8 xl:col-span-5 flex"
+                          : "lg:col-span-8 xl:col-span-8 flex"
+                      }`}
+                    >
+                      {editingJob ? (
+                        <div className="h-full flex flex-col overflow-hidden">
+                          {/* Workspace Header with Tabs & Actions */}
+                          <div className="p-3 border-b border-primary/20 bg-card flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 flex-shrink-0">
+                            <div className="flex items-center gap-2">
+                              {deviceSimulator === "phone" && (
+                                <button
+                                  onClick={() => setMobileViewPane("list")}
+                                  className="p-1.5 rounded-xl bg-primary/15 border border-primary/30 text-primary hover:bg-primary/25 transition-all text-xs font-bold flex items-center gap-1 cursor-pointer"
+                                >
+                                  {isRtl ? <ArrowRight className="w-3.5 h-3.5" /> : <ArrowLeft className="w-3.5 h-3.5" />}
+                                  <span>{isRtl ? "القائمة" : "List"}</span>
+                                </button>
+                              )}
+                              <div className="w-7 h-7 rounded-lg bg-sky-500/20 border border-sky-500/30 flex items-center justify-center text-sky-400 flex-shrink-0">
+                                <Briefcase className="w-3.5 h-3.5" />
+                              </div>
+                              <div className="min-w-0">
+                                <h3 className="text-xs sm:text-sm font-bold text-white truncate max-w-[200px] sm:max-w-xs">
+                                  {isRtl ? editingJob.title_ar : editingJob.title_en || editingJob.title_ar}
+                                </h3>
+                                <p className="text-[10px] text-gray-400">{editingJob.id}</p>
+                              </div>
                             </div>
 
-                            <div className="flex items-center gap-2 self-end sm:self-center" onClick={e => e.stopPropagation()}>
-                              {adminAuthStore.canUserPerform(currentUser, "edit") && (
-                                <button
-                                  onClick={() => setEditingJob(j)}
-                                  className="p-2 rounded-xl bg-primary/10 border border-primary/30 hover:bg-primary/20 text-primary transition-all cursor-pointer"
-                                  title={t("adminEdit")}
-                                >
-                                  <Edit3 className="w-4 h-4" />
-                                </button>
-                              )}
-
-                              {adminAuthStore.canUserPerform(currentUser, "delete") && (
-                                <button
-                                  onClick={() => requestDelete(j.id, "job", j.title_ar)}
-                                  className="p-2 rounded-xl bg-destructive/15 border border-destructive/30 hover:bg-destructive/25 text-destructive transition-all cursor-pointer"
-                                  title={t("adminArchive")}
-                                >
-                                  <Archive className="w-4 h-4" />
-                                </button>
-                              )}
+                            {/* Actions */}
+                            <div className="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setEditingJob(null)}
+                                className="h-8 px-2.5 rounded-xl text-xs cursor-pointer text-gray-300 hover:text-white"
+                              >
+                                {isRtl ? "إغلاق" : "Close"}
+                              </Button>
+                              <Button
+                                variant="luxe"
+                                size="sm"
+                                onClick={() => {
+                                  dynamicStore.saveJob(editingJob);
+                                  toast.success(isRtl ? "تم حفظ وتحديث بيانات الوظيفة بنجاح" : "Job saved successfully");
+                                }}
+                                className="h-8 px-3 rounded-xl text-xs font-bold shadow-gold cursor-pointer"
+                              >
+                                <Check className="w-3.5 h-3.5 me-1" />
+                                {t("adminSavePublish")}
+                              </Button>
                             </div>
                           </div>
-                        );
-                      })
+
+                          {/* Editor Tabs */}
+                          <div className="flex items-center gap-1 p-2 bg-background/50 border-b border-primary/15 overflow-x-auto flex-shrink-0">
+                            {[
+                              { id: "info", labelAr: "بيانات الوظيفة", labelEn: "Job Info" },
+                              { id: "financials", labelAr: "الراتب والمزايا", labelEn: "Salary & Benefits" },
+                              { id: "eligibility", labelAr: "المهام والمهارات", labelEn: "Skills & Tasks" },
+                              { id: "urls", labelAr: "روابط التقديم", labelEn: "Apply URLs" },
+                            ].map((tb) => (
+                              <button
+                                key={tb.id}
+                                onClick={() => setActiveEditorTab(tb.id as any)}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                                  activeEditorTab === tb.id
+                                    ? "bg-primary text-primary-foreground shadow-gold"
+                                    : "text-gray-400 hover:text-white hover:bg-primary/10"
+                                }`}
+                              >
+                                {isRtl ? tb.labelAr : tb.labelEn}
+                              </button>
+                            ))}
+                          </div>
+
+                          {/* Editor Form Content */}
+                          <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3.5 scrollbar-thin scrollbar-thumb-primary/20" dir={dir}>
+                            {activeEditorTab === "info" && (
+                              <div className="space-y-3">
+                                <div>
+                                  <label className="block text-xs font-bold text-gray-300 mb-1">
+                                    {t("adminJobTitleAr")} <span className="text-destructive">*</span>
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={editingJob.title_ar}
+                                    onChange={(e) => setEditingJob({ ...editingJob, title_ar: e.target.value })}
+                                    className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs sm:text-sm text-white outline-none focus:border-primary"
+                                    dir="rtl"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="block text-xs font-bold text-gray-300 mb-1">
+                                    {t("adminJobTitleEn")}
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={editingJob.title_en || ""}
+                                    onChange={(e) => setEditingJob({ ...editingJob, title_en: e.target.value })}
+                                    className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs sm:text-sm text-white outline-none focus:border-primary"
+                                    dir="ltr"
+                                  />
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                  <div>
+                                    <label className="block text-xs font-bold text-gray-300 mb-1">
+                                      {t("adminCompany")}
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={editingJob.company}
+                                      onChange={(e) => setEditingJob({ ...editingJob, company: e.target.value })}
+                                      className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs sm:text-sm text-white outline-none focus:border-primary"
+                                      dir={dir}
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <label className="block text-xs font-bold text-gray-300 mb-1">
+                                      {t("adminSalaryUsd")}
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={editingJob.salary || ""}
+                                      onChange={(e) => setEditingJob({ ...editingJob, salary: e.target.value })}
+                                      placeholder="$2,500 - $4,500 / month"
+                                      className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs sm:text-sm text-white outline-none focus:border-primary font-mono"
+                                      dir="ltr"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {activeEditorTab === "financials" && (
+                              <div className="space-y-3">
+                                <div>
+                                  <label className="block text-xs font-bold text-gray-300 mb-1">
+                                    {isRtl ? "مزايا العمل والدخل بالدولار" : "Benefits (one per line)"}
+                                  </label>
+                                  <textarea
+                                    rows={4}
+                                    value={
+                                      Array.isArray((editingJob as any).benefits_ar)
+                                        ? (editingJob as any).benefits_ar.join("\n")
+                                        : ""
+                                    }
+                                    onChange={(e) =>
+                                      setEditingJob({
+                                        ...editingJob,
+                                        benefits_ar: e.target.value.split("\n").filter((b) => b.trim()),
+                                      } as any)
+                                    }
+                                    placeholder={isRtl ? "راتب شهري محول مباشرة بالدولار\nساعات عمل مرنة بالكامل\nمكافآت إنجاز ومشاريع مستمرة" : "USD Monthly payout\nFlexible hours"}
+                                    className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs text-white outline-none focus:border-primary"
+                                    dir="rtl"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="block text-xs font-bold text-gray-300 mb-1">
+                                    {isRtl ? "وصف الوصف والمهام" : "Job Description"}
+                                  </label>
+                                  <textarea
+                                    rows={4}
+                                    value={editingJob.description_ar || ""}
+                                    onChange={(e) => setEditingJob({ ...editingJob, description_ar: e.target.value })}
+                                    className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs text-white outline-none focus:border-primary"
+                                    dir={dir}
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            {activeEditorTab === "eligibility" && (
+                              <div className="space-y-3">
+                                <div>
+                                  <label className="block text-xs font-bold text-gray-300 mb-1">
+                                    {isRtl ? "المهارات المطلوبة (مفصولة بفواصل)" : "Required Skills"}
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={Array.isArray(editingJob.skills) ? editingJob.skills.join(", ") : ""}
+                                    onChange={(e) =>
+                                      setEditingJob({
+                                        ...editingJob,
+                                        skills: e.target.value.split(",").map((s) => s.trim()),
+                                      })
+                                    }
+                                    placeholder="React, TypeScript, Figma, English B2"
+                                    className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs text-white outline-none focus:border-primary font-mono"
+                                    dir="ltr"
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            {activeEditorTab === "urls" && (
+                              <div className="space-y-3">
+                                <div>
+                                  <label className="block text-xs font-bold text-gray-300 mb-1">
+                                    {t("adminApplyUrl")} <span className="text-destructive">*</span>
+                                  </label>
+                                  <input
+                                    type="url"
+                                    value={editingJob.apply_url || ""}
+                                    onChange={(e) => setEditingJob({ ...editingJob, apply_url: e.target.value })}
+                                    placeholder="https://upwork.com/jobs/..."
+                                    className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs text-white outline-none focus:border-primary font-mono"
+                                    dir="ltr"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="h-full flex flex-col items-center justify-center p-6 text-center">
+                          <div className="w-16 h-16 rounded-2xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 mb-3">
+                            <Briefcase className="w-8 h-8" />
+                          </div>
+                          <h4 className="text-base font-bold text-white mb-1">
+                            {isRtl ? "مساحة تحرير وظائف العمل الحر بالدولار" : "USD Jobs Detail Workspace"}
+                          </h4>
+                          <p className="text-xs text-gray-400 max-w-sm mb-4">
+                            {isRtl
+                              ? "اختر وظيفة من القائمة لتعديلها فوريًا أو اضغط على الزر لإنشاء فرصة عمل جديدة."
+                              : "Select a job from the list to edit live, or create a new one."}
+                          </p>
+                          {adminAuthStore.canUserPerform(currentUser, "create") && (
+                            <Button
+                              variant="luxe"
+                              size="sm"
+                              onClick={() => {
+                                const newJob = {
+                                  id: `job_${Date.now()}`,
+                                  title_ar: "وظيفة عمل حر جديدة بالدولار",
+                                  title_en: "New Remote USD Job",
+                                  company: "Global Tech Inc.",
+                                  category: "tech",
+                                  type: "remote_freelance",
+                                  salary: "$2,000 - $3,500",
+                                  apply_url: "https://example.com",
+                                  description_ar: "تفاصيل العمل والمهام المطلوبة والراتب بالدولار.",
+                                  description_en: "Job details and qualifications.",
+                                  skills: ["React", "TypeScript", "UI/UX"],
+                                  benefits_ar: ["دخل بالدولار", "ساعات عمل مرنة"],
+                                };
+                                setEditingJob(newJob as any);
+                                setMobileViewPane("detail");
+                              }}
+                              className="font-bold shadow-gold cursor-pointer"
+                            >
+                              <Plus className="w-4 h-4 me-1" />
+                              <span>{t("adminAddJob")}</span>
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Pane 4: Context / AI Inspector Pane */}
+                    {isInspectorOpen && (
+                      <div className="hidden xl:flex xl:col-span-3 h-full flex-col bg-card/60 border border-primary/25 rounded-2xl overflow-hidden shadow-lg">
+                        <div className="p-3 border-b border-primary/20 bg-card/80 flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <Sparkles className="w-4 h-4 text-sky-400" />
+                            <span className="text-xs font-bold text-white">
+                              {isRtl ? "مستشار وفاحص الوظيفة" : "Job Quality Inspector"}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => setIsInspectorOpen(false)}
+                            className="text-gray-400 hover:text-white p-1 rounded-lg"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-3 space-y-3.5 scrollbar-thin scrollbar-thumb-primary/20 text-xs">
+                          {/* AI Quality Gauge */}
+                          {(() => {
+                            const scoreData = calculateJobScore(editingJob);
+                            return (
+                              <div className="p-3 rounded-xl bg-background/60 border border-primary/20 space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-bold text-gray-300">
+                                    {isRtl ? "جودة واكتمال البيانات" : "Data Quality Score"}
+                                  </span>
+                                  <span className="font-extrabold text-sky-400 text-sm">
+                                    {scoreData.score}% ({scoreData.grade})
+                                  </span>
+                                </div>
+                                <div className="w-full h-2 rounded-full bg-card overflow-hidden border border-primary/20">
+                                  <div
+                                    className={`h-full transition-all duration-500 rounded-full ${
+                                      scoreData.score >= 85
+                                        ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"
+                                        : scoreData.score >= 60
+                                        ? "bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]"
+                                        : "bg-rose-500"
+                                    }`}
+                                    style={{ width: `${scoreData.score}%` }}
+                                  />
+                                </div>
+                                {scoreData.missing.length > 0 && (
+                                  <div className="pt-1">
+                                    <span className="text-[10px] text-gray-400 block mb-1">
+                                      {isRtl ? "حقول يُوصى باستكمالها:" : "Recommended to fill:"}
+                                    </span>
+                                    <div className="flex flex-wrap gap-1">
+                                      {scoreData.missing.map((m, i) => (
+                                        <span
+                                          key={i}
+                                          className="px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-300 border border-sky-500/20 text-[9px] font-bold"
+                                        >
+                                          {m}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+
+                          {/* Live Student Job Card Preview */}
+                          <div className="space-y-1.5">
+                            <span className="font-bold text-gray-300 block text-[11px]">
+                              {isRtl ? "معاينة بطاقة الوظيفة الحية:" : "Live Job Card Preview:"}
+                            </span>
+                            <div className="p-3 rounded-xl bg-background border border-primary/30 shadow-inner space-y-2">
+                              <div className="flex items-center justify-between text-[10px] text-gray-400">
+                                <span>{editingJob?.company || "Company"}</span>
+                                <span className="text-emerald-400 font-bold">
+                                  {editingJob?.salary || "$ USD"}
+                                </span>
+                              </div>
+                              <h5 className="font-bold text-white text-xs line-clamp-2">
+                                {isRtl ? editingJob?.title_ar || "المسمى الوظيفي" : editingJob?.title_en || editingJob?.title_ar || "Job Title"}
+                              </h5>
+                              <div className="pt-2 border-t border-primary/20 flex items-center justify-between">
+                                <span className="text-[10px] text-gray-400">
+                                  {editingJob?.category || "Tech"}
+                                </span>
+                                <span className="px-2 py-0.5 rounded-full bg-primary text-primary-foreground font-bold text-[9px]">
+                                  {isRtl ? "تقديم سريع" : "Apply"}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Quick URL Validator */}
+                          <div className="p-3 rounded-xl bg-background/60 border border-primary/20 space-y-2">
+                            <span className="font-bold text-gray-300 block text-[11px]">
+                              {isRtl ? "إجراءات سريعة وفحص الروابط" : "Quick Actions"}
+                            </span>
+                            <div className="flex flex-col gap-1.5">
+                              <button
+                                onClick={() => {
+                                  if (editingJob?.apply_url) {
+                                    window.open(editingJob.apply_url, "_blank");
+                                  } else {
+                                    toast.error(isRtl ? "لا يوجد رابط تقديم" : "No apply URL");
+                                  }
+                                }}
+                                className="w-full py-1.5 px-2 rounded-lg bg-sky-500/10 border border-sky-500/25 hover:bg-sky-500/20 text-sky-400 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                                <span>{isRtl ? "فحص رابط التقديم" : "Test Apply URL"}</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     )}
                   </div>
                 )}
@@ -2790,4 +3978,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
       </AnimatePresence>
     </div>
   );
+
+  if (typeof document === "undefined") return content;
+  return createPortal(content, document.body);
 };

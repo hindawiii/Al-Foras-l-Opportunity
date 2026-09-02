@@ -149,30 +149,34 @@ export const AIAdvisor = () => {
   const lastScroll = useRef(0);
   const sendRef = useRef<(text?: string) => void>(() => {});
 
-  // Load chat messages & initial tips
+  // Load chat messages & validated safe FAB position
   useEffect(() => {
     (async () => {
-      const m = await chatStorage.loadMessages();
-      setMessages(m);
-      const pos = await chatStorage.loadFabPosition();
-      if (pos) { x.set(pos.x); y.set(pos.y); }
+      try {
+        const m = await chatStorage.loadMessages();
+        if (m && m.length > 0) {
+          setMessages(m);
+        }
+        const pos = await chatStorage.loadFabPosition();
+        if (pos && typeof pos.x === "number" && typeof pos.y === "number") {
+          // Strict bounds check against live window dimensions to prevent jumping offscreen
+          const maxLeft = typeof window !== "undefined" ? -window.innerWidth + 80 : -500;
+          const maxTop = typeof window !== "undefined" ? -window.innerHeight + 120 : -500;
+          const safeX = Math.max(maxLeft, Math.min(20, pos.x));
+          const safeY = Math.max(maxTop, Math.min(20, pos.y));
+          x.set(safeX);
+          y.set(safeY);
+        }
+      } catch {
+        // Fallback to default (0, 0)
+        x.set(0);
+        y.set(0);
+      }
     })();
-    const tipTimer = window.setTimeout(() => setShowTip(true), 1500);
-    const hideTip = window.setTimeout(() => setShowTip(false), 6000);
-    return () => { window.clearTimeout(tipTimer); window.clearTimeout(hideTip); };
   }, [x, y]);
 
-  // FAB Auto hide on scroll
-  useEffect(() => {
-    const onScroll = () => {
-      const yVal = window.scrollY;
-      if (Math.abs(yVal - lastScroll.current) < 8) return;
-      setVisible(yVal < lastScroll.current || yVal < 40);
-      lastScroll.current = yVal;
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  // Always keep FAB visible when advisor drawer is closed
+  const isFabVisible = !open;
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
@@ -621,9 +625,9 @@ export const AIAdvisor = () => {
           updateTooltipPosition();
         }}
         initial={{ opacity: 0, scale: 0.8 }}
-        animate={{ opacity: visible ? 1 : 0, scale: visible ? 1 : 0.6, pointerEvents: visible ? "auto" : "none" }}
+        animate={{ opacity: isFabVisible ? 1 : 0, scale: isFabVisible ? 1 : 0.6, pointerEvents: isFabVisible ? "auto" : "none" }}
         transition={{ type: "spring", stiffness: 300, damping: 24 }}
-        className="fixed bottom-24 right-4 z-[9999] cursor-grab active:cursor-grabbing select-none"
+        className="ai-advisor-fab fixed bottom-24 right-4 z-[9999] cursor-grab active:cursor-grabbing select-none"
         onMouseEnter={handleFabMouseEnter}
         onMouseLeave={handleFabMouseLeave}
       >
@@ -708,6 +712,7 @@ export const AIAdvisor = () => {
       <AnimatePresence>
         {open && (
           <motion.div
+            id="ai-advisor-sheet-container"
             initial={{ opacity: 0, y: 20, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.96 }}

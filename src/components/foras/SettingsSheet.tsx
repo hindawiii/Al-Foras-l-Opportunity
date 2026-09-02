@@ -498,8 +498,8 @@ export const SettingsSheet = ({ open, onOpenChange }: Props) => {
         </Dialog>
 
         <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} />
-        <AdminDashboardModal isOpen={adminOpen} onClose={() => setAdminOpen(false)} />
       </SheetContent>
+      <AdminDashboardModal isOpen={adminOpen} onClose={() => setAdminOpen(false)} />
     </Sheet>
   );
 };
