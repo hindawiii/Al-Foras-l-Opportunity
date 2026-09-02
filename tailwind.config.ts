@@ -8,8 +8,9 @@ export default {
     container: { center: true, padding: "1.25rem", screens: { "2xl": "1400px" } },
     extend: {
       fontFamily: {
-        arabic: ['Tajawal', 'Cairo', 'system-ui', 'sans-serif'],
-        display: ['Amiri', 'Tajawal', 'Cairo', 'serif'],
+        arabic: ['Cairo', 'Tajawal', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        display: ['Cairo', 'Amiri', 'Tajawal', 'serif'],
+        sans: ['Inter', 'Cairo', 'system-ui', 'sans-serif'],
       },
       fontSize: {
         '2xs': ['0.8125rem', { lineHeight: '1.25rem' }],   /* 13px */
