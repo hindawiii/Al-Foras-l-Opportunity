@@ -301,3 +301,125 @@ export const QuickExistenceCheckerModal: React.FC<QuickExistenceCheckerModalProp
     </div>
   );
 };
+
+interface UrlDuplicateNoticeProps {
+  urlInput: string;
+  urlType: "scholarship" | "job";
+  duplicateItem: any | null;
+  confidence: number;
+  reasonAr: string;
+  reasonEn: string;
+  isRtl: boolean;
+  onNavigateToExisting: (item: any, type: "scholarship" | "job") => void;
+}
+
+/**
+ * Real-time Duplicate Alert Box inside AI URL Smart Parser
+ */
+export const UrlDuplicateNotice: React.FC<UrlDuplicateNoticeProps> = ({
+  urlInput,
+  urlType,
+  duplicateItem,
+  confidence,
+  reasonAr,
+  reasonEn,
+  isRtl,
+  onNavigateToExisting,
+}) => {
+  if (!urlInput.trim() || urlInput.trim().length < 8) return null;
+
+  if (duplicateItem) {
+    const isScholarship = urlType === "scholarship";
+    const itemTitle = isScholarship
+      ? duplicateItem.title_ar || duplicateItem.title
+      : duplicateItem.title_ar || duplicateItem.title;
+    const itemSub = isScholarship
+      ? duplicateItem.university || duplicateItem.org || duplicateItem.country
+      : duplicateItem.company || duplicateItem.category;
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: -6 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="p-3.5 rounded-2xl border-2 border-amber-500/50 bg-amber-500/10 backdrop-blur-sm space-y-2.5 my-2 shadow-md"
+        dir={isRtl ? "rtl" : "ltr"}
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-start gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/25 text-amber-400 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-inner">
+              <AlertTriangle className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-bold text-amber-300">
+                  {isRtl
+                    ? `⚠️ تنبيه فاحص التكرار: هذا الرابط مسجل مسبقاً في ${isScholarship ? "المنح الدراسية" : "فرص العمل"}!`
+                    : `⚠️ Duplicate Guard Alert: URL already registered in ${isScholarship ? "Scholarships" : "Jobs"}!`}
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono">
+                  {confidence}% {isRtl ? "تطابق" : "Match"}
+                </span>
+              </div>
+              <p className="text-[11px] text-amber-200/90 mt-0.5 leading-relaxed">
+                {isRtl ? reasonAr : reasonEn}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Existing Item Card */}
+        <div className="p-3 rounded-xl bg-background/85 border border-amber-500/30 flex items-center justify-between gap-3 text-xs">
+          <div className="min-w-0 flex-1">
+            <div className="font-bold text-white truncate text-xs sm:text-sm">
+              {itemTitle}
+            </div>
+            <div className="text-[11px] text-gray-400 truncate flex items-center gap-2 mt-0.5">
+              <span>{itemSub}</span>
+              {duplicateItem.deadline && (
+                <>
+                  <span>•</span>
+                  <span>{duplicateItem.deadline}</span>
+                </>
+              )}
+              <span>•</span>
+              <span className="font-mono text-[10px] text-primary">{duplicateItem.id}</span>
+            </div>
+          </div>
+
+          <Button
+            type="button"
+            variant="luxe"
+            size="sm"
+            onClick={() => onNavigateToExisting(duplicateItem, urlType)}
+            className="h-8 px-3 rounded-xl text-xs font-bold shadow-gold cursor-pointer flex items-center gap-1.5 flex-shrink-0"
+          >
+            <span>{isRtl ? "عرض وتعديل المسجلة" : "Open & Edit Existing"}</span>
+            {isRtl ? <ArrowLeft className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
+          </Button>
+        </div>
+      </motion.div>
+    );
+  }
+
+  // URL is unique and ready
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -4 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="px-3.5 py-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 flex items-center justify-between gap-2 text-xs my-2"
+      dir={isRtl ? "rtl" : "ltr"}
+    >
+      <div className="flex items-center gap-2">
+        <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+        <span className="text-[11px] font-bold text-emerald-300">
+          {isRtl
+            ? "فحص النزاهة والتكرار: رابط جديد وفريد — جاهز للاستخراج الذكي بنقرة واحدة"
+            : "Integrity Guard: Unique URL — Ready for AI extraction with 1-click"}
+        </span>
+      </div>
+      <span className="text-[10px] text-emerald-400/90 font-mono px-2 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-500/30">
+        100% Unique
+      </span>
+    </motion.div>
+  );
+};

@@ -94,6 +94,19 @@ export function normalizeUrl(rawUrl: string | undefined | null): string {
 }
 
 /**
+ * Extracts normalized host / domain for broad university/portal matching.
+ * e.g. "daad.de/en/study" -> "daad.de"
+ */
+export function extractDomainHost(rawUrl: string | undefined | null): string {
+  const norm = normalizeUrl(rawUrl);
+  if (!norm) return "";
+  const slashIdx = norm.indexOf("/");
+  const host = slashIdx === -1 ? norm : norm.substring(0, slashIdx);
+  // Remove common subdomains like 'apply.', 'portal.', 'www.'
+  return host.replace(/^(apply|portal|admissions|scholarships?|international|en|ar)\./, "");
+}
+
+/**
  * Helper to compute token overlap / Jaccard similarity
  */
 function computeWordOverlap(s1: string, s2: string): number {
@@ -133,46 +146,84 @@ export function checkScholarshipDuplicate(
   const targetId = currentId || candidate.id;
   const list = existingScholarships.filter((s) => s.id !== targetId);
 
-  // 1. Gather candidate URLs & Titles
-  const candApplyUrl = normalizeUrl(candidate.apply_url || candidate.official_website || candidate.officialUrl || candidate.sourceUrl);
-  const candOfficialUrl = normalizeUrl(candidate.official_website || candidate.officialUrl);
+  // 1. Gather candidate URLs & Domains
+  const rawCandUrls = [
+    candidate.apply_url,
+    candidate.applyUrl,
+    candidate.official_website,
+    candidate.officialUrl,
+    candidate.sourceUrl,
+    candidate.url,
+    candidate.website,
+  ].filter(Boolean) as string[];
+
+  const candNormUrls = rawCandUrls.map(normalizeUrl).filter((u) => u.length > 5);
+  const candDomains = rawCandUrls.map(extractDomainHost).filter((d) => d.length > 4 && !d.includes("google.com") && !d.includes("bit.ly"));
 
   const candTitleAr = normalizeText(candidate.title_ar || candidate.title);
   const candTitleEn = normalizeText(candidate.title_en || candidate.titleEn);
 
   // 2. Check each existing scholarship
   for (const s of list) {
-    const sApplyUrl = normalizeUrl((s as any).apply_url || s.officialUrl || s.sourceUrl);
-    const sOfficialUrl = normalizeUrl((s as any).official_website || s.officialUrl);
+    const sRawUrls = [
+      (s as any).apply_url,
+      (s as any).applyUrl,
+      (s as any).official_website,
+      s.officialUrl,
+      s.sourceUrl,
+      (s as any).url,
+      (s as any).website,
+    ].filter(Boolean) as string[];
 
-    // Exact URL check (if URL has meaningful length)
-    if (candApplyUrl && candApplyUrl.length > 10) {
-      if (candApplyUrl === sApplyUrl || (sOfficialUrl && candApplyUrl === sOfficialUrl)) {
-        return {
-          isDuplicate: true,
-          matchType: "exact_url",
-          matchedItem: s,
-          confidence: 100,
-          reasonAr: `تطابق تام في رابط التقديم الرسمي مع المنحة المسجلة: "${s.title}"`,
-          reasonEn: `Exact match in official application URL with: "${s.titleEn || s.title}"`,
-        };
+    const sNormUrls = sRawUrls.map(normalizeUrl).filter((u) => u.length > 5);
+    const sDomains = sRawUrls.map(extractDomainHost).filter((d) => d.length > 4 && !d.includes("google.com") && !d.includes("bit.ly"));
+
+    // Check 1: Exact URL match or prefix match (e.g., https://daad.de vs https://daad.de/en/...)
+    for (const cUrl of candNormUrls) {
+      for (const sUrl of sNormUrls) {
+        if (cUrl === sUrl) {
+          return {
+            isDuplicate: true,
+            matchType: "exact_url",
+            matchedItem: s,
+            confidence: 100,
+            reasonAr: `تطابق تام في رابط التقديم الرسمي مع المنحة المسجلة: "${s.title}"`,
+            reasonEn: `Exact match in official application URL with: "${s.titleEn || s.title}"`,
+          };
+        }
+        // Subpath match (if one URL starts with the other and shares significant path > 12 chars)
+        if (cUrl.length > 12 && sUrl.length > 12) {
+          if (cUrl.startsWith(sUrl) || sUrl.startsWith(cUrl)) {
+            return {
+              isDuplicate: true,
+              matchType: "exact_url",
+              matchedItem: s,
+              confidence: 95,
+              reasonAr: `تطابق في مسار الرابط الرسمي للمنحة المسجلة: "${s.title}"`,
+              reasonEn: `Matching URL path with registered scholarship: "${s.titleEn || s.title}"`,
+            };
+          }
+        }
       }
     }
 
-    if (candOfficialUrl && candOfficialUrl.length > 10) {
-      if (candOfficialUrl === sOfficialUrl || candOfficialUrl === sApplyUrl) {
-        return {
-          isDuplicate: true,
-          matchType: "exact_url",
-          matchedItem: s,
-          confidence: 100,
-          reasonAr: `تطابق تام في موقع المنحة الرسمي مع: "${s.title}"`,
-          reasonEn: `Exact match in official website URL with: "${s.titleEn || s.title}"`,
-        };
+    // Check 2: Domain match (Same official portal / university domain)
+    for (const cDom of candDomains) {
+      for (const sDom of sDomains) {
+        if (cDom === sDom && cDom.length > 5) {
+          return {
+            isDuplicate: true,
+            matchType: "exact_url",
+            matchedItem: s,
+            confidence: 90,
+            reasonAr: `الرابط ينتمي لنفس موقع المنحة/الجامعة المسجلة: "${s.title}" (${cDom})`,
+            reasonEn: `URL belongs to the same domain as registered scholarship: "${s.titleEn || s.title}" (${cDom})`,
+          };
+        }
       }
     }
 
-    // Exact Title match (Arabic)
+    // Check 3: Exact Title match (Arabic)
     const sTitleAr = normalizeText((s as any).title_ar || s.title);
     if (candTitleAr && sTitleAr && candTitleAr.length > 5 && candTitleAr === sTitleAr) {
       return {
@@ -185,7 +236,7 @@ export function checkScholarshipDuplicate(
       };
     }
 
-    // Exact Title match (English)
+    // Check 4: Exact Title match (English)
     const sTitleEn = normalizeText((s as any).title_en || s.titleEn);
     if (candTitleEn && sTitleEn && candTitleEn.length > 5 && candTitleEn === sTitleEn) {
       return {
@@ -198,7 +249,7 @@ export function checkScholarshipDuplicate(
       };
     }
 
-    // Similar title match (high word overlap >= 70%)
+    // Check 5: Similar title match (high word overlap >= 70%)
     if (candTitleAr && sTitleAr && candTitleAr.length > 8 && sTitleAr.length > 8) {
       const overlapAr = computeWordOverlap(candTitleAr, sTitleAr);
       if (overlapAr >= 0.7) {
@@ -220,9 +271,9 @@ export function checkScholarshipDuplicate(
           isDuplicate: true,
           matchType: "similar_title",
           matchedItem: s,
-          confidence: Math.round(overlapEn * 100),
-          reasonAr: `تشابه بالإنجليزية بنسبة ${Math.round(overlapEn * 100)}% مع: "${s.titleEn || s.title}"`,
-          reasonEn: `High English title similarity (${Math.round(overlapEn * 100)}%) with: "${s.titleEn || s.title}"`,
+          confidence: Math.round(overlapAr * 100),
+          reasonAr: `تشابه بالإنجليزية بنسبة ${Math.round(overlapAr * 100)}% مع: "${s.titleEn || s.title}"`,
+          reasonEn: `High English title similarity (${Math.round(overlapAr * 100)}%) with: "${s.titleEn || s.title}"`,
         };
       }
     }
@@ -235,6 +286,101 @@ export function checkScholarshipDuplicate(
     confidence: 0,
     reasonAr: "منحة فريدة - لا يوجد أي تكرار مسجل",
     reasonEn: "Unique scholarship - No duplicate recorded",
+  };
+}
+
+/**
+ * Dedicated existence lookup helper. Searches existing scholarships by a single query (URL or title text).
+ */
+export interface JobDuplicateCheckResult {
+  isDuplicate: boolean;
+  matchType: "exact_url" | "exact_title" | "similar_title" | "none";
+  matchedItem: any | null;
+  confidence: number;
+  reasonAr: string;
+  reasonEn: string;
+}
+
+/**
+ * Checks whether a job candidate is a duplicate of any existing job.
+ */
+export function checkJobDuplicate(
+  candidate: Record<string, any>,
+  existingJobs: any[],
+  currentId?: string
+): JobDuplicateCheckResult {
+  if (!candidate || !existingJobs || existingJobs.length === 0) {
+    return {
+      isDuplicate: false,
+      matchType: "none",
+      matchedItem: null,
+      confidence: 0,
+      reasonAr: "فرصة عمل فريدة - غير مسجلة في النظام",
+      reasonEn: "Unique job listing - Not registered in system",
+    };
+  }
+
+  const targetId = currentId || candidate.id;
+  const list = existingJobs.filter((j) => j.id !== targetId);
+
+  const candUrl = normalizeUrl(
+    candidate.contact?.website ||
+    candidate.applyUrl ||
+    candidate.url ||
+    candidate.apply_url ||
+    candidate.website
+  );
+  const candTitleAr = normalizeText(candidate.title_ar || candidate.title);
+  const candTitleEn = normalizeText(candidate.title_en || candidate.titleEn);
+  const candCompany = normalizeText(candidate.company);
+
+  for (const j of list) {
+    const jUrl = normalizeUrl(j.contact?.website || j.applyUrl || j.url || j.apply_url || j.website);
+
+    // Exact URL check
+    if (candUrl && candUrl.length > 10 && jUrl) {
+      if (candUrl === jUrl) {
+        return {
+          isDuplicate: true,
+          matchType: "exact_url",
+          matchedItem: j,
+          confidence: 100,
+          reasonAr: `تطابق تام في رابط التقديم/الموقع مع الوظيفة المسجلة: "${j.title}" (${j.company})`,
+          reasonEn: `Exact match in job URL with: "${j.titleEn || j.title}" (${j.company})`,
+        };
+      }
+    }
+
+    // Exact Title + Company check
+    const jTitleAr = normalizeText(j.title_ar || j.title);
+    const jTitleEn = normalizeText(j.title_en || j.titleEn);
+    const jCompany = normalizeText(j.company);
+
+    if (
+      (candTitleAr && jTitleAr && candTitleAr === jTitleAr) ||
+      (candTitleEn && jTitleEn && candTitleEn === jTitleEn)
+    ) {
+      const companyMatches = (!candCompany && !jCompany) || (candCompany && jCompany && candCompany === jCompany);
+      if (companyMatches) {
+        return {
+          isDuplicate: true,
+          matchType: "exact_title",
+          matchedItem: j,
+          confidence: 95,
+          reasonAr: `تطابق تام في مسمى الوظيفة والشركة مع: "${j.title}" (${j.company})`,
+          reasonEn: `Exact title match with: "${j.titleEn || j.title}" (${j.company})`,
+        };
+      }
+    }
+  }
+
+  return {
+    isDuplicate: false,
+    matchType: "none",
+    matchedItem: null,
+    confidence: 0,
+    reasonAr: "فرصة عمل جديدة وغير مكررة",
+    reasonEn: "New unique job listing",
   };
 }
 

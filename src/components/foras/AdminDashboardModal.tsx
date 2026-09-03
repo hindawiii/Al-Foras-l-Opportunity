@@ -9,7 +9,8 @@ import {
   Archive, RotateCcw, Menu, ChevronRight, ChevronLeft, AlertTriangle,
   Upload, Layers, CheckSquare, Square, MinusSquare, Building2, Globe2,
   Crown, Shield, Unlock, HelpCircle, LockKeyhole, Smartphone, Tablet,
-  Laptop, Monitor, SlidersHorizontal, BarChart3, Copy, Link2
+  Laptop, Monitor, SlidersHorizontal, BarChart3, Copy, Link2,
+  Filter, Clock, BookOpen, Award
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Scholarship } from "@/lib/mockData";
@@ -21,8 +22,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { SecurityPasswordManager } from "@/components/foras/SecurityPasswordManager";
 import { StarMaskedInput } from "@/components/foras/StarMaskedInput";
-import { checkScholarshipDuplicate } from "@/lib/duplicateChecker";
-import { ScholarshipDuplicateBanner, QuickExistenceCheckerModal } from "@/components/foras/ScholarshipDuplicateGuard";
+import { checkScholarshipDuplicate, checkJobDuplicate } from "@/lib/duplicateChecker";
+import { ScholarshipDuplicateBanner, QuickExistenceCheckerModal, UrlDuplicateNotice } from "@/components/foras/ScholarshipDuplicateGuard";
 
 export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
   const { lang, dir, t } = useLanguage();
@@ -293,6 +294,33 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
   const [isParsing, setIsParsing] = useState(false);
   const [parsedPreview, setParsedPreview] = useState<any>(null);
 
+  // Live duplicate detection inside URL Parser
+  const urlDuplicateResult = useMemo(() => {
+    const trimmed = urlInput.trim();
+    if (!trimmed || trimmed.length < 8) {
+      return {
+        isDuplicate: false,
+        matchType: "none" as const,
+        matchedItem: null,
+        confidence: 0,
+        reasonAr: "",
+        reasonEn: "",
+      };
+    }
+
+    if (urlType === "scholarship") {
+      return checkScholarshipDuplicate(
+        { apply_url: trimmed, official_website: trimmed, title: "" } as any,
+        scholarships
+      );
+    } else {
+      return checkJobDuplicate(
+        { applyUrl: trimmed, url: trimmed, website: trimmed, title: "" },
+        jobs
+      );
+    }
+  }, [urlInput, urlType, scholarships, jobs]);
+
   // Danger Zone confirmation state
   const [emptyArchiveConfirmText, setEmptyArchiveConfirmText] = useState("");
   const [isDeletingConfirmOpen, setIsDeletingConfirmOpen] = useState(false);
@@ -345,18 +373,159 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
     toast.info(isRtl ? "تم تسجيل الخروج وقفل اللوحة" : "Logged out and dashboard locked");
   };
 
+  // ========================================================
+  // SCHOLARSHIPS CATEGORY & SEGMENT HUB STATE & HELPERS
+  // ========================================================
+  const [scholarshipCategoryFilter, setScholarshipCategoryFilter] = useState<"all" | "arab" | "global">("all");
+  const [scholarshipFundingFilter, setScholarshipFundingFilter] = useState<"all" | "full" | "partial">("all");
+  const [scholarshipDegreeFilter, setScholarshipDegreeFilter] = useState<"all" | "bachelor" | "postgrad">("all");
+  const [scholarshipDeadlineFilter, setScholarshipDeadlineFilter] = useState<"all" | "open" | "expiring_soon" | "expired">("all");
+
+  const resetScholarshipFilters = () => {
+    setScholarshipCategoryFilter("all");
+    setScholarshipFundingFilter("all");
+    setScholarshipDegreeFilter("all");
+    setScholarshipDeadlineFilter("all");
+    setSearchQuery("");
+  };
+
+  const hasActiveScholarshipFilters =
+    scholarshipCategoryFilter !== "all" ||
+    scholarshipFundingFilter !== "all" ||
+    scholarshipDegreeFilter !== "all" ||
+    scholarshipDeadlineFilter !== "all";
+
+  // Category & Status classification helpers
+  const isScholarshipFullyFunded = (s: Scholarship) => {
+    const cov = ((s as any).coverage || "").toLowerCase();
+    const amt = (s.amount || "").toLowerCase();
+    const amtEn = (s.amountEn || "").toLowerCase();
+    return cov === "full" || amt.includes("كامل") || amtEn.includes("fully");
+  };
+
+  const isScholarshipPartialFunded = (s: Scholarship) => {
+    const cov = ((s as any).coverage || "").toLowerCase();
+    const amt = (s.amount || "").toLowerCase();
+    const amtEn = (s.amountEn || "").toLowerCase();
+    return cov === "partial" || cov === "tuition_only" || amt.includes("جزئي") || amtEn.includes("partial");
+  };
+
+  const isScholarshipBachelor = (s: Scholarship) => {
+    const deg = ((s as any).degree || "").toLowerCase();
+    const lvl = (s.level || "").toLowerCase();
+    const lvlEn = (s.levelEn || "").toLowerCase();
+    return deg === "bachelor" || deg === "bachelor_master" || deg === "all" || lvl.includes("بكالوريوس") || lvlEn.includes("bachelor");
+  };
+
+  const isScholarshipPostgrad = (s: Scholarship) => {
+    const deg = ((s as any).degree || "").toLowerCase();
+    const lvl = (s.level || "").toLowerCase();
+    const lvlEn = (s.levelEn || "").toLowerCase();
+    return deg === "master" || deg === "phd" || deg === "bachelor_master" || deg === "all" || lvl.includes("ماجستير") || lvl.includes("دكتوراه") || lvlEn.includes("master") || lvlEn.includes("phd");
+  };
+
+  const getScholarshipDeadlineStatus = (s: Scholarship): "open" | "expiring_soon" | "expired" | "unknown" => {
+    if (!s.deadline) return "unknown";
+    const d = new Date(s.deadline);
+    if (isNaN(d.getTime())) return "unknown";
+    const now = Date.now();
+    const diffDays = Math.ceil((d.getTime() - now) / (1000 * 60 * 60 * 24));
+    if (diffDays < 0) return "expired";
+    if (diffDays <= 14) return "expiring_soon";
+    return "open";
+  };
+
+  // Real-time Category Counts
+  const scholarshipCategoryCounts = useMemo(() => {
+    const counts = {
+      total: scholarships.length,
+      arab: 0,
+      global: 0,
+      full: 0,
+      partial: 0,
+      bachelor: 0,
+      postgrad: 0,
+      open: 0,
+      expiringSoon: 0,
+      expired: 0,
+    };
+
+    for (const s of scholarships) {
+      if (s.category === "arab") counts.arab++;
+      else counts.global++;
+
+      if (isScholarshipFullyFunded(s)) counts.full++;
+      if (isScholarshipPartialFunded(s)) counts.partial++;
+
+      if (isScholarshipBachelor(s)) counts.bachelor++;
+      if (isScholarshipPostgrad(s)) counts.postgrad++;
+
+      const ds = getScholarshipDeadlineStatus(s);
+      if (ds === "open") counts.open++;
+      else if (ds === "expiring_soon") counts.expiringSoon++;
+      else if (ds === "expired") counts.expired++;
+    }
+
+    return counts;
+  }, [scholarships]);
+
   // Filtered lists
   const filteredScholarships = useMemo(() => {
-    if (!searchQuery.trim()) return scholarships;
-    const q = searchQuery.toLowerCase().trim();
-    return scholarships.filter(
-      s =>
-        (s.title || "").toLowerCase().includes(q) ||
-        ((s as any).title_ar || "").toLowerCase().includes(q) ||
-        (s.country || "").toLowerCase().includes(q) ||
-        (s.org || "").toLowerCase().includes(q)
-    );
-  }, [scholarships, searchQuery]);
+    let list = scholarships;
+
+    // 1. Geographic Scope Category
+    if (scholarshipCategoryFilter === "arab") {
+      list = list.filter(s => s.category === "arab");
+    } else if (scholarshipCategoryFilter === "global") {
+      list = list.filter(s => s.category === "global" || !s.category);
+    }
+
+    // 2. Funding Coverage
+    if (scholarshipFundingFilter === "full") {
+      list = list.filter(isScholarshipFullyFunded);
+    } else if (scholarshipFundingFilter === "partial") {
+      list = list.filter(isScholarshipPartialFunded);
+    }
+
+    // 3. Degree Level
+    if (scholarshipDegreeFilter === "bachelor") {
+      list = list.filter(isScholarshipBachelor);
+    } else if (scholarshipDegreeFilter === "postgrad") {
+      list = list.filter(isScholarshipPostgrad);
+    }
+
+    // 4. Deadline Health
+    if (scholarshipDeadlineFilter === "open") {
+      list = list.filter(s => getScholarshipDeadlineStatus(s) === "open");
+    } else if (scholarshipDeadlineFilter === "expiring_soon") {
+      list = list.filter(s => getScholarshipDeadlineStatus(s) === "expiring_soon");
+    } else if (scholarshipDeadlineFilter === "expired") {
+      list = list.filter(s => getScholarshipDeadlineStatus(s) === "expired");
+    }
+
+    // 5. Search query
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(
+        s =>
+          (s.title || "").toLowerCase().includes(q) ||
+          ((s as any).title_ar || "").toLowerCase().includes(q) ||
+          ((s as any).title_en || "").toLowerCase().includes(q) ||
+          (s.country || "").toLowerCase().includes(q) ||
+          (s.org || "").toLowerCase().includes(q) ||
+          ((s as any).university || "").toLowerCase().includes(q)
+      );
+    }
+
+    return list;
+  }, [
+    scholarships,
+    searchQuery,
+    scholarshipCategoryFilter,
+    scholarshipFundingFilter,
+    scholarshipDegreeFilter,
+    scholarshipDeadlineFilter,
+  ]);
 
   const filteredJobs = useMemo(() => {
     if (!searchQuery.trim()) return jobs;
@@ -1298,58 +1467,294 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                           : "lg:col-span-4 xl:col-span-4 flex"
                       }`}
                     >
-                      {/* List Header */}
-                      <div className="p-3 border-b border-primary/20 bg-card/80 flex items-center justify-between gap-2 flex-shrink-0">
-                        <div className="flex items-center gap-2">
-                          <GraduationCap className="w-4 h-4 text-primary" />
-                          <span className="text-xs font-bold text-white">
-                            {t("adminActiveScholarshipsCount").replace("{count}", String(filteredScholarships.length))}
-                          </span>
+                      {/* List Header & Categories Segment Hub */}
+                      <div className="border-b border-primary/20 bg-card/90 flex flex-col flex-shrink-0">
+                        {/* 1. Header Bar */}
+                        <div className="p-3 pb-2 flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center text-primary">
+                              <GraduationCap className="w-3.5 h-3.5" />
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                                <span>{isRtl ? "سجل المنح الدراسية" : "Scholarships Hub"}</span>
+                                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-primary/25 border border-primary/40 text-primary">
+                                  {filteredScholarships.length}
+                                  {filteredScholarships.length !== scholarships.length && ` / ${scholarships.length}`}
+                                </span>
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            {hasActiveScholarshipFilters && (
+                              <button
+                                onClick={resetScholarshipFilters}
+                                title={isRtl ? "تصفير جميع الفلاتر" : "Reset all filters"}
+                                className="px-2 py-1 rounded-lg text-[10px] font-bold text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all cursor-pointer flex items-center gap-1"
+                              >
+                                <X className="w-3 h-3" />
+                                <span className="hidden sm:inline">{isRtl ? "تصفير" : "Reset"}</span>
+                              </button>
+                            )}
+
+                            {adminAuthStore.canUserPerform(currentUser, "create") && (
+                              <button
+                                onClick={() => {
+                                  const newSch = {
+                                    id: `sch_${Date.now()}`,
+                                    title_ar: "منحة دراسية جديدة ممولة بالكامل",
+                                    title_en: "New Fully Funded Scholarship",
+                                    university: isRtl ? "جامعة دولية معتمدة" : "Accredited International University",
+                                    country: isRtl ? "عالمي" : "International",
+                                    flag: "🌍",
+                                    category: scholarshipCategoryFilter === "arab" ? "arab" : "global",
+                                    degree: "bachelor_master",
+                                    coverage: "full" as any,
+                                    deadline: new Date(Date.now() + 45 * 86400000).toISOString().split("T")[0],
+                                    majors: ["الهندسة والتقنية", "الطب والعلوم"],
+                                    apply_url: "https://example.com",
+                                    official_website: "https://example.com",
+                                    description_ar: "وصف المنحة وتفاصيل الدعم المالي والرسوم والتذاكر والسكن.",
+                                    description_en: "Scholarship description and full financial coverage details.",
+                                    benefits_ar: ["إعفاء كامل من المصروفات", "راتب شهري", "سكن مجاني"],
+                                    benefits_en: ["Full tuition waiver", "Monthly stipend"],
+                                  };
+                                  setEditingScholarship(newSch as any);
+                                  setMobileViewPane("detail");
+                                }}
+                                className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-gold hover:opacity-90 transition-all cursor-pointer"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                                <span>{isRtl ? "إضافة منحة" : "New"}</span>
+                              </button>
+                            )}
+                          </div>
                         </div>
-                        {adminAuthStore.canUserPerform(currentUser, "create") && (
+
+                        {/* 2. Primary Geographic Scope Tabs (القطاع الجغرافي) */}
+                        <div className="px-3 pb-2 flex gap-1.5">
                           <button
-                            onClick={() => {
-                              const newSch = {
-                                id: `sch_${Date.now()}`,
-                                title_ar: "منحة دراسية جديدة ممولة بالكامل",
-                                title_en: "New Fully Funded Scholarship",
-                                university: isRtl ? "جامعة دولية معتمدة" : "Accredited International University",
-                                country: isRtl ? "عالمي" : "International",
-                                flag: "🌍",
-                                degree: "bachelor_master",
-                                coverage: "full" as any,
-                                deadline: new Date(Date.now() + 45 * 86400000).toISOString().split("T")[0],
-                                majors: ["الهندسة والتقنية", "الطب والعلوم"],
-                                apply_url: "https://example.com",
-                                official_website: "https://example.com",
-                                description_ar: "وصف المنحة وتفاصيل الدعم المالي والرسوم والتذاكر والسكن.",
-                                description_en: "Scholarship description and full financial coverage details.",
-                                benefits_ar: ["إعفاء كامل من المصروفات", "راتب شهري", "سكن مجاني"],
-                                benefits_en: ["Full tuition waiver", "Monthly stipend"],
-                              };
-                              setEditingScholarship(newSch as any);
-                              setMobileViewPane("detail");
-                            }}
-                            className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-gold hover:opacity-90 transition-all cursor-pointer"
+                            type="button"
+                            onClick={() => setScholarshipCategoryFilter("all")}
+                            className={`flex-1 py-1.5 px-2 rounded-xl text-[11px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                              scholarshipCategoryFilter === "all"
+                                ? "bg-primary text-primary-foreground shadow-gold"
+                                : "bg-card/70 border border-primary/20 text-gray-300 hover:text-white hover:border-primary/40"
+                            }`}
                           >
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>{isRtl ? "إضافة منحة" : "New"}</span>
+                            <span>🌍</span>
+                            <span>{isRtl ? "الكل" : "All"}</span>
+                            <span className={`text-[10px] px-1 rounded-full ${
+                              scholarshipCategoryFilter === "all" ? "bg-black/20 text-white" : "bg-primary/20 text-primary"
+                            }`}>
+                              {scholarshipCategoryCounts.total}
+                            </span>
                           </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setScholarshipCategoryFilter("arab")}
+                            className={`flex-1 py-1.5 px-2 rounded-xl text-[11px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                              scholarshipCategoryFilter === "arab"
+                                ? "bg-primary text-primary-foreground shadow-gold"
+                                : "bg-card/70 border border-primary/20 text-gray-300 hover:text-white hover:border-primary/40"
+                            }`}
+                          >
+                            <span>🏛️</span>
+                            <span>{isRtl ? "منح عربية" : "Arab"}</span>
+                            <span className={`text-[10px] px-1 rounded-full ${
+                              scholarshipCategoryFilter === "arab" ? "bg-black/20 text-white" : "bg-primary/20 text-primary"
+                            }`}>
+                              {scholarshipCategoryCounts.arab}
+                            </span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setScholarshipCategoryFilter("global")}
+                            className={`flex-1 py-1.5 px-2 rounded-xl text-[11px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                              scholarshipCategoryFilter === "global"
+                                ? "bg-primary text-primary-foreground shadow-gold"
+                                : "bg-card/70 border border-primary/20 text-gray-300 hover:text-white hover:border-primary/40"
+                            }`}
+                          >
+                            <span>🌐</span>
+                            <span>{isRtl ? "منح دولية" : "Global"}</span>
+                            <span className={`text-[10px] px-1 rounded-full ${
+                              scholarshipCategoryFilter === "global" ? "bg-black/20 text-white" : "bg-primary/20 text-primary"
+                            }`}>
+                              {scholarshipCategoryCounts.global}
+                            </span>
+                          </button>
+                        </div>
+
+                        {/* 3. Fast Sub-Filter Chips (المرشحات السريعة للتمويل والمرحلة والصلاحية) */}
+                        <div className="px-3 pb-2.5 flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+                          {/* Funding Pills */}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setScholarshipFundingFilter(prev => (prev === "full" ? "all" : "full"))
+                            }
+                            className={`px-2 py-1 rounded-lg text-[10px] font-bold flex-shrink-0 transition-all cursor-pointer flex items-center gap-1 ${
+                              scholarshipFundingFilter === "full"
+                                ? "bg-emerald-500 text-white shadow-sm"
+                                : "bg-card/60 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/15"
+                            }`}
+                          >
+                            <span>💎</span>
+                            <span>{isRtl ? "ممولة بالكامل" : "Full"}</span>
+                            <span className="opacity-80">({scholarshipCategoryCounts.full})</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setScholarshipFundingFilter(prev => (prev === "partial" ? "all" : "partial"))
+                            }
+                            className={`px-2 py-1 rounded-lg text-[10px] font-bold flex-shrink-0 transition-all cursor-pointer flex items-center gap-1 ${
+                              scholarshipFundingFilter === "partial"
+                                ? "bg-blue-500 text-white shadow-sm"
+                                : "bg-card/60 border border-blue-500/30 text-blue-400 hover:bg-blue-500/15"
+                            }`}
+                          >
+                            <span>⚖️</span>
+                            <span>{isRtl ? "تمويل جزئي" : "Partial"}</span>
+                            <span className="opacity-80">({scholarshipCategoryCounts.partial})</span>
+                          </button>
+
+                          {/* Degree Pills */}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setScholarshipDegreeFilter(prev => (prev === "bachelor" ? "all" : "bachelor"))
+                            }
+                            className={`px-2 py-1 rounded-lg text-[10px] font-bold flex-shrink-0 transition-all cursor-pointer flex items-center gap-1 ${
+                              scholarshipDegreeFilter === "bachelor"
+                                ? "bg-amber-500 text-black font-black shadow-sm"
+                                : "bg-card/60 border border-amber-500/30 text-amber-300 hover:bg-amber-500/15"
+                            }`}
+                          >
+                            <span>🎓</span>
+                            <span>{isRtl ? "بكالوريوس" : "Bachelor"}</span>
+                            <span className="opacity-80">({scholarshipCategoryCounts.bachelor})</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setScholarshipDegreeFilter(prev => (prev === "postgrad" ? "all" : "postgrad"))
+                            }
+                            className={`px-2 py-1 rounded-lg text-[10px] font-bold flex-shrink-0 transition-all cursor-pointer flex items-center gap-1 ${
+                              scholarshipDegreeFilter === "postgrad"
+                                ? "bg-purple-500 text-white shadow-sm"
+                                : "bg-card/60 border border-purple-500/30 text-purple-300 hover:bg-purple-500/15"
+                            }`}
+                          >
+                            <span>📚</span>
+                            <span>{isRtl ? "دراسات عليا" : "Postgrad"}</span>
+                            <span className="opacity-80">({scholarshipCategoryCounts.postgrad})</span>
+                          </button>
+
+                          {/* Expired Filter Pill - High Priority Maintenance */}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setScholarshipDeadlineFilter(prev => (prev === "expired" ? "all" : "expired"))
+                            }
+                            className={`px-2 py-1 rounded-lg text-[10px] font-bold flex-shrink-0 transition-all cursor-pointer flex items-center gap-1 ${
+                              scholarshipDeadlineFilter === "expired"
+                                ? "bg-red-500 text-white shadow-sm font-black"
+                                : scholarshipCategoryCounts.expired > 0
+                                ? "bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30"
+                                : "bg-card/60 border border-primary/20 text-gray-400 hover:text-white"
+                            }`}
+                          >
+                            <span>🔴</span>
+                            <span>{isRtl ? "منتهية الصلاحية" : "Expired"}</span>
+                            <span className="opacity-90 font-black">({scholarshipCategoryCounts.expired})</span>
+                          </button>
+
+                          {/* Expiring Soon Pill */}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setScholarshipDeadlineFilter(prev => (prev === "expiring_soon" ? "all" : "expiring_soon"))
+                            }
+                            className={`px-2 py-1 rounded-lg text-[10px] font-bold flex-shrink-0 transition-all cursor-pointer flex items-center gap-1 ${
+                              scholarshipDeadlineFilter === "expiring_soon"
+                                ? "bg-amber-600 text-white shadow-sm"
+                                : "bg-card/60 border border-amber-500/30 text-amber-400 hover:bg-amber-500/15"
+                            }`}
+                          >
+                            <span>⏳</span>
+                            <span>{isRtl ? "تنتهي قريباً" : "Expiring"}</span>
+                            <span className="opacity-80">({scholarshipCategoryCounts.expiringSoon})</span>
+                          </button>
+                        </div>
+
+                        {/* 4. Expired Batch Maintenance Banner */}
+                        {scholarshipDeadlineFilter === "expired" && (
+                          <div className="mx-3 mb-2.5 p-2.5 rounded-xl bg-red-500/15 border border-red-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5 text-xs text-red-300 font-bold">
+                              <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                              <span>
+                                {isRtl
+                                  ? `تم فرز ${filteredScholarships.length} منحة منتهية الصلاحية.`
+                                  : `${filteredScholarships.length} expired scholarships found.`}
+                              </span>
+                            </div>
+
+                            {filteredScholarships.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const expiredIds = filteredScholarships.map(s => s.id);
+                                  setSelectedIds(expiredIds);
+                                  toast.success(
+                                    isRtl
+                                      ? `تم تحديد جميع المنح المنتهية (${expiredIds.length}) بنجاح`
+                                      : `Selected all ${expiredIds.length} expired scholarships`
+                                  );
+                                }}
+                                className="px-2.5 py-1 rounded-lg bg-red-500 text-white text-[11px] font-bold hover:bg-red-600 transition-all cursor-pointer flex items-center justify-center gap-1"
+                              >
+                                <CheckSquare className="w-3.5 h-3.5" />
+                                <span>{isRtl ? "تحديد الكل للحذف / الأرشفة" : "Select all expired"}</span>
+                              </button>
+                            )}
+                          </div>
                         )}
                       </div>
 
                       {/* Scrollable List Items */}
                       <div className="flex-1 overflow-y-auto p-2 space-y-2 scrollbar-thin scrollbar-thumb-primary/20">
                         {filteredScholarships.length === 0 ? (
-                          <div className="text-center py-12 p-4 rounded-xl bg-card/40 border border-primary/20">
-                            <GraduationCap className="w-8 h-8 text-primary mx-auto mb-2 opacity-50" />
-                            <p className="text-xs text-gray-300 font-bold">{t("adminNoScholarships")}</p>
+                          <div className="text-center py-12 p-4 rounded-xl bg-card/40 border border-primary/20 space-y-2">
+                            <GraduationCap className="w-8 h-8 text-primary mx-auto opacity-50" />
+                            <p className="text-xs text-gray-300 font-bold">
+                              {hasActiveScholarshipFilters || searchQuery
+                                ? (isRtl ? "لا توجد منح مطابقة للفلاتر المحددة حالياً" : "No scholarships match current filters")
+                                : t("adminNoScholarships")}
+                            </p>
+                            {hasActiveScholarshipFilters && (
+                              <button
+                                onClick={resetScholarshipFilters}
+                                className="px-3 py-1.5 rounded-xl bg-primary/20 border border-primary/40 text-primary text-xs font-bold hover:bg-primary/30 transition-all cursor-pointer inline-flex items-center gap-1.5"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                <span>{isRtl ? "إلغاء التصفية وعرض الكل" : "Clear filters and show all"}</span>
+                              </button>
+                            )}
                           </div>
                         ) : (
                           filteredScholarships.map((s, idx) => {
                             const isSelected = selectedIds.includes(s.id);
                             const isActiveEdit = editingScholarship?.id === s.id;
                             const scoreData = calculateScholarshipScore(s);
+                            const deadlineStatus = getScholarshipDeadlineStatus(s);
+                            const isArab = s.category === "arab";
 
                             return (
                               <div
@@ -1383,6 +1788,30 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                                     </button>
 
                                     <div className="min-w-0">
+                                      <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                                        {/* Category Badge */}
+                                        <span
+                                          className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                            isArab
+                                              ? "bg-blue-500/15 border border-blue-500/30 text-blue-300"
+                                              : "bg-indigo-500/15 border border-indigo-500/30 text-indigo-300"
+                                          }`}
+                                        >
+                                          {isArab ? (isRtl ? "🏛️ عربية" : "Arab") : (isRtl ? "🌐 دولية" : "Global")}
+                                        </span>
+
+                                        {/* Degree Badge if available */}
+                                        {((s as any).degree || s.level) && (
+                                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-card border border-primary/20 text-gray-300">
+                                            {isScholarshipBachelor(s)
+                                              ? (isRtl ? "🎓 بكالوريوس" : "Bachelor")
+                                              : isScholarshipPostgrad(s)
+                                              ? (isRtl ? "📚 دراسات عليا" : "Postgrad")
+                                              : (s.level || (s as any).degree)}
+                                          </span>
+                                        )}
+                                      </div>
+
                                       <h4 className="text-xs sm:text-sm font-bold text-white leading-snug line-clamp-1">
                                         {isRtl ? s.title || (s as any).title_ar : (s as any).title_en || s.title}
                                       </h4>
@@ -1403,12 +1832,30 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                                   </span>
                                 </div>
 
-                                <div className="flex items-center justify-between text-[11px] pt-1 border-t border-primary/10 text-gray-400">
+                                <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-primary/10 text-gray-400">
                                   <span className="text-amber-300 font-medium">
-                                    {s.coverage === "full" ? (isRtl ? "ممولة بالكامل" : "Fully Funded") : s.coverage}
+                                    {isScholarshipFullyFunded(s)
+                                      ? (isRtl ? "💎 ممولة بالكامل" : "Fully Funded")
+                                      : (isRtl ? "⚖️ تمويل جزئي" : "Partial")}
                                   </span>
-                                  <span className="text-gray-400 text-[10px]">
-                                    {s.deadline ? s.deadline : isRtl ? "مفتوح دائماً" : "Open"}
+
+                                  {/* Deadline with color alert */}
+                                  <span
+                                    className={`text-[10px] font-bold flex items-center gap-1 ${
+                                      deadlineStatus === "expired"
+                                        ? "text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded"
+                                        : deadlineStatus === "expiring_soon"
+                                        ? "text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded"
+                                        : "text-gray-400"
+                                    }`}
+                                  >
+                                    {deadlineStatus === "expired" && "🔴 "}
+                                    {deadlineStatus === "expiring_soon" && "⏳ "}
+                                    {s.deadline
+                                      ? `${s.deadline} ${deadlineStatus === "expired" ? (isRtl ? "(منتهية)" : "(Expired)") : ""}`
+                                      : isRtl
+                                      ? "مفتوح دائماً"
+                                      : "Open"}
                                   </span>
                                 </div>
                               </div>
@@ -1608,7 +2055,26 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                                   </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                  <div>
+                                    <label className="block text-xs font-bold text-gray-300 mb-1">
+                                      {isRtl ? "تصنيف المنحة" : "Category"}
+                                    </label>
+                                    <select
+                                      value={editingScholarship.category || "global"}
+                                      onChange={(e) =>
+                                        setEditingScholarship({
+                                          ...editingScholarship,
+                                          category: e.target.value as any,
+                                        })
+                                      }
+                                      className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs sm:text-sm text-white outline-none focus:border-primary"
+                                    >
+                                      <option value="global">{isRtl ? "🌐 منحة دولية / عالمية" : "Global Scholarship"}</option>
+                                      <option value="arab">{isRtl ? "🏛️ منحة عربية / إقليمية" : "Arab Scholarship"}</option>
+                                    </select>
+                                  </div>
+
                                   <div>
                                     <label className="block text-xs font-bold text-gray-300 mb-1">
                                       {t("adminDegree")}
@@ -2877,79 +3343,257 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                         <div className="flex gap-2">
                           <button
                             onClick={() => setUrlType("scholarship")}
-                            className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                              urlType === "scholarship" ? "bg-primary text-primary-foreground shadow-gold" : "bg-card border border-primary/20 text-gray-300"
+                            className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                              urlType === "scholarship" ? "bg-primary text-primary-foreground shadow-gold" : "bg-card border border-primary/20 text-gray-300 hover:text-white"
                             }`}
                           >
-                            {isRtl ? "منحة دراسية" : "Scholarship"}
+                            <GraduationCap className="w-3.5 h-3.5" />
+                            <span>{isRtl ? "منحة دراسية" : "Scholarship"}</span>
                           </button>
                           <button
                             onClick={() => setUrlType("job")}
-                            className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                              urlType === "job" ? "bg-primary text-primary-foreground shadow-gold" : "bg-card border border-primary/20 text-gray-300"
+                            className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                              urlType === "job" ? "bg-primary text-primary-foreground shadow-gold" : "bg-card border border-primary/20 text-gray-300 hover:text-white"
                             }`}
                           >
-                            {isRtl ? "فرصة عمل عن بعد" : "Remote Job"}
+                            <Briefcase className="w-3.5 h-3.5" />
+                            <span>{isRtl ? "فرصة عمل عن بعد" : "Remote Job"}</span>
                           </button>
                         </div>
 
-                        <div className="flex gap-2">
-                          <input
-                            type="url"
-                            value={urlInput}
-                            onChange={e => setUrlInput(e.target.value)}
-                            placeholder="https://turkiyeburslari.gov.tr or https://daad.de..."
-                            className="flex-1 px-4 py-2.5 rounded-xl bg-background border border-primary/30 text-white text-xs sm:text-sm focus:border-primary outline-none"
-                            dir="ltr"
-                          />
-                          <Button
-                            variant="luxe"
-                            disabled={isParsing || !urlInput.trim()}
-                            onClick={async () => {
-                              setIsParsing(true);
-                              try {
-                                const parsed = await dynamicStore.parseFromUrl(urlInput, urlType);
-                                setParsedPreview(parsed);
-                                toast.success(isRtl ? "تم استخراج ومعالجة بيانات الرابط بنجاح" : "Parsed successfully");
-                              } catch {
-                                toast.error(isRtl ? "تعذر الاستخراج من الرابط" : "Failed to parse");
-                              } finally {
-                                setIsParsing(false);
-                              }
-                            }}
-                            className="font-bold text-xs sm:text-sm shadow-gold cursor-pointer"
-                          >
-                            {isParsing ? <RefreshCw className="w-4 h-4 animate-spin" /> : t("adminExtractBtn")}
-                          </Button>
+                        {/* Input row with smart paste & clear buttons */}
+                        <div className="space-y-2">
+                          <div className="relative flex items-center">
+                            <div className="absolute start-3 text-gray-400 pointer-events-none">
+                              <Link2 className="w-4 h-4" />
+                            </div>
+
+                            <input
+                              type="url"
+                              value={urlInput}
+                              onChange={e => {
+                                const val = e.target.value;
+                                setUrlInput(val);
+                                // Auto detect type if URL contains distinctive keywords
+                                const lower = val.toLowerCase();
+                                if (
+                                  lower.includes("burslari") ||
+                                  lower.includes("scholarship") ||
+                                  lower.includes("daad") ||
+                                  lower.includes("chevening") ||
+                                  lower.includes("fulbright") ||
+                                  lower.includes("university") ||
+                                  lower.includes("edu")
+                                ) {
+                                  setUrlType("scholarship");
+                                } else if (
+                                  lower.includes("job") ||
+                                  lower.includes("career") ||
+                                  lower.includes("remote") ||
+                                  lower.includes("weworkremotely") ||
+                                  lower.includes("upwork") ||
+                                  lower.includes("freelance") ||
+                                  lower.includes("linkedin.com/jobs")
+                                ) {
+                                  setUrlType("job");
+                                }
+                              }}
+                              placeholder="https://turkiyeburslari.gov.tr or https://daad.de..."
+                              className={`w-full ps-9 pe-20 py-2.5 rounded-xl bg-background border text-white text-xs sm:text-sm focus:border-primary outline-none transition-all ${
+                                urlDuplicateResult.isDuplicate
+                                  ? "border-amber-500/60 focus:border-amber-400"
+                                  : urlInput.trim().length > 10
+                                  ? "border-emerald-500/50"
+                                  : "border-primary/30"
+                              }`}
+                              dir="ltr"
+                            />
+
+                            {/* Inside Input Action Buttons: Clear (X) & Paste from Clipboard */}
+                            <div className="absolute end-2 flex items-center gap-1">
+                              {urlInput && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setUrlInput("");
+                                    setParsedPreview(null);
+                                    toast.info(isRtl ? "تم مسح الرابط" : "URL cleared");
+                                  }}
+                                  title={isRtl ? "مسح الرابط الحالي" : "Clear current URL"}
+                                  className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  try {
+                                    const text = await navigator.clipboard.readText();
+                                    if (text && (text.startsWith("http://") || text.startsWith("https://") || text.includes("."))) {
+                                      const trimmed = text.trim();
+                                      setUrlInput(trimmed);
+                                      setParsedPreview(null);
+
+                                      // Auto-detect type
+                                      const lower = trimmed.toLowerCase();
+                                      if (
+                                        lower.includes("burslari") ||
+                                        lower.includes("scholarship") ||
+                                        lower.includes("daad") ||
+                                        lower.includes("chevening") ||
+                                        lower.includes("fulbright") ||
+                                        lower.includes("university") ||
+                                        lower.includes("edu")
+                                      ) {
+                                        setUrlType("scholarship");
+                                      } else if (
+                                        lower.includes("job") ||
+                                        lower.includes("career") ||
+                                        lower.includes("remote") ||
+                                        lower.includes("weworkremotely") ||
+                                        lower.includes("upwork") ||
+                                        lower.includes("freelance") ||
+                                        lower.includes("linkedin.com/jobs")
+                                      ) {
+                                        setUrlType("job");
+                                      }
+
+                                      toast.success(isRtl ? "تم سحب ولصق الرابط من الحافظة تلقائياً!" : "Pasted URL from clipboard!");
+                                    } else {
+                                      toast.warning(isRtl ? "الحافظة لا تحتوي على رابط صالح" : "Clipboard does not contain a valid URL");
+                                    }
+                                  } catch {
+                                    toast.error(
+                                      isRtl
+                                        ? "يرجى السماح بصلاحية قراءة الحافظة أو لصق الرابط يدوياً"
+                                        : "Clipboard access denied. Please paste manually."
+                                    );
+                                  }
+                                }}
+                                title={isRtl ? "سحب ولصق الرابط المنسوخ تلقائياً" : "Paste copied URL automatically"}
+                                className="px-2 py-1 rounded-lg text-[11px] font-bold bg-primary/15 border border-primary/30 text-primary hover:bg-primary/25 transition-all cursor-pointer flex items-center gap-1"
+                              >
+                                <Copy className="w-3 h-3" />
+                                <span className="hidden sm:inline">{isRtl ? "لصق" : "Paste"}</span>
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="flex justify-end">
+                            <Button
+                              variant="luxe"
+                              disabled={isParsing || !urlInput.trim()}
+                              onClick={async () => {
+                                if (urlDuplicateResult.isDuplicate) {
+                                  toast.warning(
+                                    isRtl
+                                      ? `⚠️ تنبيه: هذا الرابط مسجل مسبقاً! جاري المتابعة بناءً على طلبك...`
+                                      : `⚠️ Warning: URL already exists. Parsing anyway...`
+                                  );
+                                }
+                                setIsParsing(true);
+                                try {
+                                  const parsed = await dynamicStore.parseFromUrl(urlInput, urlType);
+                                  setParsedPreview(parsed);
+                                  toast.success(isRtl ? "تم استخراج ومعالجة بيانات الرابط بنجاح" : "Parsed successfully");
+                                } catch {
+                                  toast.error(isRtl ? "تعذر الاستخراج من الرابط" : "Failed to parse");
+                                } finally {
+                                  setIsParsing(false);
+                                }
+                              }}
+                              className="font-bold text-xs sm:text-sm shadow-gold cursor-pointer w-full sm:w-auto px-6 h-10"
+                            >
+                              {isParsing ? <RefreshCw className="w-4 h-4 animate-spin" /> : (
+                                <span className="flex items-center gap-1.5">
+                                  <Sparkles className="w-4 h-4" />
+                                  <span>{t("adminExtractBtn")}</span>
+                                </span>
+                              )}
+                            </Button>
+                          </div>
                         </div>
+
+                        {/* Real-time URL Duplicate & Integrity Notice */}
+                        <UrlDuplicateNotice
+                          urlInput={urlInput}
+                          urlType={urlType}
+                          duplicateItem={urlDuplicateResult.matchedItem}
+                          confidence={urlDuplicateResult.confidence}
+                          reasonAr={urlDuplicateResult.reasonAr}
+                          reasonEn={urlDuplicateResult.reasonEn}
+                          isRtl={isRtl}
+                          onNavigateToExisting={(item, type) => {
+                            if (type === "scholarship") {
+                              setEditingScholarship(item);
+                              setActiveTab("scholarships");
+                              setMobileViewPane("detail");
+                            } else {
+                              setEditingJob(item);
+                              setActiveTab("jobs");
+                              setMobileViewPane("detail");
+                            }
+                            toast.info(
+                              isRtl
+                                ? `تم الانتقال مباشرة للعنصر المسجل: "${item.title_ar || item.title}"`
+                                : `Navigated to registered item: "${item.titleEn || item.title}"`
+                            );
+                          }}
+                        />
                       </div>
                     </div>
 
                     {parsedPreview && (
                       <div className="p-5 rounded-2xl bg-card/80 border-2 border-emerald-500/40 space-y-4">
-                        <div className="flex items-center justify-between border-b border-emerald-500/20 pb-3">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-emerald-500/20 pb-3">
                           <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
                             <CheckCircle2 className="w-4 h-4" />
                             {t("adminExtractedReady")}
                           </span>
-                          <Button
-                            variant="luxe"
-                            size="sm"
-                            onClick={() => {
-                              if (urlType === "scholarship") {
-                                dynamicStore.saveScholarship(parsedPreview);
-                              } else {
-                                dynamicStore.saveJob(parsedPreview);
-                              }
-                              toast.success(isRtl ? "تم النشر والتحديث في المنصة فوراً" : "Published successfully");
-                              setParsedPreview(null);
-                              setUrlInput("");
-                              setActiveTab(urlType === "scholarship" ? "scholarships" : "jobs");
-                            }}
-                            className="font-bold text-xs shadow-gold cursor-pointer"
-                          >
-                            {t("adminApprovePublishNow")}
-                          </Button>
+
+                          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                            {/* Cancel / Dismiss button */}
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setParsedPreview(null);
+                                toast.info(
+                                  isRtl
+                                    ? "تم إلغاء وتجاهل نتيجة الاستخراج"
+                                    : "Extracted result cancelled and dismissed"
+                                );
+                              }}
+                              className="border-red-500/30 text-red-400 hover:bg-red-500/15 hover:text-red-300 h-9 px-3 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1.5"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                              <span>{isRtl ? "إلغاء / تجاهل" : "Cancel & Dismiss"}</span>
+                            </Button>
+
+                            {/* Approve & Publish button */}
+                            <Button
+                              variant="luxe"
+                              size="sm"
+                              onClick={() => {
+                                if (urlType === "scholarship") {
+                                  dynamicStore.saveScholarship(parsedPreview);
+                                } else {
+                                  dynamicStore.saveJob(parsedPreview);
+                                }
+                                toast.success(isRtl ? "تم النشر والتحديث في المنصة فوراً" : "Published successfully");
+                                setParsedPreview(null);
+                                setUrlInput("");
+                                setActiveTab(urlType === "scholarship" ? "scholarships" : "jobs");
+                              }}
+                              className="font-bold text-xs shadow-gold cursor-pointer h-9 px-4 rounded-xl flex items-center gap-1.5"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              <span>{t("adminApprovePublishNow")}</span>
+                            </Button>
+                          </div>
                         </div>
 
                         <div className="space-y-2 text-xs sm:text-sm">
