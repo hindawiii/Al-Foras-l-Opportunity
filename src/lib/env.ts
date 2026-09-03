@@ -20,7 +20,4 @@ export const ENV = {
   SUPABASE_URL: read("VITE_SUPABASE_URL"),
   // Lovable Cloud names this PUBLISHABLE_KEY; we also accept ANON_KEY as alias.
   SUPABASE_ANON_KEY: read("VITE_SUPABASE_PUBLISHABLE_KEY") ?? read("VITE_SUPABASE_ANON_KEY"),
-  EXCHANGERATE_API_KEY: read("VITE_EXCHANGERATE_API_KEY"),
 } as const;
-
-export const hasExchangeRateKey = () => !!ENV.EXCHANGERATE_API_KEY;
