@@ -5,7 +5,6 @@ import { Award, Newspaper, Bookmark, User, Settings as SettingsIcon, Bell, Langu
 import { BrandMark } from "@/components/foras/Logo";
 import { SettingsSheet } from "@/components/foras/SettingsSheet";
 import { NotificationsSheet } from "@/components/foras/NotificationsSheet";
-import { AppWelcomeModal } from "@/components/foras/AppWelcomeModal";
 import { AIAdvisor } from "@/components/foras/AIAdvisor";
 import { UndoBanner } from "@/components/foras/UndoBanner";
 import { ScholarshipsTab } from "./ScholarshipsTab";
@@ -164,7 +163,6 @@ export const AppShell = () => {
 
       <SettingsSheet open={settingsOpen} onOpenChange={setSettingsOpen} />
       <NotificationsSheet open={notifOpen} onOpenChange={setNotifOpen} />
-      <AppWelcomeModal />
       <AIAdvisor />
       <UndoBanner />
     </div>
