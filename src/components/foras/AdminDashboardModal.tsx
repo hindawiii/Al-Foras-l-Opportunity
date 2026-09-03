@@ -21,6 +21,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { SecurityPasswordManager } from "@/components/foras/SecurityPasswordManager";
 import { StarMaskedInput } from "@/components/foras/StarMaskedInput";
+import { checkScholarshipDuplicate } from "@/lib/duplicateChecker";
+import { ScholarshipDuplicateBanner, QuickExistenceCheckerModal } from "@/components/foras/ScholarshipDuplicateGuard";
 
 export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
   const { lang, dir, t } = useLanguage();
@@ -265,6 +267,25 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
   const [editingScholarship, setEditingScholarship] = useState<Scholarship | null>(null);
   const [editingJob, setEditingJob] = useState<CustomJobItem | null>(null);
   const [editingMember, setEditingMember] = useState<AdminUser | null>(null);
+
+  // Duplicate Detection & Integrity Guard State
+  const [isQuickCheckerOpen, setIsQuickCheckerOpen] = useState(false);
+  const [duplicateOverriddenId, setDuplicateOverriddenId] = useState<string | null>(null);
+
+  // Live duplicate check for editingScholarship
+  const scholarshipDuplicateResult = useMemo(() => {
+    if (!editingScholarship) {
+      return {
+        isDuplicate: false,
+        matchType: "none" as const,
+        matchedItem: null,
+        confidence: 0,
+        reasonAr: "",
+        reasonEn: "",
+      };
+    }
+    return checkScholarshipDuplicate(editingScholarship, scholarships, editingScholarship.id);
+  }, [editingScholarship, scholarships]);
 
   // URL Parser State
   const [urlInput, setUrlInput] = useState("");
@@ -1191,6 +1212,19 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                  {activeTab === "scholarships" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsQuickCheckerOpen(true)}
+                      className="flex items-center gap-1.5 rounded-xl text-xs sm:text-sm font-bold border-primary/40 text-primary hover:bg-primary/10 cursor-pointer"
+                      title={isRtl ? "التحقق من وجود أو تكرار منحة قبل إضافتها" : "Check for duplicates"}
+                    >
+                      <ShieldCheck className="w-4 h-4 text-primary" />
+                      <span>{isRtl ? "فاحص التكرار" : "Duplicate Inspector"}</span>
+                    </Button>
+                  )}
+
                   {activeTab === "scholarships" && adminAuthStore.canUserPerform(currentUser, "create") && (
                     <Button
                       variant="luxe"
@@ -1435,6 +1469,14 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                                 variant="luxe"
                                 size="sm"
                                 onClick={() => {
+                                  if (scholarshipDuplicateResult.isDuplicate && duplicateOverriddenId !== editingScholarship.id) {
+                                    toast.error(
+                                      isRtl
+                                        ? `⚠️ تنبيه النزاهة: تم رصد منحة مطابقة مسبقاً (${scholarshipDuplicateResult.matchedItem?.title})! اضغط "تجاوز" في صندوق التنبيه لتأكيد الحفظ كمنحة منفصلة.`
+                                        : `⚠️ Duplicate detected! Click "Ignore" on the alert to save as separate.`
+                                    );
+                                    return;
+                                  }
                                   dynamicStore.saveScholarship(editingScholarship);
                                   toast.success(isRtl ? "تم الحفظ والنشر الفوري بنجاح" : "Saved & Published successfully");
                                 }}
@@ -1471,6 +1513,22 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
 
                           {/* Editor Tab Content */}
                           <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3.5 scrollbar-thin scrollbar-thumb-primary/20" dir={dir}>
+                            {/* Live Integrity & Duplicate Guard Banner */}
+                            <ScholarshipDuplicateBanner
+                              checkResult={scholarshipDuplicateResult}
+                              isRtl={isRtl}
+                              onSelectExisting={(matched) => {
+                                setEditingScholarship(matched);
+                                setDuplicateOverriddenId(null);
+                                toast.info(isRtl ? `تم الانتقال للمنحة المسجلة: "${matched.title}"` : `Switched to registered scholarship: "${matched.title}"`);
+                              }}
+                              onDismissOverride={() => {
+                                setDuplicateOverriddenId(editingScholarship.id);
+                                toast.warning(isRtl ? "تم تفعيل خيار التجاوز: يمكنك الحفظ كمنحة منفصلة الآن" : "Duplicate override enabled: You can save as separate listing");
+                              }}
+                              isOverridden={duplicateOverriddenId === editingScholarship.id}
+                            />
+
                             {activeEditorTab === "info" && (
                               <div className="space-y-3">
                                 <div>
@@ -3976,6 +4034,44 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
           </div>
         )}
       </AnimatePresence>
+
+      {/* Quick Existence & Duplicate Inspector Modal */}
+      <QuickExistenceCheckerModal
+        isOpen={isQuickCheckerOpen}
+        onClose={() => setIsQuickCheckerOpen(false)}
+        scholarships={scholarships}
+        isRtl={isRtl}
+        onSelectScholarship={(s) => {
+          setEditingScholarship(s);
+          setMobileViewPane("detail");
+          setActiveTab("scholarships");
+        }}
+        onCreateNewWithQuery={(q) => {
+          const isUrl = q.startsWith("http://") || q.startsWith("https://") || q.includes(".com") || q.includes(".org") || q.includes(".edu");
+          const newSch: any = {
+            id: `sch_${Date.now()}`,
+            title_ar: isUrl ? "منحة دراسية جديدة" : q,
+            title: isUrl ? "منحة دراسية جديدة" : q,
+            title_en: isUrl ? "New Scholarship" : q,
+            university: isRtl ? "جامعة دولية معتمدة" : "Accredited International University",
+            country: isRtl ? "عالمي" : "International",
+            flag: "🌍",
+            degree: "bachelor_master",
+            coverage: "full",
+            deadline: new Date(Date.now() + 45 * 86400000).toISOString().split("T")[0],
+            majors: ["الهندسة والتقنية", "الطب والعلوم"],
+            apply_url: isUrl ? q : "https://example.com",
+            official_website: isUrl ? q : "https://example.com",
+            description_ar: "تفاصيل وشروط التقديم والتمويل للمنحة.",
+            description_en: "Scholarship description and details.",
+            benefits_ar: ["إعفاء كامل من المصروفات", "راتب شهري", "سكن مجاني"],
+            benefits_en: ["Full tuition waiver", "Monthly stipend"],
+          };
+          setEditingScholarship(newSch);
+          setMobileViewPane("detail");
+          setActiveTab("scholarships");
+        }}
+      />
     </div>
   );
 
