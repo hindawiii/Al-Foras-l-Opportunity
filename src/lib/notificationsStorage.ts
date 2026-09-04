@@ -1,6 +1,6 @@
 import { guestStorage } from "./guestStorage";
 import { applicationsStore } from "./applicationsStorage";
-import { SCHOLARSHIPS } from "./mockData";
+import { dynamicStore } from "./dynamicStore";
 
 export type NotifKind = "deadline" | "match" | "status" | "news";
 
@@ -18,6 +18,7 @@ export interface AppNotification {
 
 const READ_KEY = "notifRead";
 const DISMISSED_KEY = "notifDismissed";
+const PERSISTENT_EVENTS_KEY = "forasPersistentNotifs";
 
 const daysLeft = (deadline?: string): number | null => {
   if (!deadline) return null;
@@ -26,18 +27,37 @@ const daysLeft = (deadline?: string): number | null => {
   return Math.ceil((d - Date.now()) / 86_400_000);
 };
 
-/** Builds the live notification feed from real local data with full automatic translation support */
+export const getPersistentNotifs = (): AppNotification[] => {
+  return guestStorage.get<AppNotification[]>(PERSISTENT_EVENTS_KEY, []) ?? [];
+};
+
+export const addPersistentNotif = (notif: AppNotification) => {
+  const current = getPersistentNotifs();
+  const filtered = current.filter((n) => n.id !== notif.id);
+  guestStorage.set(PERSISTENT_EVENTS_KEY, [notif, ...filtered].slice(0, 30));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("foras:notifications-updated"));
+  }
+};
+
+/** Builds the live notification feed from real application data with full automatic translation support */
 export const buildNotifications = (lang: "ar" | "en" = "ar"): AppNotification[] => {
   const out: AppNotification[] = [];
   const apps = applicationsStore.all();
   const ar = lang === "ar";
+  const allScholarships = dynamicStore.getScholarships();
+  const allJobs = dynamicStore.getJobs();
 
-  // 1) Deadline reminders for saved / applied items
+  // 0) Add persistent real notifications (e.g. published scholarships/jobs from admin)
+  const persistent = getPersistentNotifs();
+  out.push(...persistent);
+
+  // 1) Real deadline reminders for saved / applied items
   apps.forEach((a) => {
     const dl = daysLeft(a.deadline);
     if (dl === null) return;
 
-    const orig = SCHOLARSHIPS.find((s) => s.id === a.id);
+    const orig = allScholarships.find((s) => s.id === a.id);
     const itemTitle = ar ? (a.title || orig?.title || "") : (orig?.titleEn || a.title || "");
 
     if (dl < 0) {
@@ -74,12 +94,12 @@ export const buildNotifications = (lang: "ar" | "en" = "ar"): AppNotification[] 
     }
   });
 
-  // 2) Status follow-ups
+  // 2) Status follow-ups on applied items
   apps
     .filter((a) => a.status === "applied")
     .slice(0, 3)
     .forEach((a) => {
-      const orig = SCHOLARSHIPS.find((s) => s.id === a.id);
+      const orig = allScholarships.find((s) => s.id === a.id);
       const itemTitle = ar ? (a.title || orig?.title || "") : (orig?.titleEn || a.title || "");
 
       out.push({
@@ -96,12 +116,12 @@ export const buildNotifications = (lang: "ar" | "en" = "ar"): AppNotification[] 
       });
     });
 
-  // 3) Recommended matching scholarships not saved yet
+  // 3) Real top scholarships from dynamic store not yet saved
   const savedIds = new Set(apps.map((a) => a.id));
-  SCHOLARSHIPS.filter((s) => !savedIds.has(s.id))
+  allScholarships
+    .filter((s) => !savedIds.has(s.id))
     .slice(0, 3)
     .forEach((s, i) => {
-      const deterministicOffset = (i + 1) * 3_600_000;
       const sTitle = ar ? s.title : (s.titleEn || s.title);
       const sCountry = ar ? s.country : (s.countryEn || s.country || "");
       const sOrg = ar ? s.org : (s.orgEn || s.org || "");
@@ -109,16 +129,45 @@ export const buildNotifications = (lang: "ar" | "en" = "ar"): AppNotification[] 
       out.push({
         id: `mt-${s.id}`,
         kind: "match",
-        title: ar ? "منحة مميزة تطابق ملفك الأكاديمي" : "Opportunity Matching Your Profile",
-        titleEn: "Opportunity Matching Your Profile",
+        title: ar ? "منحة مميزة متاحة للتقديم" : "Featured Opportunity Open for Application",
+        titleEn: "Featured Opportunity Open for Application",
         body: `${sTitle} — ${sCountry} ${sOrg ? `• ${sOrg}` : ""}`.trim(),
         bodyEn: `${s.titleEn || s.title} — ${s.countryEn || s.country || ""}`,
-        ts: Date.parse(s.deadline || "2026-01-01") || (1700000000000 + deterministicOffset),
+        ts: Date.now() - (i + 1) * 3_600_000,
         actionTab: "scholarships",
       });
     });
 
-  return out.sort((a, b) => b.ts - a.ts).slice(0, 20);
+  // 4) Real remote jobs from dynamic store
+  allJobs
+    .slice(0, 2)
+    .forEach((j, i) => {
+      const jTitle = ar ? (j.title_ar || j.title) : (j.title_en || j.title);
+      const jComp = j.company || (ar ? "شركة دولية" : "Global Company");
+      const jSalary = j.salary ? `• ${j.salary}` : "";
+
+      out.push({
+        id: `job-${j.id}`,
+        kind: "news",
+        title: ar ? "فرصة عمل عن بُعد بالدولار" : "Remote USD Job Opportunity",
+        titleEn: "Remote USD Job Opportunity",
+        body: `${jTitle} — ${jComp} ${jSalary}`.trim(),
+        bodyEn: `${j.title_en || j.title} — ${jComp} ${jSalary}`.trim(),
+        ts: Date.now() - (i + 2) * 7_200_000,
+        actionTab: "jobs",
+      });
+    });
+
+  // Deduplicate by ID and sort newest first
+  const seen = new Set<string>();
+  return out
+    .filter((item) => {
+      if (seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    })
+    .sort((a, b) => b.ts - a.ts)
+    .slice(0, 25);
 };
 
 const readIds = (): string[] => guestStorage.get<string[]>(READ_KEY, []) ?? [];
@@ -137,18 +186,40 @@ export const notificationsStore = {
   },
   markRead(id: string) {
     const cur = readIds();
-    if (!cur.includes(id)) guestStorage.set(READ_KEY, [...cur, id]);
+    if (!cur.includes(id)) {
+      guestStorage.set(READ_KEY, [...cur, id]);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("foras:notifications-updated"));
+      }
+    }
   },
   markAllRead(lang: "ar" | "en" = "ar") {
-    guestStorage.set(READ_KEY, buildNotifications(lang).map((n) => n.id));
+    const cur = readIds();
+    const allIds = buildNotifications(lang).map((n) => n.id);
+    const merged = Array.from(new Set([...cur, ...allIds]));
+    guestStorage.set(READ_KEY, merged);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("foras:notifications-updated"));
+    }
   },
   dismiss(id: string) {
     const cur = dismissedIds();
-    if (!cur.includes(id)) guestStorage.set(DISMISSED_KEY, [...cur, id]);
+    if (!cur.includes(id)) {
+      guestStorage.set(DISMISSED_KEY, [...cur, id]);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("foras:notifications-updated"));
+      }
+    }
   },
   clearAll(lang: "ar" | "en" = "ar") {
     const allIds = buildNotifications(lang).map((n) => n.id);
     guestStorage.set(DISMISSED_KEY, allIds);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("foras:notifications-updated"));
+    }
+  },
+  pushRealNotification(notif: AppNotification) {
+    addPersistentNotif(notif);
   },
 };
 

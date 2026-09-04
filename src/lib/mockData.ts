@@ -341,21 +341,26 @@ export const getInterestLabel = (idOrLabel: string, lang: "ar" | "en" = "ar"): s
 
 export const computeMatchScore = (
   s: Scholarship,
-  profile: { location?: string | null; skills?: string[] | null; interests?: string[] | null }
+  profile?: { location?: string | null; skills?: string[] | null; interests?: string[] | null } | null
 ): number => {
+  if (!s) return 50;
   let score = 50;
-  const loc = (profile.location || "").toLowerCase();
+  const loc = (profile?.location || "").toLowerCase();
   if (loc && s.country && (loc.includes(s.country.toLowerCase()) || s.country.toLowerCase().includes(loc))) score += 20;
-  const interests = profile.interests ?? [];
-  const matchInterests = s.interests.filter(i => {
+  const interests = Array.isArray(profile?.interests) ? profile.interests : [];
+  const sInterests = Array.isArray(s.interests) ? s.interests : (Array.isArray(s.tags) ? s.tags : []);
+  const matchInterests = sInterests.filter(i => {
+    if (!i) return false;
     return interests.some(userI => {
+      if (!userI) return false;
       const item = INTEREST_ITEMS.find(it => it.id === it.id);
       return userI === i || (item && (userI === item.labelEn || userI === item.labelAr));
     });
   }).length;
   score += Math.min(20, matchInterests * 10);
-  const skills = profile.skills ?? [];
-  const matchSkills = s.tags.filter(t => skills.some(sk => sk.toLowerCase().includes(t.toLowerCase()) || t.toLowerCase().includes(sk.toLowerCase()))).length;
+  const skills = Array.isArray(profile?.skills) ? profile.skills : [];
+  const sTags = Array.isArray(s.tags) ? s.tags : [];
+  const matchSkills = sTags.filter(t => t && skills.some(sk => sk && (sk.toLowerCase().includes(t.toLowerCase()) || t.toLowerCase().includes(sk.toLowerCase())))).length;
   score += Math.min(10, matchSkills * 5);
   return Math.min(99, Math.max(40, score));
 };

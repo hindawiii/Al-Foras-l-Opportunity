@@ -22,9 +22,12 @@ import { guestStorage } from "@/lib/guestStorage";
 import { profileExtras } from "@/lib/profileExtras";
 import { PrivacySecurityPage } from "@/components/foras/PrivacySecurityPage";
 import { AboutDialog } from "@/components/foras/AboutDialog";
-import { AdminDashboardModal } from "@/components/foras/AdminDashboardModal";
 
-interface Props { open: boolean; onOpenChange: (v: boolean) => void; }
+interface Props {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onOpenAdmin?: () => void;
+}
 
 const SUPPORTED_CURRENCIES = [
   { code: "SAR", symbol: "ر.س", nameAr: "ريال سعودي", nameEn: "Saudi Riyal", flag: "🇸🇦" },
@@ -44,14 +47,13 @@ const SUPPORTED_CURRENCIES = [
   { code: "IQD", symbol: "د.ع", nameAr: "دينار عراقي", nameEn: "Iraqi Dinar", flag: "🇮🇶" },
 ];
 
-export const SettingsSheet = ({ open, onOpenChange }: Props) => {
+export const SettingsSheet = ({ open, onOpenChange, onOpenAdmin }: Props) => {
   const { signOut, user } = useAuth();
   const { lang, dir, toggleLang, t } = useLanguage();
   const { textOnly, toggleTextOnly, localCurrency, setLocalCurrency } = useSettings();
   const nav = useNavigate();
   const [view, setView] = useState<"main" | "privacy">("main");
   const [aboutOpen, setAboutOpen] = useState(false);
-  const [adminOpen, setAdminOpen] = useState(false);
   const [currencyModalOpen, setCurrencyModalOpen] = useState(false);
   const [currencySearch, setCurrencySearch] = useState("");
   const isRtl = dir === "rtl";
@@ -324,7 +326,14 @@ export const SettingsSheet = ({ open, onOpenChange }: Props) => {
                   title={isRtl ? "لوحة تحكم الإدارة والتحديثات 👑" : "Admin & Management Portal 👑"}
                   description={t("settingsAdminDesc")}
                   alignClass={alignClass}
-                  onClick={() => setAdminOpen(true)}
+                  onClick={() => {
+                    onOpenChange(false);
+                    if (onOpenAdmin) {
+                      onOpenAdmin();
+                    } else {
+                      window.dispatchEvent(new CustomEvent("foras:open-admin"));
+                    }
+                  }}
                   highlighted
                   trailing={
                     <span className="text-[10px] font-bold text-primary bg-primary/20 border border-primary/40 px-2.5 py-1 rounded-full flex-shrink-0 shadow-sm">
@@ -499,7 +508,6 @@ export const SettingsSheet = ({ open, onOpenChange }: Props) => {
 
         <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} />
       </SheetContent>
-      <AdminDashboardModal isOpen={adminOpen} onClose={() => setAdminOpen(false)} />
     </Sheet>
   );
 };

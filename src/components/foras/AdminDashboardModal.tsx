@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Scholarship } from "@/lib/mockData";
-import { dynamicStore, CustomJobItem, ArchivedItem } from "@/lib/dynamicStore";
+import { dynamicStore, CustomJobItem, ArchivedItem, isArabCountry } from "@/lib/dynamicStore";
 import { adminAuthStore, AdminUser, AuditLog, PendingItem, AdminRole, LockoutState, UNIFIED_ADMIN_EMAIL } from "@/lib/adminAuthStore";
 import { ARAB_UNIVERSITIES, ARAB_COUNTRY_STATS } from "@/lib/arabUniversities";
 import { GLOBAL_COUNTRIES } from "@/lib/globalUniversities";
@@ -23,7 +23,8 @@ import { Button } from "@/components/ui/button";
 import { SecurityPasswordManager } from "@/components/foras/SecurityPasswordManager";
 import { StarMaskedInput } from "@/components/foras/StarMaskedInput";
 import { checkScholarshipDuplicate, checkJobDuplicate } from "@/lib/duplicateChecker";
-import { ScholarshipDuplicateBanner, QuickExistenceCheckerModal, UrlDuplicateNotice } from "@/components/foras/ScholarshipDuplicateGuard";
+import { ScholarshipDuplicateBanner, UrlDuplicateNotice } from "@/components/foras/ScholarshipDuplicateGuard";
+import { ExtractedOpportunityPreview } from "@/components/foras/ExtractedOpportunityPreview";
 
 export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
   const { lang, dir, t } = useLanguage();
@@ -270,7 +271,6 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
   const [editingMember, setEditingMember] = useState<AdminUser | null>(null);
 
   // Duplicate Detection & Integrity Guard State
-  const [isQuickCheckerOpen, setIsQuickCheckerOpen] = useState(false);
   const [duplicateOverriddenId, setDuplicateOverriddenId] = useState<string | null>(null);
 
   // Live duplicate check for editingScholarship
@@ -342,10 +342,24 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
 
   useEffect(() => {
     if (isOpen) {
+      if (typeof document !== "undefined") {
+        document.body.style.pointerEvents = "auto";
+      }
       loadData();
       setSelectedIds([]);
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
 
   useEffect(() => {
     const handleUpdates = () => loadData();
@@ -798,7 +812,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
     <div
       dir={dir}
       className="fixed inset-0 z-[999999] w-screen h-screen max-w-none max-h-none flex items-center justify-center p-0 bg-black/95 backdrop-blur-xl overflow-hidden"
-      style={{ width: "100vw", height: "100vh", position: "fixed", top: 0, left: 0, right: 0, bottom: 0 }}
+      style={{ width: "100vw", height: "100vh", position: "fixed", top: 0, left: 0, right: 0, bottom: 0, pointerEvents: "auto" }}
     >
       {/* Backdrop Click Dismiss */}
       <div className="fixed inset-0" onClick={onClose} />
@@ -1378,79 +1392,6 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                       dir={dir}
                     />
                   </div>
-                </div>
-
-                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                  {activeTab === "scholarships" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setIsQuickCheckerOpen(true)}
-                      className="flex items-center gap-1.5 rounded-xl text-xs sm:text-sm font-bold border-primary/40 text-primary hover:bg-primary/10 cursor-pointer"
-                      title={isRtl ? "التحقق من وجود أو تكرار منحة قبل إضافتها" : "Check for duplicates"}
-                    >
-                      <ShieldCheck className="w-4 h-4 text-primary" />
-                      <span>{isRtl ? "فاحص التكرار" : "Duplicate Inspector"}</span>
-                    </Button>
-                  )}
-
-                  {activeTab === "scholarships" && adminAuthStore.canUserPerform(currentUser, "create") && (
-                    <Button
-                      variant="luxe"
-                      size="sm"
-                      onClick={() =>
-                        setEditingScholarship({
-                          id: `sch_${Date.now()}`,
-                          title_ar: "منحة جديدة ممولة بالكامل",
-                          title_en: "New Fully Funded Scholarship",
-                          university: isRtl ? "جامعة دولية معتمدة" : "Accredited International University",
-                          country: isRtl ? "عالمي" : "International",
-                          flag: "🌍",
-                          degree: "bachelor_master",
-                          coverage: "full" as any,
-                          deadline: new Date(Date.now() + 45 * 86400000).toISOString().split("T")[0],
-                          majors: ["الهندسة والتقنية", "الطب والعلوم"],
-                          apply_url: "https://example.com",
-                          official_website: "https://example.com",
-                          description_ar: "وصف المنحة وتفاصيل الدعم المالي والرسوم والتذاكر.",
-                          description_en: "Scholarship description and financial coverage.",
-                          benefits_ar: ["إعفاء كامل من المصروفات", "راتب شهري", "سكن مجاني"],
-                          benefits_en: ["Full tuition waiver", "Monthly stipend"],
-                        })
-                      }
-                      className="flex items-center gap-1.5 rounded-xl text-xs sm:text-sm font-bold shadow-gold cursor-pointer"
-                    >
-                      <Plus className="w-4 h-4" />
-                      <span>{t("adminAddScholarship")}</span>
-                    </Button>
-                  )}
-
-                  {activeTab === "jobs" && adminAuthStore.canUserPerform(currentUser, "create") && (
-                    <Button
-                      variant="luxe"
-                      size="sm"
-                      onClick={() =>
-                        setEditingJob({
-                          id: `job_${Date.now()}`,
-                          title_ar: "وظيفة عمل حر جديدة بالدولار",
-                          title_en: "New Remote USD Job",
-                          company: "Global Tech Inc.",
-                          category: "tech",
-                          type: "remote_freelance",
-                          salary: "$2,000 - $3,500",
-                          apply_url: "https://example.com",
-                          description_ar: "تفاصيل العمل والمهام المطلوبة والراتب بالدولار.",
-                          description_en: "Job details and qualifications.",
-                          skills: ["React", "TypeScript", "UI/UX"],
-                          benefits_ar: ["دخل بالدولار", "ساعات عمل مرنة"],
-                        } as any)
-                      }
-                      className="flex items-center gap-1.5 rounded-xl text-xs sm:text-sm font-bold shadow-gold cursor-pointer"
-                    >
-                      <Plus className="w-4 h-4" />
-                      <span>{t("adminAddJob")}</span>
-                    </Button>
-                  )}
                 </div>
               </div>
 
@@ -2043,12 +1984,15 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                                     <input
                                       type="text"
                                       value={editingScholarship.country || ""}
-                                      onChange={(e) =>
+                                      onChange={(e) => {
+                                        const newCountry = e.target.value;
+                                        const isArab = isArabCountry(newCountry, (editingScholarship as any).title_ar || editingScholarship.title);
                                         setEditingScholarship({
                                           ...editingScholarship,
-                                          country: e.target.value,
-                                        })
-                                      }
+                                          country: newCountry,
+                                          category: isArab ? "arab" : "global",
+                                        });
+                                      }}
                                       className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs sm:text-sm text-white outline-none focus:border-primary"
                                       dir={dir}
                                     />
@@ -3327,7 +3271,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
 
                 {/* 4. AI URL Smart Parser */}
                 {activeTab === "url_parser" && (
-                  <div className="space-y-4 max-w-3xl mx-auto">
+                  <div className="h-full overflow-y-auto p-1 sm:p-2 space-y-4 max-w-3xl mx-auto scrollbar-thin scrollbar-thumb-primary/25 pb-24">
                     <div className="p-5 rounded-2xl bg-card border-2 border-primary/30">
                       <div className="flex items-center gap-3 mb-3">
                         <div className="w-10 h-10 rounded-xl bg-gold-gradient flex items-center justify-center shadow-gold">
@@ -3361,56 +3305,57 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                           </button>
                         </div>
 
-                        {/* Input row with smart paste & clear buttons */}
-                        <div className="space-y-2">
-                          <div className="relative flex items-center">
-                            <div className="absolute start-3 text-gray-400 pointer-events-none">
-                              <Link2 className="w-4 h-4" />
-                            </div>
-
-                            <input
-                              type="url"
-                              value={urlInput}
-                              onChange={e => {
-                                const val = e.target.value;
-                                setUrlInput(val);
-                                // Auto detect type if URL contains distinctive keywords
-                                const lower = val.toLowerCase();
-                                if (
-                                  lower.includes("burslari") ||
-                                  lower.includes("scholarship") ||
-                                  lower.includes("daad") ||
-                                  lower.includes("chevening") ||
-                                  lower.includes("fulbright") ||
-                                  lower.includes("university") ||
-                                  lower.includes("edu")
-                                ) {
-                                  setUrlType("scholarship");
-                                } else if (
-                                  lower.includes("job") ||
-                                  lower.includes("career") ||
-                                  lower.includes("remote") ||
-                                  lower.includes("weworkremotely") ||
-                                  lower.includes("upwork") ||
-                                  lower.includes("freelance") ||
-                                  lower.includes("linkedin.com/jobs")
-                                ) {
-                                  setUrlType("job");
+                        {/* URL Input Bar - Luxe Pro Responsive Architecture (Zero Collision) */}
+                        <div className="space-y-3">
+                          <div className="flex flex-col sm:flex-row items-stretch gap-2.5">
+                            {/* The URL input container with proper LTR / internal icon */}
+                            <div className={`relative flex-1 flex items-center rounded-xl bg-background/90 border transition-all h-11 px-3.5 ${
+                              urlDuplicateResult.isDuplicate
+                                ? "border-amber-500/60 focus-within:border-amber-400"
+                                : urlInput.trim().length > 10
+                                ? "border-emerald-500/50 focus-within:border-emerald-400"
+                                : "border-primary/30 focus-within:border-primary"
+                            }`}>
+                              <Link2 className="w-4 h-4 text-primary shrink-0 me-2.5" />
+                              <input
+                                type="url"
+                                value={urlInput}
+                                onChange={e => {
+                                  const val = e.target.value;
+                                  setUrlInput(val);
+                                  // Auto detect type if URL contains distinctive keywords
+                                  const lower = val.toLowerCase();
+                                  if (
+                                    lower.includes("burslari") ||
+                                    lower.includes("scholarship") ||
+                                    lower.includes("daad") ||
+                                    lower.includes("chevening") ||
+                                    lower.includes("fulbright") ||
+                                    lower.includes("university") ||
+                                    lower.includes("edu")
+                                  ) {
+                                    setUrlType("scholarship");
+                                  } else if (
+                                    lower.includes("job") ||
+                                    lower.includes("career") ||
+                                    lower.includes("remote") ||
+                                    lower.includes("weworkremotely") ||
+                                    lower.includes("upwork") ||
+                                    lower.includes("freelance") ||
+                                    lower.includes("linkedin.com/jobs")
+                                  ) {
+                                    setUrlType("job");
+                                  }
+                                }}
+                                placeholder={
+                                  urlType === "scholarship"
+                                    ? "https://turkiyeburslari.gov.tr أو https://for9a.com/opportunity..."
+                                    : "https://weworkremotely.com/jobs/..."
                                 }
-                              }}
-                              placeholder="https://turkiyeburslari.gov.tr or https://daad.de..."
-                              className={`w-full ps-9 pe-20 py-2.5 rounded-xl bg-background border text-white text-xs sm:text-sm focus:border-primary outline-none transition-all ${
-                                urlDuplicateResult.isDuplicate
-                                  ? "border-amber-500/60 focus:border-amber-400"
-                                  : urlInput.trim().length > 10
-                                  ? "border-emerald-500/50"
-                                  : "border-primary/30"
-                              }`}
-                              dir="ltr"
-                            />
+                                className="w-full bg-transparent text-white text-xs sm:text-sm outline-none placeholder:text-gray-500 font-mono tracking-tight"
+                                dir="ltr"
+                              />
 
-                            {/* Inside Input Action Buttons: Clear (X) & Paste from Clipboard */}
-                            <div className="absolute end-2 flex items-center gap-1">
                               {urlInput && (
                                 <button
                                   type="button"
@@ -3420,16 +3365,20 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                                     toast.info(isRtl ? "تم مسح الرابط" : "URL cleared");
                                   }}
                                   title={isRtl ? "مسح الرابط الحالي" : "Clear current URL"}
-                                  className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                                  className="ms-1.5 p-1 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors shrink-0 cursor-pointer"
                                 >
-                                  <X className="w-3.5 h-3.5" />
+                                  <X className="w-4 h-4" />
                                 </button>
                               )}
+                            </div>
 
-                              <button
-                                type="button"
-                                onClick={async () => {
-                                  try {
+                            {/* Actions Group: Smart Clipboard Paste Button */}
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                try {
+                                  // Attempt standard clipboard read
+                                  if (navigator.clipboard && navigator.clipboard.readText) {
                                     const text = await navigator.clipboard.readText();
                                     if (text && (text.startsWith("http://") || text.startsWith("https://") || text.includes("."))) {
                                       const trimmed = text.trim();
@@ -3461,27 +3410,62 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                                       }
 
                                       toast.success(isRtl ? "تم سحب ولصق الرابط من الحافظة تلقائياً!" : "Pasted URL from clipboard!");
-                                    } else {
+                                      return;
+                                    } else if (text && text.trim().length > 0) {
                                       toast.warning(isRtl ? "الحافظة لا تحتوي على رابط صالح" : "Clipboard does not contain a valid URL");
+                                      return;
                                     }
-                                  } catch {
-                                    toast.error(
-                                      isRtl
-                                        ? "يرجى السماح بصلاحية قراءة الحافظة أو لصق الرابط يدوياً"
-                                        : "Clipboard access denied. Please paste manually."
-                                    );
                                   }
-                                }}
-                                title={isRtl ? "سحب ولصق الرابط المنسوخ تلقائياً" : "Paste copied URL automatically"}
-                                className="px-2 py-1 rounded-lg text-[11px] font-bold bg-primary/15 border border-primary/30 text-primary hover:bg-primary/25 transition-all cursor-pointer flex items-center gap-1"
-                              >
-                                <Copy className="w-3 h-3" />
-                                <span className="hidden sm:inline">{isRtl ? "لصق" : "Paste"}</span>
-                              </button>
-                            </div>
+                                } catch {
+                                  // Browser security restriction (e.g. inside iframe sandbox without clipboard-read grant)
+                                }
+
+                                // Graceful Fallback: Prompt user politely or focus input directly
+                                const manualUrl = window.prompt(
+                                  isRtl
+                                    ? "متصفحك يفرض حماية على قراءة الحافظة المباشرة داخل الإطار. يرجى لصق الرابط (Ctrl+V أو Cmd+V) هنا:"
+                                    : "Browser sandbox blocks direct clipboard read. Please paste (Ctrl+V) the URL here:"
+                                );
+                                if (manualUrl && manualUrl.trim()) {
+                                  const trimmed = manualUrl.trim();
+                                  setUrlInput(trimmed);
+                                  setParsedPreview(null);
+                                  const lower = trimmed.toLowerCase();
+                                  if (
+                                    lower.includes("burslari") ||
+                                    lower.includes("scholarship") ||
+                                    lower.includes("daad") ||
+                                    lower.includes("chevening") ||
+                                    lower.includes("fulbright") ||
+                                    lower.includes("university") ||
+                                    lower.includes("edu")
+                                  ) {
+                                    setUrlType("scholarship");
+                                  } else if (
+                                    lower.includes("job") ||
+                                    lower.includes("career") ||
+                                    lower.includes("remote") ||
+                                    lower.includes("weworkremotely") ||
+                                    lower.includes("upwork") ||
+                                    lower.includes("freelance") ||
+                                    lower.includes("linkedin.com/jobs")
+                                  ) {
+                                    setUrlType("job");
+                                  }
+                                  toast.success(isRtl ? "تم اعتماد الرابط بنجاح!" : "URL pasted successfully!");
+                                } else {
+                                  toast.info(isRtl ? "يمكنك النقر مباشرة داخل حقل الرابط واستخدام اختصار اللصق (Ctrl+V)" : "You can click the URL input and press Ctrl+V to paste.");
+                                }
+                              }}
+                              title={isRtl ? "سحب ولصق الرابط المنسوخ تلقائياً" : "Paste copied URL automatically"}
+                              className="h-11 px-4 rounded-xl text-xs sm:text-sm font-bold bg-primary/15 border border-primary/30 text-primary hover:bg-primary/25 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 shrink-0 shadow-sm"
+                            >
+                              <Copy className="w-4 h-4" />
+                              <span>{isRtl ? "لصق الرابط" : "Paste Link"}</span>
+                            </button>
                           </div>
 
-                          <div className="flex justify-end">
+                          <div className="flex justify-end pt-1">
                             <Button
                               variant="luxe"
                               disabled={isParsing || !urlInput.trim()}
@@ -3498,16 +3482,24 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                                   const parsed = await dynamicStore.parseFromUrl(urlInput, urlType);
                                   setParsedPreview(parsed);
                                   toast.success(isRtl ? "تم استخراج ومعالجة بيانات الرابط بنجاح" : "Parsed successfully");
-                                } catch {
-                                  toast.error(isRtl ? "تعذر الاستخراج من الرابط" : "Failed to parse");
+                                } catch (err: any) {
+                                  toast.error(
+                                    err?.message || (isRtl ? "تعذر الاستخراج من الرابط" : "Failed to parse"),
+                                    { duration: 6000 }
+                                  );
                                 } finally {
                                   setIsParsing(false);
                                 }
                               }}
-                              className="font-bold text-xs sm:text-sm shadow-gold cursor-pointer w-full sm:w-auto px-6 h-10"
+                              className="font-bold text-xs sm:text-sm shadow-gold cursor-pointer w-full sm:w-auto px-6 h-11 rounded-xl"
                             >
-                              {isParsing ? <RefreshCw className="w-4 h-4 animate-spin" /> : (
-                                <span className="flex items-center gap-1.5">
+                              {isParsing ? (
+                                <span className="flex items-center gap-2">
+                                  <RefreshCw className="w-4 h-4 animate-spin" />
+                                  <span>{isRtl ? "جاري الاستخراج والتدقيق..." : "Extracting..."}</span>
+                                </span>
+                              ) : (
+                                <span className="flex items-center gap-2">
                                   <Sparkles className="w-4 h-4" />
                                   <span>{t("adminExtractBtn")}</span>
                                 </span>
@@ -3546,66 +3538,38 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                     </div>
 
                     {parsedPreview && (
-                      <div className="p-5 rounded-2xl bg-card/80 border-2 border-emerald-500/40 space-y-4">
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-emerald-500/20 pb-3">
-                          <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
-                            <CheckCircle2 className="w-4 h-4" />
-                            {t("adminExtractedReady")}
-                          </span>
-
-                          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                            {/* Cancel / Dismiss button */}
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setParsedPreview(null);
-                                toast.info(
-                                  isRtl
-                                    ? "تم إلغاء وتجاهل نتيجة الاستخراج"
-                                    : "Extracted result cancelled and dismissed"
-                                );
-                              }}
-                              className="border-red-500/30 text-red-400 hover:bg-red-500/15 hover:text-red-300 h-9 px-3 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1.5"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                              <span>{isRtl ? "إلغاء / تجاهل" : "Cancel & Dismiss"}</span>
-                            </Button>
-
-                            {/* Approve & Publish button */}
-                            <Button
-                              variant="luxe"
-                              size="sm"
-                              onClick={() => {
-                                if (urlType === "scholarship") {
-                                  dynamicStore.saveScholarship(parsedPreview);
-                                } else {
-                                  dynamicStore.saveJob(parsedPreview);
-                                }
-                                toast.success(isRtl ? "تم النشر والتحديث في المنصة فوراً" : "Published successfully");
-                                setParsedPreview(null);
-                                setUrlInput("");
-                                setActiveTab(urlType === "scholarship" ? "scholarships" : "jobs");
-                              }}
-                              className="font-bold text-xs shadow-gold cursor-pointer h-9 px-4 rounded-xl flex items-center gap-1.5"
-                            >
-                              <Check className="w-3.5 h-3.5" />
-                              <span>{t("adminApprovePublishNow")}</span>
-                            </Button>
-                          </div>
-                        </div>
-
-                        <div className="space-y-2 text-xs sm:text-sm">
-                          <h4 className="font-bold text-white text-base">{parsedPreview.title_ar || parsedPreview.title}</h4>
-                          <p className="text-gray-300">{parsedPreview.description_ar}</p>
-                          <div className="flex gap-2 flex-wrap text-primary">
-                            <span>{parsedPreview.country}</span>
-                            <span>•</span>
-                            <span>{parsedPreview.stipend || parsedPreview.salary}</span>
-                          </div>
-                        </div>
-                      </div>
+                      <ExtractedOpportunityPreview
+                        data={parsedPreview}
+                        type={urlType}
+                        isRtl={isRtl}
+                        onApprove={(approvedData) => {
+                          if (urlType === "scholarship") {
+                            dynamicStore.saveScholarship(approvedData);
+                            setScholarshipCategoryFilter("all");
+                            setScholarshipSearchQuery("");
+                          } else {
+                            dynamicStore.saveJob(approvedData);
+                            setJobCategoryFilter("all");
+                            setJobSearchQuery("");
+                          }
+                          toast.success(
+                            isRtl
+                              ? `تم اعتماد ونشر "${approvedData.title_ar || approvedData.title}" بنجاح!`
+                              : `Published "${approvedData.title_en || approvedData.title}" successfully!`
+                          );
+                          setParsedPreview(null);
+                          setUrlInput("");
+                          setActiveTab(urlType === "scholarship" ? "scholarships" : "jobs");
+                        }}
+                        onCancel={() => {
+                          setParsedPreview(null);
+                          toast.info(
+                            isRtl
+                              ? "تم إلغاء وتجاهل نتيجة الاستخراج"
+                              : "Extracted result cancelled and dismissed"
+                          );
+                        }}
+                      />
                     )}
                   </div>
                 )}
@@ -4678,44 +4642,6 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
           </div>
         )}
       </AnimatePresence>
-
-      {/* Quick Existence & Duplicate Inspector Modal */}
-      <QuickExistenceCheckerModal
-        isOpen={isQuickCheckerOpen}
-        onClose={() => setIsQuickCheckerOpen(false)}
-        scholarships={scholarships}
-        isRtl={isRtl}
-        onSelectScholarship={(s) => {
-          setEditingScholarship(s);
-          setMobileViewPane("detail");
-          setActiveTab("scholarships");
-        }}
-        onCreateNewWithQuery={(q) => {
-          const isUrl = q.startsWith("http://") || q.startsWith("https://") || q.includes(".com") || q.includes(".org") || q.includes(".edu");
-          const newSch: any = {
-            id: `sch_${Date.now()}`,
-            title_ar: isUrl ? "منحة دراسية جديدة" : q,
-            title: isUrl ? "منحة دراسية جديدة" : q,
-            title_en: isUrl ? "New Scholarship" : q,
-            university: isRtl ? "جامعة دولية معتمدة" : "Accredited International University",
-            country: isRtl ? "عالمي" : "International",
-            flag: "🌍",
-            degree: "bachelor_master",
-            coverage: "full",
-            deadline: new Date(Date.now() + 45 * 86400000).toISOString().split("T")[0],
-            majors: ["الهندسة والتقنية", "الطب والعلوم"],
-            apply_url: isUrl ? q : "https://example.com",
-            official_website: isUrl ? q : "https://example.com",
-            description_ar: "تفاصيل وشروط التقديم والتمويل للمنحة.",
-            description_en: "Scholarship description and details.",
-            benefits_ar: ["إعفاء كامل من المصروفات", "راتب شهري", "سكن مجاني"],
-            benefits_en: ["Full tuition waiver", "Monthly stipend"],
-          };
-          setEditingScholarship(newSch);
-          setMobileViewPane("detail");
-          setActiveTab("scholarships");
-        }}
-      />
     </div>
   );
 

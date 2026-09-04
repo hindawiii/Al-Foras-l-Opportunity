@@ -209,7 +209,7 @@ export const ScholarshipCard = ({ scholarship, onSwipe, onTap, active, index, ma
             <span className="inline-flex items-center gap-1 text-[11px] bg-background/60 border border-primary/30 text-primary px-2.5 py-1 rounded-full font-medium">
               <Languages className="w-3 h-3" /> {t("studyLanguage")}: {studyLangLabel}
             </span>
-            {scholarship.tags.map((tag) => (
+            {(scholarship.tags || []).map((tag) => (
               <span
                 key={tag}
                 className="text-[11px] bg-primary/10 border border-primary/20 text-primary px-2.5 py-1 rounded-full"

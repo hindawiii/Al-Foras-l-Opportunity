@@ -4,11 +4,13 @@ import {
   Search, Briefcase, Globe, ExternalLink, Sparkles, Filter, Clock,
   DollarSign, CheckCircle2, ShieldAlert, Award, Star, ArrowRight, ArrowLeft,
   BookOpen, HelpCircle, ChevronDown, ChevronUp, MapPin, Building2,
-  TrendingUp, Wallet, Check, AlertCircle, Share2, Layers, RefreshCw
+  TrendingUp, Wallet, Check, AlertCircle, Share2, Layers, RefreshCw,
+  ShieldCheck, Info, FileText
 } from "lucide-react";
 import { JOBS, JOB_CATEGORIES, REGIONS_LIST, Job, JobCategory, JobRegion } from "@/lib/jobsData";
 import { dynamicStore } from "@/lib/dynamicStore";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { nativeShare } from "@/lib/share";
@@ -24,10 +26,12 @@ export const JobsTab = () => {
   const [selectedRegion, setSelectedRegion] = useState<JobRegion>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [eligibilityModalJob, setEligibilityModalJob] = useState<Job | null>(null);
   const [activeTab, setActiveTab] = useState<"overview" | "guide" | "stories" | "payment">("overview");
 
   const convertCustomJobs = (custom: any[]): Job[] => {
-    return custom.map(c => ({
+    if (!Array.isArray(custom)) return [];
+    return custom.filter(Boolean).map(c => ({
       id: c.id,
       title: c.title_ar || "فرصة عمل عن بعد",
       titleEn: c.title_en || c.title_ar,
@@ -68,8 +72,8 @@ export const JobsTab = () => {
         trustLevel: "موثوقة ومحققة",
         trustLevelEn: "Verified Platform",
       },
-      skills: (c.skills && c.skills.length > 0) ? c.skills : ["مهارات تقنية", "التزام بالعمل"],
-      skillsEn: (c.skills && c.skills.length > 0) ? c.skills : ["Technical Skills", "Work Commitment"],
+      skills: (Array.isArray(c.skills) && c.skills.length > 0) ? c.skills : ["مهارات تقنية", "التزام بالعمل"],
+      skillsEn: (Array.isArray(c.skills) && c.skills.length > 0) ? c.skills : ["Technical Skills", "Work Commitment"],
       description: c.description_ar || "تفاصيل فرصة العمل والمهام المطلوبة من المتقدم.",
       descriptionEn: c.description_en || c.description_ar,
       requirements: (c as any).requirements_ar || ["مهارات مهنية مناسبة", "الالتزام بالمواعيد والجودة"],
@@ -92,12 +96,23 @@ export const JobsTab = () => {
         estimatedTime: "5 - 10 دقائق",
         estimatedTimeEn: "5 - 10 mins",
       },
-      pros: (c.benefits_ar && c.benefits_ar.length > 0) ? c.benefits_ar : ["مرونة العمل من أي مكان", "دخل بالدولار الأمريكي"],
+      pros: (Array.isArray(c.benefits_ar) && c.benefits_ar.length > 0) ? c.benefits_ar : ["مرونة العمل من أي مكان", "دخل بالدولار الأمريكي"],
       prosEn: ["100% Remote flexibility", "USD compensation"],
       cons: ["تتطلب إدارة ذاتية للوقت والمهام"],
       consEn: ["Requires self time management"],
-      successStories: [],
+      successStories: Array.isArray(c.successStories) ? c.successStories : [],
       isVerified: true,
+      eligibility: c.eligibility || {
+        type: "global_remote",
+        badgeAr: "🌐 متاح للعمل عن بُعد",
+        badgeEn: "🌐 Remote Eligible",
+        reasonAr: "فرصة عمل عن بُعد متاحة للتقديم الرقمي للمؤهلين بدون قيود جغرافية.",
+        reasonEn: "Remote position open for qualified applicants worldwide.",
+        proofSourceUrl: c.apply_url || "https://example.com",
+        proofSourceNameAr: "بوابة التقديم الرسمية للوظيفة",
+        proofSourceNameEn: "Official Job Portal",
+        targetCountries: ["GLOBAL"]
+      },
       dateAdded: (c as any).posted_date || new Date().toISOString().split("T")[0],
       contact: { website: c.apply_url || "https://example.com" },
       ...((c as any).custom_fields ? { custom_fields: (c as any).custom_fields } : {}),
@@ -112,11 +127,17 @@ export const JobsTab = () => {
   });
 
   useEffect(() => {
-    const handleUpdate = () => {
+    const handleUpdate = (e: any) => {
       const custom = dynamicStore.getJobs();
       const converted = convertCustomJobs(custom);
       const customIds = new Set(converted.map(j => j.id));
       setLiveJobs([...converted, ...JOBS.filter(j => !customIds.has(j.id))]);
+
+      // If a new job was published, reset filter to 'all' so it is guaranteed to be visible at the very top
+      if (e?.detail?.type === "job") {
+        setSelectedCategory("all");
+        setSelectedRegion("all");
+      }
     };
     window.addEventListener("foras:data-updated", handleUpdate);
     return () => window.removeEventListener("foras:data-updated", handleUpdate);
@@ -124,7 +145,9 @@ export const JobsTab = () => {
 
   // Filtering based on category, region, and search query
   const filteredJobs = useMemo(() => {
-    return liveJobs.filter((job) => {
+    const safeJobs = Array.isArray(liveJobs) ? liveJobs : [];
+    return safeJobs.filter((job) => {
+      if (!job) return false;
       // Category filter
       if (selectedCategory !== "all" && job.category !== selectedCategory) {
         return false;
@@ -139,11 +162,11 @@ export const JobsTab = () => {
       // Search query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
-        const titleMatch = job.title.toLowerCase().includes(q) || (job.titleEn && job.titleEn.toLowerCase().includes(q));
-        const companyMatch = job.company.toLowerCase().includes(q);
-        const descMatch = job.description.toLowerCase().includes(q) || (job.descriptionEn && job.descriptionEn.toLowerCase().includes(q));
-        const skillMatch = job.skills.some(s => s.toLowerCase().includes(q)) || (job.skillsEn && job.skillsEn.some(s => s.toLowerCase().includes(q)));
-        return titleMatch || companyMatch || descMatch || skillMatch;
+        const titleMatch = (job.title || "").toLowerCase().includes(q) || (job.titleEn && job.titleEn.toLowerCase().includes(q));
+        const companyMatch = (job.company || "").toLowerCase().includes(q);
+        const descMatch = (job.description || "").toLowerCase().includes(q) || (job.descriptionEn && job.descriptionEn.toLowerCase().includes(q));
+        const skillMatch = (job.skills || []).some(s => s && s.toLowerCase().includes(q)) || (job.skillsEn && job.skillsEn.some(s => s && s.toLowerCase().includes(q)));
+        return Boolean(titleMatch || companyMatch || descMatch || skillMatch);
       }
       return true;
     });
@@ -290,9 +313,32 @@ export const JobsTab = () => {
                   {title}
                 </h4>
 
-                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 mb-3">
+                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 mb-2.5">
                   {desc}
                 </p>
+
+                {/* Smart Eligibility Badge */}
+                {job.eligibility && (
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEligibilityModalJob(job);
+                    }}
+                    className="mb-2.5 px-2.5 py-1.5 rounded-xl bg-primary/10 hover:bg-primary/20 border border-primary/30 hover:border-primary/50 transition-all flex items-center justify-between gap-2 group/badge cursor-pointer"
+                    title={ar ? "انقر لعرض الدليل والمصدر الرسمي للإتاحة" : "Click to view official eligibility proof"}
+                  >
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <ShieldCheck className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                      <span className="text-[11px] font-bold text-foreground truncate">
+                        {ar ? job.eligibility.badgeAr : (job.eligibility.badgeEn || job.eligibility.badgeAr)}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-primary group-hover/badge:underline flex items-center gap-0.5 flex-shrink-0 font-medium">
+                      <span>{ar ? "الدليل والسبب" : "Proof & Reason"}</span>
+                      <Info className="w-3 h-3" />
+                    </span>
+                  </div>
+                )}
 
                 {/* Skills tags */}
                 <div className="flex flex-wrap gap-1 mb-3">
@@ -404,6 +450,45 @@ export const JobsTab = () => {
               {/* TAB 1: OVERVIEW */}
               {activeTab === "overview" && (
                 <div className="space-y-4">
+                  {/* Smart Eligibility & Verified Proof Section */}
+                  {selectedJob.eligibility && (
+                    <div className="bg-primary/10 border border-primary/30 rounded-2xl p-4 space-y-2.5 shadow-sm">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <ShieldCheck className="w-4 h-4 text-primary" />
+                          <span className="text-xs font-bold text-primary">
+                            {ar ? "وسام الإتاحة والتحقق الذكي لبلدك" : "Smart Eligibility & Regional Verification"}
+                          </span>
+                        </div>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/20 text-primary border border-primary/30">
+                          ✓ {ar ? "مفحوص وموثق" : "Verified"}
+                        </span>
+                      </div>
+                      <p className="text-xs font-bold text-foreground">
+                        {ar ? selectedJob.eligibility.badgeAr : (selectedJob.eligibility.badgeEn || selectedJob.eligibility.badgeAr)}
+                      </p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        {ar ? selectedJob.eligibility.reasonAr : (selectedJob.eligibility.reasonEn || selectedJob.eligibility.reasonAr)}
+                      </p>
+                      {selectedJob.eligibility.proofSourceUrl && (
+                        <div className="pt-2 border-t border-primary/20 flex items-center justify-between flex-wrap gap-2">
+                          <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                            📜 {ar ? "المصدر الرسمي والإثبات:" : "Official Proof Source:"}
+                          </span>
+                          <a
+                            href={selectedJob.eligibility.proofSourceUrl}
+                            target="_blank"
+                            rel="noopener noreferrer external"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 text-xs font-bold transition-all hover:scale-[1.02]"
+                          >
+                            <span>{ar ? selectedJob.eligibility.proofSourceNameAr : (selectedJob.eligibility.proofSourceNameEn || "المصدر الرسمي")}</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div className="bg-card-gradient border border-border rounded-2xl p-4 leading-relaxed text-sm text-foreground">
                     <p>{ar ? selectedJob.description : (selectedJob.descriptionEn || selectedJob.description)}</p>
                   </div>
@@ -555,10 +640,18 @@ export const JobsTab = () => {
                 <div className="space-y-3">
                   {selectedJob.successStories.length > 0 ? (
                     selectedJob.successStories.map((st, i) => (
-                      <div key={i} className="bg-card-gradient border border-border rounded-2xl p-4 space-y-2">
+                      <div key={i} className="bg-card-gradient border border-border rounded-2xl p-4 space-y-2.5">
                         <div className="flex items-center justify-between">
                           <div>
-                            <h4 className="font-bold text-sm text-foreground">{ar ? st.name : (st.nameEn || st.name)}</h4>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <h4 className="font-bold text-sm text-foreground">{ar ? st.name : (st.nameEn || st.name)}</h4>
+                              {st.verified && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/20 text-[10px] font-bold">
+                                  <ShieldCheck className="w-3 h-3 text-blue-400" />
+                                  <span>{ar ? "حساب موثق 100%" : "Verified Profile"}</span>
+                                </span>
+                              )}
+                            </div>
                             <p className="text-[10px] text-muted-foreground">{ar ? st.city : (st.cityEn || st.city)}</p>
                           </div>
                           {st.earnings && (
@@ -570,6 +663,23 @@ export const JobsTab = () => {
                         <p className="text-xs text-foreground/90 leading-relaxed italic">
                           "{ar ? st.story : (st.storyEn || st.story)}"
                         </p>
+                        {st.profileUrl && (
+                          <div className="pt-2 border-t border-border/60 flex items-center justify-between flex-wrap gap-2">
+                            <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                              🔗 {ar ? "إثبات الهوية والتحقق من الشخصية:" : "Identity verification proof:"}
+                            </span>
+                            <a
+                              href={st.profileUrl}
+                              target="_blank"
+                              rel="noopener noreferrer external"
+                              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-blue-600/15 hover:bg-blue-600/25 text-blue-400 border border-blue-500/30 text-xs font-bold transition-all hover:scale-[1.02]"
+                            >
+                              <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+                              <span>{st.profileType === "linkedin" ? (ar ? "رابط الملف على LinkedIn" : "LinkedIn Profile") : (ar ? "رابط الملف الشخصي للتأكد" : "Verify Profile Link")}</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          </div>
+                        )}
                       </div>
                     ))
                   ) : (
@@ -604,6 +714,85 @@ export const JobsTab = () => {
           )}
         </SheetContent>
       </Sheet>
+
+      {/* Smart Eligibility & Verified Proof Dialog */}
+      <Dialog open={!!eligibilityModalJob} onOpenChange={(open) => !open && setEligibilityModalJob(null)}>
+        <DialogContent className={`max-w-md w-full bg-card border border-primary/30 p-5 rounded-3xl ${alignClass}`}>
+          {eligibilityModalJob && (
+            <div className="space-y-4">
+              <DialogHeader className={alignClass}>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-2xl">{eligibilityModalJob.emoji}</span>
+                  <DialogTitle className="text-base font-bold text-foreground">
+                    {ar ? `وسام التحقق الذكي: ${eligibilityModalJob.company}` : `Smart Eligibility: ${eligibilityModalJob.company}`}
+                  </DialogTitle>
+                </div>
+                <DialogDescription className="text-xs text-muted-foreground">
+                  {ar ? "دليل الجاهزية والشرعية والقبول حسب الدولة والمنطقة" : "Official eligibility, legality, and country availability proof"}
+                </DialogDescription>
+              </DialogHeader>
+
+              {/* Badge highlight */}
+              <div className="p-3 rounded-2xl bg-primary/10 border border-primary/30 flex items-center gap-2.5">
+                <ShieldCheck className="w-5 h-5 text-primary flex-shrink-0" />
+                <span className="text-sm font-bold text-foreground">
+                  {ar ? eligibilityModalJob.eligibility?.badgeAr : (eligibilityModalJob.eligibility?.badgeEn || eligibilityModalJob.eligibility?.badgeAr)}
+                </span>
+              </div>
+
+              {/* Detailed Reason & Analysis */}
+              <div className="space-y-1.5 bg-background/50 border border-border rounded-2xl p-3.5">
+                <h4 className="text-xs font-bold text-primary flex items-center gap-1.5">
+                  <Info className="w-3.5 h-3.5" />
+                  {ar ? "لماذا المنصة متاحة أو معتمدة لبلدك؟" : "Why is this platform eligible for your country?"}
+                </h4>
+                <p className="text-xs text-foreground/90 leading-relaxed">
+                  {ar ? eligibilityModalJob.eligibility?.reasonAr : (eligibilityModalJob.eligibility?.reasonEn || eligibilityModalJob.eligibility?.reasonAr)}
+                </p>
+              </div>
+
+              {/* Official Proof & Source Document */}
+              {eligibilityModalJob.eligibility?.proofSourceUrl && (
+                <div className="p-3 rounded-2xl bg-card border border-primary/30 space-y-2">
+                  <p className="text-[11px] font-semibold text-muted-foreground">
+                    {ar ? "📜 الدليل والمصدر الرسمي للتحقق المباشر:" : "📜 Official source proof for direct verification:"}
+                  </p>
+                  <Button asChild variant="luxe" size="sm" className="w-full">
+                    <a
+                      href={eligibilityModalJob.eligibility.proofSourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer external"
+                      className="flex items-center justify-center gap-2"
+                    >
+                      <span>{ar ? eligibilityModalJob.eligibility.proofSourceNameAr : (eligibilityModalJob.eligibility.proofSourceNameEn || "المصدر الرسمي")}</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  </Button>
+                </div>
+              )}
+
+              {/* Payout Channels Guarantee */}
+              <div className="p-3 rounded-2xl bg-background/40 border border-border text-xs space-y-1">
+                <span className="font-bold text-foreground block">
+                  {ar ? "💳 طرق سحب الأرباح المعتمدة:" : "💳 Supported Cashout Methods:"}
+                </span>
+                <p className="text-[11px] text-muted-foreground">
+                  {eligibilityModalJob.withdrawal.methods.map(m => ar ? m.name : (m.nameEn || m.name)).join(" • ")}
+                </p>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => setEligibilityModalJob(null)}
+              >
+                {ar ? "إغلاق" : "Close"}
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

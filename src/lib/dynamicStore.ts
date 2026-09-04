@@ -5,6 +5,7 @@
 import { Scholarship, SCHOLARSHIPS } from "./mockData";
 import { Job, JOBS } from "./jobsData";
 import { adminAuthStore, AdminUser } from "./adminAuthStore";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface CustomJobItem {
   id: string;
@@ -21,6 +22,8 @@ export interface CustomJobItem {
   skills: string[];
   benefits_ar?: string[];
   verified?: boolean;
+  eligibility?: any;
+  successStories?: any[];
 }
 
 export interface ArchivedItem {
@@ -48,6 +51,23 @@ export interface CustomDataState {
   archived: ArchivedItem[];
 }
 
+export const ARAB_COUNTRIES = [
+  "قطر", "السعودية", "الإمارات", "مصر", "السودان", "الأردن", "الكويت",
+  "عمان", "سلطنة عمان", "البحرين", "المغرب", "تونس", "الجزائر", "العراق",
+  "لبنان", "سوريا", "اليمن", "فلسطين", "ليبيا", "موريتانيا", "الصومال",
+  "جيبوتي", "جزر القمر", "qatar", "saudi", "emirates", "uae", "egypt",
+  "sudan", "jordan", "kuwait", "oman", "bahrain", "morocco", "tunisia",
+  "algeria", "iraq", "lebanon", "syria", "yemen", "palestine", "libya",
+  "mauritania", "somalia", "djibouti", "comoros"
+];
+
+export function isArabCountry(countryName?: string, titleName?: string): boolean {
+  if (!countryName && !titleName) return false;
+  const c = (countryName || "").toLowerCase();
+  const t = (titleName || "").toLowerCase();
+  return ARAB_COUNTRIES.some(name => c.includes(name) || t.includes(name));
+}
+
 export const dynamicStore = {
   // Get all scholarships (Base built-in + Admin custom, minus deleted/archived)
   getScholarships(): Scholarship[] {
@@ -55,39 +75,196 @@ export const dynamicStore = {
     try {
       const customRaw = localStorage.getItem(SCHOLARSHIPS_STORAGE_KEY);
       const deletedRaw = localStorage.getItem(DELETED_IDS_KEY);
-      const custom: Scholarship[] = customRaw ? JSON.parse(customRaw) : [];
-      const deleted: string[] = deletedRaw ? JSON.parse(deletedRaw) : [];
+      const parsedCustom = customRaw ? JSON.parse(customRaw) : [];
+      const parsedDeleted = deletedRaw ? JSON.parse(deletedRaw) : [];
+      const custom: Scholarship[] = Array.isArray(parsedCustom) ? parsedCustom : [];
+      const deleted: string[] = Array.isArray(parsedDeleted) ? parsedDeleted : [];
 
-      const baseFiltered = SCHOLARSHIPS.filter(s => !deleted.includes(s.id));
-      // Merge: Custom ones on top
-      const customFiltered = custom.filter(s => !deleted.includes(s.id));
+      const normalizeSch = (s: any): Scholarship => {
+        const detectedCat: "arab" | "global" =
+          s.category === "arab" || s.category === "global"
+            ? s.category
+            : isArabCountry(s.country, s.title || s.title_ar)
+            ? "arab"
+            : "global";
+
+        return {
+          id: s.id,
+          title: s.title || s.title_ar || "منحة دراسية معتمدة",
+          titleEn: s.titleEn || s.title_en || s.title || "Scholarship Opportunity",
+          org: s.org || s.university || "جامعة معتمدة",
+          country: s.country || "دولي",
+          countryEn: s.countryEn || s.country || "International",
+          flag: s.flag || (detectedCat === "arab" ? "🏛️" : "🌍"),
+          coverage: s.coverage || "full",
+          category: detectedCat,
+          amount: s.amount || s.stipend || (s.coverage === "full" ? "ممولة بالكامل" : "تمويل جزئي"),
+          level: s.level || s.degree || "بكالوريوس / ماجستير",
+          deadline: s.deadline || new Date().toISOString().split("T")[0],
+          tags: Array.isArray(s.tags) && s.tags.length > 0 ? s.tags : (Array.isArray(s.majors) && s.majors.length > 0 ? s.majors : ["منح"]),
+          interests: Array.isArray(s.interests) ? s.interests : (Array.isArray(s.tags) ? s.tags : []),
+          description: s.description || s.description_ar || "",
+          descriptionEn: s.descriptionEn || s.description_en || "",
+          url: s.url || s.apply_url || s.official_website || "#",
+          is_featured: Boolean(s.is_featured),
+          views_count: s.views_count || 0,
+          ...s,
+          category: detectedCat,
+        };
+      };
+
+      const baseFiltered = SCHOLARSHIPS.filter(s => s && s.id && !deleted.includes(s.id)).map(normalizeSch);
+      const customFiltered = custom.filter(s => s && s.id && !deleted.includes(s.id)).map(normalizeSch);
       
       const customIds = new Set(customFiltered.map(s => s.id));
       const result = [...customFiltered, ...baseFiltered.filter(s => !customIds.has(s.id))];
       return result.length > 0 ? result : SCHOLARSHIPS;
-    } catch {
+    } catch (e) {
+      console.warn("dynamicStore getScholarships error, returning default SCHOLARSHIPS:", e);
       return SCHOLARSHIPS;
     }
   },
 
-  // Save or update a scholarship
+  // Cloud sync initialization from Supabase
+  async syncWithCloud(): Promise<void> {
+    if (typeof window === "undefined") return;
+    try {
+      // 1. Fetch scholarships from Supabase
+      const { data: cloudSch, error: schErr } = await (supabase as any)
+        .from("scholarships")
+        .select("*");
+      if (!schErr && Array.isArray(cloudSch) && cloudSch.length > 0) {
+        const customRaw = localStorage.getItem(SCHOLARSHIPS_STORAGE_KEY);
+        const parsed = customRaw ? JSON.parse(customRaw) : [];
+        const localList: Scholarship[] = Array.isArray(parsed) ? parsed : [];
+        const localMap = new Map(localList.filter(s => s && s.id).map(s => [s.id, s]));
+        
+        cloudSch.forEach((item: any) => {
+          if (item && item.id) {
+            const normalized: Scholarship = {
+              id: item.id,
+              title: item.title_ar || item.title || "منحة دراسية معتمدة",
+              titleEn: item.title_en || item.titleEn || "Scholarship Opportunity",
+              org: item.university || item.org || "جامعة معتمدة",
+              country: item.country || "دولي",
+              flag: item.flag || "🌍",
+              coverage: item.coverage || "full",
+              category: item.category || "global",
+              deadline: item.deadline || new Date().toISOString().split("T")[0],
+              tags: Array.isArray(item.majors) && item.majors.length > 0 ? item.majors : (Array.isArray(item.tags) ? item.tags : ["منح"]),
+              description: item.description_ar || item.description || "",
+              descriptionEn: item.description_en || item.descriptionEn || "",
+              url: item.apply_url || item.url || "#",
+              is_featured: Boolean(item.is_featured),
+              views_count: item.views_count || 0,
+              ...(item as any),
+            };
+            localMap.set(item.id, normalized);
+          }
+        });
+        const merged = Array.from(localMap.values());
+        localStorage.setItem(SCHOLARSHIPS_STORAGE_KEY, JSON.stringify(merged));
+        window.dispatchEvent(new CustomEvent("foras:data-updated", { detail: { type: "scholarship" } }));
+      }
+
+      // 2. Fetch jobs from Supabase
+      const { data: cloudJobs, error: jobsErr } = await (supabase as any)
+        .from("jobs")
+        .select("*");
+      if (!jobsErr && Array.isArray(cloudJobs) && cloudJobs.length > 0) {
+        const customRaw = localStorage.getItem(JOBS_STORAGE_KEY);
+        const parsed = customRaw ? JSON.parse(customRaw) : [];
+        const localList: CustomJobItem[] = Array.isArray(parsed) ? parsed : [];
+        const localMap = new Map(localList.filter(j => j && j.id).map(j => [j.id, j]));
+        cloudJobs.forEach((item: any) => {
+          if (item && item.id) {
+            localMap.set(item.id, item);
+          }
+        });
+        const merged = Array.from(localMap.values());
+        localStorage.setItem(JOBS_STORAGE_KEY, JSON.stringify(merged));
+        window.dispatchEvent(new CustomEvent("foras:data-updated", { detail: { type: "job" } }));
+      }
+    } catch (e) {
+      console.info("Supabase sync standby:", e);
+    }
+  },
+
+  // Save or update a scholarship (Local + Cloud Supabase)
   saveScholarship(item: Scholarship): void {
     if (typeof window === "undefined") return;
     try {
+      const detectedCat: "arab" | "global" =
+        item.category === "arab" || item.category === "global"
+          ? item.category
+          : isArabCountry(item.country, item.title || (item as any).title_ar)
+          ? "arab"
+          : "global";
+
+      const normalized: Scholarship = {
+        ...item,
+        category: detectedCat,
+        title: item.title || (item as any).title_ar || "منحة دراسية معتمدة",
+        titleEn: item.titleEn || (item as any).title_en || item.title || "Scholarship Opportunity",
+        org: item.org || (item as any).university || "جامعة معتمدة",
+        country: item.country || "دولي",
+        flag: item.flag || (detectedCat === "arab" ? "🏛️" : "🌍"),
+        amount: item.amount || (item as any).stipend || (item.coverage === "full" ? "ممولة بالكامل" : "تمويل جزئي"),
+        level: item.level || (item as any).degree || "بكالوريوس / ماجستير",
+        url: item.url || (item as any).apply_url || (item as any).official_website || "#",
+        tags: Array.isArray(item.tags) && item.tags.length > 0 ? item.tags : (Array.isArray((item as any).majors) && (item as any).majors.length > 0 ? (item as any).majors : ["منح"]),
+        interests: Array.isArray(item.interests) ? item.interests : (Array.isArray(item.tags) ? item.tags : []),
+      };
+
       const customRaw = localStorage.getItem(SCHOLARSHIPS_STORAGE_KEY);
       const list: Scholarship[] = customRaw ? JSON.parse(customRaw) : [];
       
-      const existingIdx = list.findIndex(s => s.id === item.id);
+      const existingIdx = list.findIndex(s => s.id === normalized.id);
       if (existingIdx >= 0) {
-        list[existingIdx] = item;
+        list[existingIdx] = normalized;
       } else {
-        list.unshift(item);
+        list.unshift(normalized);
       }
       localStorage.setItem(SCHOLARSHIPS_STORAGE_KEY, JSON.stringify(list));
       
       // If previously deleted or archived, un-delete it
-      this.undeleteItem(item.id);
-      window.dispatchEvent(new CustomEvent("foras:data-updated", { detail: { type: "scholarship" } }));
+      this.undeleteItem(normalized.id);
+      window.dispatchEvent(new CustomEvent("foras:data-updated", { detail: { type: "scholarship", item: normalized } }));
+
+      // Asynchronously upsert to Supabase
+      try {
+        (supabase as any)
+          .from("scholarships")
+          .upsert({
+            id: normalized.id,
+            title_ar: normalized.title_ar || normalized.title,
+            title_en: normalized.title_en || normalized.titleEn,
+            university: normalized.university || normalized.org,
+            country: normalized.country,
+            flag: normalized.flag || "🌍",
+            degree: (normalized as any).degree || normalized.level || "bachelor_master",
+            coverage: normalized.coverage || "full",
+            category: normalized.category,
+            deadline: normalized.deadline,
+            majors: (normalized as any).majors || normalized.tags || [],
+            apply_url: (normalized as any).apply_url || normalized.url,
+            official_website: (normalized as any).official_website,
+            stipend: (normalized as any).stipend || normalized.amount,
+            description_ar: (normalized as any).description_ar || normalized.description,
+            description_en: (normalized as any).description_en || normalized.descriptionEn,
+            benefits_ar: (normalized as any).benefits_ar || [],
+            benefits_en: (normalized as any).benefits_en || [],
+            requirements_ar: (normalized as any).requirements_ar || [],
+            requirements_en: (normalized as any).requirements_en || [],
+            is_featured: normalized.is_featured ?? false,
+            views_count: normalized.views_count ?? 0,
+          })
+          .then(({ error }: any) => {
+            if (error) console.info("Supabase scholarship upsert note:", error.message);
+          });
+      } catch (cloudErr) {
+        console.info("Supabase direct write skipped:", cloudErr);
+      }
     } catch (e) {
       console.error("Failed to save scholarship", e);
     }
@@ -107,7 +284,7 @@ export const dynamicStore = {
     }
   },
 
-  // Save or update a job
+  // Save or update a job (Local + Cloud Supabase)
   saveJob(job: CustomJobItem): void {
     if (typeof window === "undefined") return;
     try {
@@ -122,6 +299,38 @@ export const dynamicStore = {
       localStorage.setItem(JOBS_STORAGE_KEY, JSON.stringify(list));
       this.undeleteItem(job.id);
       window.dispatchEvent(new CustomEvent("foras:data-updated", { detail: { type: "job" } }));
+
+      // Asynchronously upsert to Supabase
+      try {
+        (supabase as any)
+          .from("jobs")
+          .upsert({
+            id: job.id,
+            title_ar: job.title_ar,
+            title_en: job.title_en,
+            company: job.company,
+            location: job.location,
+            salary: job.salary,
+            category: job.category || "tech",
+            type: (job as any).type || "remote_fulltime",
+            country: (job as any).country || "عن بعد / Global Remote",
+            flag: (job as any).flag || "💻",
+            deadline: job.deadline,
+            apply_url: job.apply_url,
+            company_url: (job as any).company_url,
+            skills: job.skills || [],
+            benefits_ar: job.benefits_ar || [],
+            description_ar: job.description_ar,
+            description_en: job.description_en,
+            verified: job.verified ?? true,
+            featured: (job as any).featured ?? false,
+          })
+          .then(({ error }: any) => {
+            if (error) console.info("Supabase job upsert note:", error.message);
+          });
+      } catch (cloudErr) {
+        console.info("Supabase direct write skipped:", cloudErr);
+      }
     } catch (e) {
       console.error("Failed to save job", e);
     }
@@ -467,95 +676,31 @@ export const dynamicStore = {
     window.dispatchEvent(new CustomEvent("foras:archive-updated"));
   },
 
-  // AI URL Smart Parser simulation (extracts structure from official links)
+  // Real AI-Powered URL Extractor via backend API
   async parseFromUrl(url: string, type: "scholarship" | "job"): Promise<Partial<Scholarship> | Partial<CustomJobItem>> {
-    await new Promise(r => setTimeout(r, 1200)); // Smooth processing simulation
-    const domain = url.replace(/^(?:https?:\/\/)?(?:www\.)?/i, "").split("/")[0].toLowerCase();
-    
-    if (type === "scholarship") {
-      let country = "دولي / International";
-      let titleAr = "منحة دراسية ممولة بالكامل";
-      let titleEn = "Fully Funded Academic Scholarship";
-      const coverage = "full";
-      let stipend = "$1,200/month";
+    try {
+      const response = await fetch("/api/parse-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url, type }),
+      });
 
-      if (domain.includes("turkiye") || domain.includes("gov.tr")) {
-        country = "تركيا";
-        titleAr = "منحة الحكومة التركية الرسمية (Türkiye Bursları)";
-        titleEn = "Official Türkiye Scholarships Program";
-        stipend = "2,500 - 4,000 TRY + سكن مجاني وتذاكر";
-      } else if (domain.includes("saudi") || domain.includes("moe.gov.sa")) {
-        country = "السعودية";
-        titleAr = "منح الجامعات السعودية للطلاب الدوليين";
-        titleEn = "Study in Saudi Official Scholarships";
-        stipend = "1,000 - 2,500 SAR + تأمين وسكن";
-      } else if (domain.includes("daad.de")) {
-        country = "ألمانيا";
-        titleAr = "منحة الهيئة الألمانية للتبادل الأكاديمي (DAAD)";
-        titleEn = "DAAD Scholarship Program Germany";
-        stipend = "934 - 1,300 EUR/month";
-      } else if (domain.includes("chevening.org")) {
-        country = "المملكة المتحدة";
-        titleAr = "منحة تشيفنينغ البريطانية للقادة";
-        titleEn = "Chevening UK Leadership Scholarship";
-        stipend = "£1,400/month + Full Tuition";
-      } else if (domain.includes("fulbright")) {
-        country = "الولايات المتحدة";
-        titleAr = "منحة فولبرايت للتبادل التعليمي (Fulbright)";
-        titleEn = "Fulbright Foreign Student Program";
-        stipend = "Full Coverage + Health & Flights";
+      const result = await response.json();
+
+      if (!response.ok || result.isValid === false) {
+        throw new Error(result.reason || result.error || "تعذر استخراج بيانات صالحة من هذا الرابط");
       }
 
-      return {
-        id: `sch_${Date.now()}`,
-        title_ar: titleAr,
-        title_en: titleEn,
-        university: "Official Accredited University",
-        country,
-        flag: "🌍",
-        degree: "bachelor_master",
-        coverage: coverage as any,
-        deadline: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-        majors: ["الهندسة والتقنية", "العلوم الطبية والصحية", "إدارة الأعمال والاقتصاد", "الذكاء الاصطناعي"],
-        apply_url: url,
-        official_website: url,
-        is_featured: true,
-        stipend,
-        description_ar: `منحة رسمية معتمدة وممولة بالكامل تم استخراج بياناتها آلياً من الرابط (${domain}) وتتضمن تغطية الرسوم الدراسية وراتباً شهرياً وتأميناً شاملاً.`,
-        description_en: `Official accredited fully funded opportunity auto-parsed from (${domain}). Covers full tuition, monthly stipend, and health insurance.`,
-        benefits_ar: ["إعفاء 100% من المصروفات الدراسية", "راتب شهري منتظم طوال فترة الدراسة", "سكن جامعي مؤثث مجاناً", "تأمين صحي وتذاكر سفر سنوية"],
-        benefits_en: ["100% Tuition fee waiver", "Monthly living allowance stipend", "Free furnished student accommodation", "Full health insurance & flights"],
-        requirements_ar: ["ألا يقل معدل الشهادة السابقة عن 75%", "جواز سفر ساري المفعول", "خطاب دافع متقن وسيرة ذاتية حديثة"],
-        requirements_en: ["Minimum 75% academic grade", "Valid passport", "Tailored motivation letter & updated CV"],
-      };
-    }
+      if (result.isValid && result.data) {
+        return {
+          id: `${type === "scholarship" ? "sch" : "job"}_${Date.now()}`,
+          ...result.data,
+        };
+      }
 
-    // Job Parsing
-    return {
-      id: `job_${Date.now()}`,
-      title_ar: "فرصة عمل تقنية عن بعد",
-      title_en: "Remote Professional Position",
-      company: domain.split(".")[0].toUpperCase() || "Global Remote Inc.",
-      category: "tech",
-      type: "remote_fulltime",
-      country: "عن بعد / Global Remote",
-      flag: "💻",
-      salary: "$1,800 - $3,500 / month",
-      verified: true,
-      featured: true,
-      posted_date: new Date().toISOString().split("T")[0],
-      deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-      apply_url: url,
-      company_url: url,
-      experience_level: "mid",
-      description_ar: `وظيفة عن بعد تم استخراج تفاصيلها وتوثيقها رسمياً من منصة (${domain}) للعمل مع فريق عالمي براتب تنافسي ومواعيد مرنة.`,
-      description_en: `Remote role officially parsed and verified from (${domain}). Flexible work hours with international compensation.`,
-      tags: ["Remote", "Full-time", "USD Salary", "Verified"],
-      skills: ["Problem Solving", "Communication", "Technical Excellence"],
-      benefits_ar: ["راتب شهري بالدولار الأمريكي", "ساعات عمل مرنة بالكامل", "تأمين صحي وبدل أجهزة حاسوب"],
-      benefits_en: ["USD Monthly Salary", "100% Remote Flexibility", "Equipment & Health Allowance"],
-      requirements_ar: ["خبرة عملية لا تقل عن سنتين", "إجادة أساسيات اللغة الإنجليزية في التواصل", "التزام بمواعيد تسليم المشاريع"],
-      requirements_en: ["2+ years relevant experience", "Working English proficiency", "Reliable delivery and ownership"],
-    };
+      throw new Error("الرابط المدخل لا يحتوي على بيانات فرصة معتمدة");
+    } catch (e: any) {
+      throw new Error(e.message || "فشل الاتصال بمستخرج الروابط الذكي");
+    }
   }
 };

@@ -7,6 +7,7 @@ import { SettingsSheet } from "@/components/foras/SettingsSheet";
 import { NotificationsSheet } from "@/components/foras/NotificationsSheet";
 import { AIAdvisor } from "@/components/foras/AIAdvisor";
 import { UndoBanner } from "@/components/foras/UndoBanner";
+import { AdminDashboardModal } from "@/components/foras/AdminDashboardModal";
 import { ScholarshipsTab } from "./ScholarshipsTab";
 import { EconomyNewsTab } from "./EconomyNewsTab";
 import { ApplicationsTab } from "./ApplicationsTab";
@@ -38,6 +39,7 @@ export const AppShell = () => {
   const [tab, setTab] = useState<typeof tabs[number]["id"]>(validInitial);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   const Active = tabs.find(t => t.id === tab)!.comp;
   useLiveNotifications();
@@ -67,9 +69,13 @@ export const AppShell = () => {
   }, []);
 
   useEffect(() => {
-    const refresh = () => setUnread(notificationsStore.unreadCount());
+    const refresh = () => setUnread(notificationsStore.unreadCount(lang));
     refresh();
-    const id = window.setInterval(refresh, 30_000);
+    const id = window.setInterval(refresh, 20_000);
+
+    const onNotifsUpdated = () => refresh();
+    window.addEventListener("foras:notifications-updated", onNotifsUpdated);
+    window.addEventListener("foras:data-updated", onNotifsUpdated);
 
     const onAdminAlert = (e: Event) => {
       const detail = (e as CustomEvent).detail;
@@ -84,9 +90,20 @@ export const AppShell = () => {
 
     return () => {
       window.clearInterval(id);
+      window.removeEventListener("foras:notifications-updated", onNotifsUpdated);
+      window.removeEventListener("foras:data-updated", onNotifsUpdated);
       window.removeEventListener("foras:admin-alert", onAdminAlert as EventListener);
     };
   }, [notifOpen, tab, lang]);
+
+  useEffect(() => {
+    const handleOpenAdmin = () => {
+      setSettingsOpen(false);
+      setAdminOpen(true);
+    };
+    window.addEventListener("foras:open-admin", handleOpenAdmin);
+    return () => window.removeEventListener("foras:open-admin", handleOpenAdmin);
+  }, []);
 
   return (
     <div className="min-h-screen bg-background relative">
@@ -161,10 +178,27 @@ export const AppShell = () => {
         </div>
       </nav>
 
-      <SettingsSheet open={settingsOpen} onOpenChange={setSettingsOpen} />
-      <NotificationsSheet open={notifOpen} onOpenChange={setNotifOpen} />
+      <SettingsSheet
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        onOpenAdmin={() => {
+          setSettingsOpen(false);
+          setAdminOpen(true);
+        }}
+      />
+      <NotificationsSheet
+        open={notifOpen}
+        onOpenChange={(v) => {
+          setNotifOpen(v);
+          if (!v) {
+            notificationsStore.markAllRead(lang);
+            setUnread(0);
+          }
+        }}
+      />
       <AIAdvisor />
       <UndoBanner />
+      <AdminDashboardModal isOpen={adminOpen} onClose={() => setAdminOpen(false)} />
     </div>
   );
 };

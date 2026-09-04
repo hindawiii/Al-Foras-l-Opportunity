@@ -35,17 +35,35 @@ export const NotificationsSheet = ({ open, onOpenChange }: Props) => {
   const [items, setItems] = useState(() => notificationsStore.list(lang));
 
   useEffect(() => {
-    if (open) setItems(notificationsStore.list(lang));
+    if (open) {
+      setItems(notificationsStore.list(lang));
+    }
   }, [open, lang]);
 
+  useEffect(() => {
+    const handleUpdate = () => {
+      setItems(notificationsStore.list(lang));
+    };
+    window.addEventListener("foras:notifications-updated", handleUpdate);
+    return () => window.removeEventListener("foras:notifications-updated", handleUpdate);
+  }, [lang]);
+
   const unread = items.filter((n) => !n.read).length;
+
+  const handleOpenChange = (v: boolean) => {
+    if (!v) {
+      // Exiting the notifications drawer: mark all read so the counter disappears
+      notificationsStore.markAllRead(lang);
+    }
+    onOpenChange(v);
+  };
 
   const goTab = (n: (typeof items)[number]) => {
     notificationsStore.markRead(n.id);
     setItems(notificationsStore.list(lang));
     if (n.actionTab) {
       window.dispatchEvent(new CustomEvent("foras:navigate", { detail: { tab: n.actionTab } }));
-      onOpenChange(false);
+      handleOpenChange(false);
     }
   };
 
@@ -60,7 +78,7 @@ export const NotificationsSheet = ({ open, onOpenChange }: Props) => {
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetContent
         side={isRtl ? "left" : "right"}
         className="bg-card border-gold/30 w-[92%] sm:max-w-md overflow-y-auto"

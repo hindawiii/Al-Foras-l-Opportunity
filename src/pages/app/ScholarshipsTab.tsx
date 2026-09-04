@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { ScholarshipCard } from "@/components/foras/ScholarshipCard";
 import { SCHOLARSHIPS, Scholarship, computeMatchScore } from "@/lib/mockData";
-import { dynamicStore } from "@/lib/dynamicStore";
+import { dynamicStore, isArabCountry } from "@/lib/dynamicStore";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,53 +26,92 @@ export const ScholarshipsTab = () => {
   const isRtl = dir === "rtl";
   const alignClass = isRtl ? "text-right" : "text-left";
 
-  const [filter, setFilter] = useState<"arab" | "global">("arab");
+  const [filter, setFilter] = useState<"all" | "arab" | "global">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"deck" | "list">("deck");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
-  const [liveScholarships, setLiveScholarships] = useState<Scholarship[]>(() => dynamicStore.getScholarships());
+  const [liveScholarships, setLiveScholarships] = useState<Scholarship[]>(() => {
+    const init = dynamicStore.getScholarships();
+    return Array.isArray(init) ? init : [];
+  });
 
   useEffect(() => {
-    const handleUpdate = () => setLiveScholarships(dynamicStore.getScholarships());
+    const handleUpdate = (e: any) => {
+      const updated = dynamicStore.getScholarships();
+      setLiveScholarships(Array.isArray(updated) ? updated : []);
+
+      // If a specific scholarship was just added/updated, ensure the filter reveals it
+      const item = e?.detail?.item;
+      if (item && e?.detail?.type === "scholarship") {
+        if (item.category === "arab" || item.category === "global") {
+          setFilter(item.category);
+        } else {
+          setFilter("all");
+        }
+      }
+    };
     window.addEventListener("foras:data-updated", handleUpdate);
     return () => window.removeEventListener("foras:data-updated", handleUpdate);
   }, []);
 
-  // Filter by category, search query, selected tag, then prioritise scholarships in user's country
+  // Filter by category, search query, selected tag, then prioritise newly published and matching country
   const orderedDeck = useMemo(() => {
-    let filtered = liveScholarships.filter(s => s.category === filter || (filter === "global" && !s.category) || (!s.category && filter === "arab"));
+    const safeList = Array.isArray(liveScholarships) ? liveScholarships : [];
+    let filtered = safeList.filter(s => {
+      if (!s) return false;
+      if (filter === "all") return true;
+      const cat: "arab" | "global" =
+        s.category === "arab" || s.category === "global"
+          ? s.category
+          : isArabCountry(s.country, s.title || (s as any).title_ar)
+          ? "arab"
+          : "global";
+      return cat === filter;
+    });
 
     if (selectedTag) {
-      filtered = filtered.filter(s => (s.tags || []).includes(selectedTag));
+      filtered = filtered.filter(s => (s?.tags || []).includes(selectedTag));
     }
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       filtered = filtered.filter(s =>
-        (s.title || "").toLowerCase().includes(q) ||
-        ((s as any).title_ar || "").toLowerCase().includes(q) ||
-        (s.titleEn && s.titleEn.toLowerCase().includes(q)) ||
-        ((s as any).title_en && (s as any).title_en.toLowerCase().includes(q)) ||
-        (s.org || "").toLowerCase().includes(q) ||
-        ((s as any).university || "").toLowerCase().includes(q) ||
-        (s.country || "").toLowerCase().includes(q) ||
-        (s.tags || []).some(tag => tag.toLowerCase().includes(q))
+        (s?.title || "").toLowerCase().includes(q) ||
+        ((s as any)?.title_ar || "").toLowerCase().includes(q) ||
+        (s?.titleEn && s.titleEn.toLowerCase().includes(q)) ||
+        ((s as any)?.title_en && (s as any).title_en.toLowerCase().includes(q)) ||
+        (s?.org || "").toLowerCase().includes(q) ||
+        ((s as any)?.university || "").toLowerCase().includes(q) ||
+        (s?.country || "").toLowerCase().includes(q) ||
+        (s?.tags || []).some(tag => tag && tag.toLowerCase().includes(q))
       );
     }
 
+    // Keep custom published items (starting with sch_ or custom IDs) or country matches prioritized at the front
     const country = (geo?.country || "").toLowerCase();
-    if (!country) return filtered;
-    const matches = filtered.filter(s =>
-      s.country.toLowerCase().includes(country) ||
-      (s.countryEn && s.countryEn.toLowerCase().includes(country)) ||
-      country.includes(s.country.toLowerCase())
+    const customOrPinned = filtered.filter(s => s && ((typeof s.id === "string" && s.id.startsWith("sch_")) || (s as any).isCustom));
+    const notPinned = filtered.filter(s => !customOrPinned.includes(s));
+
+    if (!country) {
+      return [...customOrPinned, ...notPinned];
+    }
+
+    const matches = notPinned.filter(s =>
+      (s?.country || "").toLowerCase().includes(country) ||
+      (s?.countryEn && s.countryEn.toLowerCase().includes(country)) ||
+      country.includes((s?.country || "").toLowerCase())
     );
-    const rest = filtered.filter(s => !matches.includes(s));
-    return [...matches, ...rest];
+    const rest = notPinned.filter(s => !matches.includes(s));
+    return [...customOrPinned, ...matches, ...rest];
   }, [geo?.country, filter, searchQuery, selectedTag, liveScholarships]);
 
   const [deck, setDeck] = useState<Scholarship[]>(orderedDeck);
+
+  // Synchronize deck state whenever orderedDeck updates (new opportunity added, filter switched, search applied)
+  useEffect(() => {
+    setDeck(orderedDeck);
+  }, [orderedDeck]);
   const [detail, setDetail] = useState<Scholarship | null>(null);
   const [aiNotice, setAiNotice] = useState(false);
   const [profile, setProfile] = useState<{ location?: string; skills?: string[]; interests?: string[] }>({});
@@ -235,25 +274,28 @@ export const ScholarshipsTab = () => {
         </div>
       </div>
 
-      {/* Segmented filter — Arab vs Global */}
+      {/* Segmented filter — All vs Arab vs Global */}
       <div className="mb-3 px-1">
         <div className="relative inline-flex w-full p-1 rounded-2xl bg-card/60 backdrop-blur-md border border-border overflow-hidden">
-          {(["arab", "global"] as const).map((key) => {
+          {(["all", "arab", "global"] as const).map((key) => {
             const active = filter === key;
+            const isAll = key === "all";
             const isArab = key === "arab";
             return (
               <button
                 key={key}
                 onClick={() => setFilter(key)}
-                className={`relative flex-1 z-10 px-3 py-2 text-xs sm:text-sm font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all duration-300
+                className={`relative flex-1 z-10 px-2 sm:px-3 py-2 text-xs sm:text-sm font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all duration-300
                   ${active
-                    ? isArab
+                    ? isAll
+                      ? "bg-primary/20 text-primary border border-primary/50 shadow-sm"
+                      : isArab
                       ? "bg-gold-gradient text-primary-foreground shadow-gold"
                       : "bg-gradient-to-r from-[hsl(210_70%_50%)] to-[hsl(220_60%_45%)] text-white shadow-[0_8px_24px_-8px_hsl(210_70%_50%/0.6)]"
                     : "text-muted-foreground hover:text-foreground"}`}
               >
-                {isArab ? <Star className="w-3.5 h-3.5" /> : <Globe className="w-3.5 h-3.5" />}
-                {isArab ? t("filterArabScholarships") : t("filterGlobalScholarships")}
+                {isAll ? <Sparkles className="w-3.5 h-3.5" /> : isArab ? <Star className="w-3.5 h-3.5" /> : <Globe className="w-3.5 h-3.5" />}
+                {isAll ? t("filterAllScholarships") : isArab ? t("filterArabScholarships") : t("filterGlobalScholarships")}
               </button>
             );
           })}
