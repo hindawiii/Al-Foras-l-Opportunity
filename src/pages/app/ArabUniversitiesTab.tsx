@@ -851,77 +851,93 @@ export const ArabUniversitiesTab = () => {
 
       {/* Comparison Sheet Modal */}
       <Sheet open={compareOpen} onOpenChange={setCompareOpen}>
-        <SheetContent side="bottom" dir={dir} className="max-h-[85vh] overflow-y-auto bg-card/95 backdrop-blur-xl border-primary/20 rounded-t-3xl">
-          <SheetHeader>
-            <SheetTitle className={`text-primary flex items-center gap-2 ${alignClass}`}>
-              <Scale className="w-5 h-5" />
-              {t("arabUniCompare")}
-            </SheetTitle>
-          </SheetHeader>
-          <div className="mt-4 overflow-x-auto">
-            <table className={`w-full text-xs ${alignClass}`}>
-              <thead>
-                <tr>
-                  <th className={`p-2 text-muted-foreground font-normal ${alignClass}`}> </th>
-                  {compareUnis.map((u) => (
-                    <th key={u.id} className={`p-2 text-primary font-bold min-w-[130px] ${alignClass}`}>
-                      {u.flag} {ar ? u.name : (u.nameEn || u.name)}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="text-foreground">
-                {[
-                  [t("arabUniCity"), (u: ArabUniversity) => `${ar ? u.city : (u.cityEn || getCityLabel(u.city, lang))} · ${ar ? u.country : u.countryEn}`],
-                  [t("arabUniType"), (u: ArabUniversity) => typeLabel(u.type)],
-                  [t("arabUniMin"), (u: ArabUniversity) => `${u.minPercentage}%`],
-                  [t("arabUniLanguage"), (u: ArabUniversity) => langLabel(u.language)],
-                  [t("arabUniHasScholarships"), (u: ArabUniversity) => (u.scholarships ? (isRtl ? "متاحة ✓" : "Available ✓") : "—")],
-                  [t("arabUniTuition"), (u: ArabUniversity) => (ar ? getUniDetails(u).tuition : getUniDetails(u).tuitionEn)],
-                  [t("arabUniLiving"), (u: ArabUniversity) => (ar ? getUniDetails(u).living : getUniDetails(u).livingEn)],
-                ].map(([label, fn], idx) => (
-                  <tr key={idx} className="border-t border-primary/10">
-                    <td className="p-2 text-muted-foreground whitespace-nowrap font-medium">{label as string}</td>
-                    {compareUnis.map((u) => (
-                      <td key={u.id} className="p-2 leading-relaxed">
-                        {(fn as (x: ArabUniversity) => string)(u)}
-                      </td>
+        <SheetContent
+          side="bottom"
+          dir={dir}
+          className="h-[100dvh] max-h-[100dvh] md:h-[94vh] md:max-h-[94vh] md:max-w-4xl md:rounded-3xl rounded-none w-full p-0 flex flex-col overflow-hidden mx-auto bg-card/95 backdrop-blur-xl border-primary/25 shadow-2xl"
+        >
+          <div className="flex flex-col h-full overflow-hidden">
+            <div className="shrink-0 p-4 sm:p-5 border-b border-border/80 bg-card/95 backdrop-blur-md relative pe-16">
+              <SheetHeader>
+                <SheetTitle className={`text-primary flex items-center gap-2 ${alignClass}`}>
+                  <Scale className="w-5 h-5" />
+                  {t("arabUniCompare")}
+                </SheetTitle>
+              </SheetHeader>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+              <div className="overflow-x-auto">
+                <table className={`w-full text-xs ${alignClass}`}>
+                  <thead>
+                    <tr>
+                      <th className={`p-2 text-muted-foreground font-normal ${alignClass}`}> </th>
+                      {compareUnis.map((u) => (
+                        <th key={u.id} className={`p-2 text-primary font-bold min-w-[130px] ${alignClass}`}>
+                          {u.flag} {ar ? u.name : (u.nameEn || u.name)}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="text-foreground">
+                    {[
+                      [t("arabUniCity"), (u: ArabUniversity) => `${ar ? u.city : (u.cityEn || getCityLabel(u.city, lang))} · ${ar ? u.country : u.countryEn}`],
+                      [t("arabUniType"), (u: ArabUniversity) => typeLabel(u.type)],
+                      [t("arabUniMin"), (u: ArabUniversity) => `${u.minPercentage}%`],
+                      [t("arabUniLanguage"), (u: ArabUniversity) => langLabel(u.language)],
+                      [t("arabUniHasScholarships"), (u: ArabUniversity) => (u.scholarships ? (isRtl ? "متاحة ✓" : "Available ✓") : "—")],
+                      [t("arabUniTuition"), (u: ArabUniversity) => (ar ? getUniDetails(u).tuition : getUniDetails(u).tuitionEn)],
+                      [t("arabUniLiving"), (u: ArabUniversity) => (ar ? getUniDetails(u).living : getUniDetails(u).livingEn)],
+                    ].map(([label, fn], idx) => (
+                      <tr key={idx} className="border-t border-primary/10">
+                        <td className="p-2 text-muted-foreground whitespace-nowrap font-medium">{label as string}</td>
+                        {compareUnis.map((u) => (
+                          <td key={u.id} className="p-2 leading-relaxed">
+                            {(fn as (x: ArabUniversity) => string)(u)}
+                          </td>
+                        ))}
+                      </tr>
                     ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         </SheetContent>
       </Sheet>
 
       {/* Standalone University Details Modal */}
       <Sheet open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <SheetContent side="bottom" dir={dir} className="max-h-[90vh] overflow-y-auto bg-card/95 backdrop-blur-xl border-primary/20 rounded-t-3xl">
+        <SheetContent
+          side="bottom"
+          dir={dir}
+          className="h-[100dvh] max-h-[100dvh] md:h-[94vh] md:max-h-[94vh] md:max-w-4xl md:rounded-3xl rounded-none w-full p-0 flex flex-col overflow-hidden mx-auto bg-card/95 backdrop-blur-xl border-primary/25 shadow-2xl"
+        >
           {selected && (() => {
             const d = getUniDetails(selected);
             const cityText = ar ? selected.city : (selected.cityEn || getCityLabel(selected.city, lang));
             const countryText = ar ? selected.country : selected.countryEn;
 
             return (
-              <>
-                <SheetHeader>
-                  <div className={`flex items-center gap-3 mb-2 ${isRtl ? "" : "flex-row-reverse"}`}>
-                    <div className="w-12 h-12 rounded-2xl bg-gold-gradient flex items-center justify-center text-2xl shadow-gold flex-shrink-0">
+              <div className="flex flex-col h-full overflow-hidden">
+                {/* Sticky Safe Header with Clearance for Close Button */}
+                <div className="shrink-0 p-4 sm:p-5 border-b border-border/80 bg-card/95 backdrop-blur-md relative pe-16">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-gold-gradient flex items-center justify-center text-2xl shadow-gold shrink-0">
                       {selected.flag}
                     </div>
-                    <div className={`flex-1 ${alignClass}`}>
-                      <SheetTitle className="text-lg font-bold font-display text-gold-gradient">
+                    <div className={`min-w-0 flex-1 ${alignClass}`}>
+                      <SheetTitle className="text-lg font-bold font-display text-gold-gradient truncate">
                         {ar ? selected.name : (selected.nameEn || selected.name)}
                       </SheetTitle>
-                      <p className="text-xs text-muted-foreground mt-0.5">
+                      <p className="text-xs text-muted-foreground mt-0.5 truncate">
                         {cityText} · {countryText}
                       </p>
                     </div>
                   </div>
-                </SheetHeader>
+                </div>
 
-                <div className={`space-y-4 mt-4 ${alignClass}`}>
+                {/* Scrollable Content Body */}
+                <div className={`flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 ${alignClass}`}>
                   <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
                     {ar ? selected.highlights : (selected.highlightsEn || selected.highlights)}
                   </p>
@@ -1042,7 +1058,7 @@ export const ArabUniversitiesTab = () => {
                     </a>
                   </div>
                 </div>
-              </>
+              </div>
             );
           })()}
         </SheetContent>

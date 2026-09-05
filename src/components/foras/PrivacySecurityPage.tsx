@@ -28,10 +28,10 @@ export const PrivacySecurityPage = ({ onBack }: Props) => {
       {/* Back Button */}
       <button
         onClick={onBack}
-        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-primary/10 hover:bg-primary/20 border border-primary/25 text-xs font-semibold text-primary transition-all active:scale-95 ${alignClass}`}
+        className={`inline-flex items-center gap-2.5 px-4 py-2.5 min-h-[44px] rounded-xl bg-primary/10 hover:bg-primary/20 border border-primary/30 text-xs sm:text-sm font-bold text-primary transition-all active:scale-95 cursor-pointer shadow-sm ${alignClass}`}
       >
-        <Back className="w-3.5 h-3.5" />
-        {t("backToSettings")}
+        <Back className="w-4 h-4 shrink-0" />
+        <span>{t("backToSettings")}</span>
       </button>
 
       {/* Privacy Notice Banner */}

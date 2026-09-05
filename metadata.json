@@ -1,6 +1,6 @@
 {
   "name": "الفرص — Al-Foras",
   "description": "منصة فاخرة للمنح الدراسية والفرص العالمية مع متابعة أسعار العملات والذهب والجامعات",
-  "requestFramePermissions": ["geolocation"],
+  "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

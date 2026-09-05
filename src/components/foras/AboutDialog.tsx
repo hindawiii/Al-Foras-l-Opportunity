@@ -20,8 +20,8 @@ export const AboutDialog = ({ open, onOpenChange }: Props) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-card border-gold/30 max-w-md" dir={dir}>
-        <DialogHeader>
-          <DialogTitle className={`text-gold-gradient font-display text-2xl ${align}`}>
+        <DialogHeader className="pe-12">
+          <DialogTitle className={`text-gold-gradient font-display text-xl sm:text-2xl ${align}`}>
             {t("aboutTitle")}
           </DialogTitle>
         </DialogHeader>

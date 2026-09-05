@@ -12,14 +12,17 @@ import AuthCallback from "./pages/auth/AuthCallback";
 import ResetPassword from "./pages/auth/ResetPassword";
 import Landing from "./pages/Landing";
 import NotFound from "./pages/NotFound";
+import AdminPage from "./pages/AdminPage";
 import { AIAdvisor } from "@/components/foras/AIAdvisor";
 import { ErrorBoundary } from "@/components/foras/ErrorBoundary";
 import { dynamicStore } from "@/lib/dynamicStore";
+import { selfHealingEngine } from "@/lib/selfHealingEngine";
 
 const queryClient = new QueryClient();
 
 const App = () => {
   useEffect(() => {
+    selfHealingEngine.init();
     dynamicStore.syncWithCloud();
   }, []);
 
@@ -42,6 +45,8 @@ const App = () => {
                     <Route path="/app" element={<Index />} />
                     <Route path="/dashboard" element={<Index />} />
                     <Route path="/landing" element={<Landing />} />
+                    <Route path="/admin" element={<AdminPage />} />
+                    <Route path="/admin/login" element={<AdminPage />} />
                     <Route path="/auth" element={<AuthPage />} />
                     <Route path="/auth/callback" element={<AuthCallback />} />
                     <Route path="/reset-password" element={<ResetPassword />} />

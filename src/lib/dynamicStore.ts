@@ -231,39 +231,15 @@ export const dynamicStore = {
       this.undeleteItem(normalized.id);
       window.dispatchEvent(new CustomEvent("foras:data-updated", { detail: { type: "scholarship", item: normalized } }));
 
-      // Asynchronously upsert to Supabase
+      // Asynchronously persist to Server Central Database
       try {
-        (supabase as any)
-          .from("scholarships")
-          .upsert({
-            id: normalized.id,
-            title_ar: normalized.title_ar || normalized.title,
-            title_en: normalized.title_en || normalized.titleEn,
-            university: normalized.university || normalized.org,
-            country: normalized.country,
-            flag: normalized.flag || "🌍",
-            degree: (normalized as any).degree || normalized.level || "bachelor_master",
-            coverage: normalized.coverage || "full",
-            category: normalized.category,
-            deadline: normalized.deadline,
-            majors: (normalized as any).majors || normalized.tags || [],
-            apply_url: (normalized as any).apply_url || normalized.url,
-            official_website: (normalized as any).official_website,
-            stipend: (normalized as any).stipend || normalized.amount,
-            description_ar: (normalized as any).description_ar || normalized.description,
-            description_en: (normalized as any).description_en || normalized.descriptionEn,
-            benefits_ar: (normalized as any).benefits_ar || [],
-            benefits_en: (normalized as any).benefits_en || [],
-            requirements_ar: (normalized as any).requirements_ar || [],
-            requirements_en: (normalized as any).requirements_en || [],
-            is_featured: normalized.is_featured ?? false,
-            views_count: normalized.views_count ?? 0,
-          })
-          .then(({ error }: any) => {
-            if (error) console.info("Supabase scholarship upsert note:", error.message);
-          });
+        fetch("/api/opportunities/scholarships", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(normalized),
+        }).catch(err => console.info("Server scholarship sync note:", err));
       } catch (cloudErr) {
-        console.info("Supabase direct write skipped:", cloudErr);
+        console.info("Server write note:", cloudErr);
       }
     } catch (e) {
       console.error("Failed to save scholarship", e);
@@ -300,36 +276,15 @@ export const dynamicStore = {
       this.undeleteItem(job.id);
       window.dispatchEvent(new CustomEvent("foras:data-updated", { detail: { type: "job" } }));
 
-      // Asynchronously upsert to Supabase
+      // Asynchronously persist to Server Central Database
       try {
-        (supabase as any)
-          .from("jobs")
-          .upsert({
-            id: job.id,
-            title_ar: job.title_ar,
-            title_en: job.title_en,
-            company: job.company,
-            location: job.location,
-            salary: job.salary,
-            category: job.category || "tech",
-            type: (job as any).type || "remote_fulltime",
-            country: (job as any).country || "عن بعد / Global Remote",
-            flag: (job as any).flag || "💻",
-            deadline: job.deadline,
-            apply_url: job.apply_url,
-            company_url: (job as any).company_url,
-            skills: job.skills || [],
-            benefits_ar: job.benefits_ar || [],
-            description_ar: job.description_ar,
-            description_en: job.description_en,
-            verified: job.verified ?? true,
-            featured: (job as any).featured ?? false,
-          })
-          .then(({ error }: any) => {
-            if (error) console.info("Supabase job upsert note:", error.message);
-          });
+        fetch("/api/opportunities/jobs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(job),
+        }).catch(err => console.info("Server job sync note:", err));
       } catch (cloudErr) {
-        console.info("Supabase direct write skipped:", cloudErr);
+        console.info("Server write note:", cloudErr);
       }
     } catch (e) {
       console.error("Failed to save job", e);
@@ -403,6 +358,21 @@ export const dynamicStore = {
 
       // Mark ID as deleted in active list
       this.markIdDeleted(id);
+
+      // Persist deletion to Server Central Database
+      try {
+        const deleteEndpoint =
+          type === "scholarship"
+            ? `/api/opportunities/scholarships/${encodeURIComponent(id)}`
+            : `/api/opportunities/jobs/${encodeURIComponent(id)}`;
+        fetch(deleteEndpoint, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reason, user: activeUser }),
+        }).catch(err => console.info("Server delete note:", err));
+      } catch (delErr) {
+        console.info("Server delete dispatch note:", delErr);
+      }
 
       // Audit Log & Admin Notification
       const title = itemData.title_ar || itemData.title || itemData.titleEn || id;
@@ -702,5 +672,55 @@ export const dynamicStore = {
     } catch (e: any) {
       throw new Error(e.message || "فشل الاتصال بمستخرج الروابط الذكي");
     }
-  }
+  },
+
+  // Central Server Synchronization (fetches server database and merges)
+  async syncWithServer(): Promise<{ scholarships: number; jobs: number }> {
+    if (typeof window === "undefined") return { scholarships: 0, jobs: 0 };
+    try {
+      const res = await fetch("/api/opportunities");
+      if (!res.ok) return { scholarships: 0, jobs: 0 };
+      const data = await res.json();
+      const serverScholarships: Scholarship[] = data.scholarships || [];
+      const serverJobs: CustomJobItem[] = data.jobs || [];
+
+      // Merge into local cache
+      if (serverScholarships.length > 0) {
+        const localRaw = localStorage.getItem(SCHOLARSHIPS_STORAGE_KEY);
+        const localList: Scholarship[] = localRaw ? JSON.parse(localRaw) : [];
+        const merged = [...serverScholarships];
+        localList.forEach(l => {
+          if (!merged.some(m => m.id === l.id || (m.url && l.url && m.url === l.url))) {
+            merged.push(l);
+          }
+        });
+        localStorage.setItem(SCHOLARSHIPS_STORAGE_KEY, JSON.stringify(merged));
+      }
+
+      if (serverJobs.length > 0) {
+        const localRaw = localStorage.getItem(JOBS_STORAGE_KEY);
+        const localList: CustomJobItem[] = localRaw ? JSON.parse(localRaw) : [];
+        const merged = [...serverJobs];
+        localList.forEach(l => {
+          if (!merged.some(m => m.id === l.id || (m.apply_url && l.apply_url && m.apply_url === l.apply_url))) {
+            merged.push(l);
+          }
+        });
+        localStorage.setItem(JOBS_STORAGE_KEY, JSON.stringify(merged));
+      }
+
+      window.dispatchEvent(new CustomEvent("foras:data-updated", { detail: { type: "all" } }));
+      return { scholarships: serverScholarships.length, jobs: serverJobs.length };
+    } catch (e) {
+      console.warn("Server sync note:", e);
+      return { scholarships: 0, jobs: 0 };
+    }
+  },
 };
+
+// Automatically sync with server database on client boot
+if (typeof window !== "undefined") {
+  setTimeout(() => {
+    dynamicStore.syncWithServer().catch(console.error);
+  }, 1000);
+}

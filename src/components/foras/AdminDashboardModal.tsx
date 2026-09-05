@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -10,7 +11,7 @@ import {
   Upload, Layers, CheckSquare, Square, MinusSquare, Building2, Globe2,
   Crown, Shield, Unlock, HelpCircle, LockKeyhole, Smartphone, Tablet,
   Laptop, Monitor, SlidersHorizontal, BarChart3, Copy, Link2,
-  Filter, Clock, BookOpen, Award
+  Filter, Clock, BookOpen, Award, Database
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Scholarship } from "@/lib/mockData";
@@ -25,11 +26,19 @@ import { StarMaskedInput } from "@/components/foras/StarMaskedInput";
 import { checkScholarshipDuplicate, checkJobDuplicate } from "@/lib/duplicateChecker";
 import { ScholarshipDuplicateBanner, UrlDuplicateNotice } from "@/components/foras/ScholarshipDuplicateGuard";
 import { ExtractedOpportunityPreview } from "@/components/foras/ExtractedOpportunityPreview";
+import { AutomationCommandCenter } from "@/components/foras/AutomationCommandCenter";
+import { SupabaseKeepAliveMonitor } from "@/components/foras/SupabaseKeepAliveMonitor";
+import { selfHealingEngine } from "@/lib/selfHealingEngine";
 
-export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
+export const AdminDashboardModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  isStandalonePage?: boolean;
+}> = ({ isOpen, onClose, isStandalonePage = false }) => {
   const { lang, dir, t } = useLanguage();
   const isRtl = dir === "rtl";
   const alignClass = isRtl ? "text-right" : "text-left";
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // Active Task Section in Slide Sidebar
   type AdminTab =
@@ -39,13 +48,62 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
     | "global_unis"
     | "archive"
     | "url_parser"
+    | "automation"
     | "pending_reviews"
     | "team"
     | "audit_logs"
     | "backup"
-    | "security";
+    | "security"
+    | "supabase";
 
-  const [activeTab, setActiveTab] = useState<AdminTab>("scholarships");
+  const validAdminTabs: AdminTab[] = [
+    "scholarships",
+    "jobs",
+    "arab_unis",
+    "global_unis",
+    "archive",
+    "url_parser",
+    "automation",
+    "pending_reviews",
+    "team",
+    "audit_logs",
+    "backup",
+    "security",
+    "supabase",
+  ];
+
+  const getInitialAdminTab = (): AdminTab => {
+    if (isStandalonePage) {
+      const q = searchParams.get("tab") as AdminTab;
+      if (q && validAdminTabs.includes(q)) return q;
+    }
+    return "scholarships";
+  };
+
+  const [activeTab, setActiveTab] = useState<AdminTab>(getInitialAdminTab);
+
+  const handleSelectTab = (tab: AdminTab) => {
+    setActiveTab(tab);
+    if (isStandalonePage) {
+      setSearchParams(
+        prev => {
+          const next = new URLSearchParams(prev);
+          next.set("tab", tab);
+          return next;
+        },
+        { replace: true }
+      );
+    }
+  };
+
+  useEffect(() => {
+    if (isStandalonePage) {
+      const q = searchParams.get("tab") as AdminTab;
+      if (q && validAdminTabs.includes(q) && q !== activeTab) {
+        setActiveTab(q);
+      }
+    }
+  }, [searchParams, isStandalonePage]);
   const [sidebarOpen, setSidebarOpen] = useState(() => typeof window !== "undefined" && window.innerWidth >= 768);
   const [sidebarSearch, setSidebarSearch] = useState("");
 
@@ -79,6 +137,93 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
       Object.values(currentTimers).forEach(t => clearTimeout(t));
     };
   }, []);
+
+  // Lock body scroll and overscroll when modal is open to prevent background scroll bleed
+  useEffect(() => {
+    if (!isOpen) return;
+    const originalOverflow = document.body.style.overflow;
+    const originalOverscroll = document.body.style.overscrollBehavior;
+    document.body.style.overflow = "hidden";
+    document.body.style.overscrollBehavior = "none";
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.style.overscrollBehavior = originalOverscroll;
+    };
+  }, [isOpen]);
+
+  // Automation Engine State & Controls
+  const [automationStatus, setAutomationStatus] = useState<{
+    isRunning: boolean;
+    lastRun: string | null;
+    lastStatus: "idle" | "running" | "success" | "error";
+    totalIngested: number;
+    logs: Array<{ timestamp: string; level: "info" | "success" | "warn" | "error"; message: string }>;
+  }>({
+    isRunning: false,
+    lastRun: null,
+    lastStatus: "idle",
+    totalIngested: 0,
+    logs: [],
+  });
+  const [isTriggeringAutomation, setIsTriggeringAutomation] = useState(false);
+  const [isSyncingServer, setIsSyncingServer] = useState(false);
+
+  const fetchAutomationStatus = async () => {
+    try {
+      const res = await fetch("/api/automation/status");
+      if (res.ok) {
+        const data = await res.json();
+        setAutomationStatus(data);
+      }
+    } catch (e) {
+      console.warn("Automation status check note:", e);
+    }
+  };
+
+  const handleRunAutomation = async () => {
+    setIsTriggeringAutomation(true);
+    toast.info(isRtl ? "بدء دورة الأوتوميشن الذكي لجلب وفحص الفرص والوظائف..." : "Starting AI automation engine...");
+    try {
+      const res = await fetch("/api/automation/run", { method: "POST" });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.success(data.message || (isRtl ? "اكتملت دورة الفحص وتغذية السيرفر بنجاح!" : "Ingestion cycle completed successfully!"));
+        await dynamicStore.syncWithServer();
+        await fetchAutomationStatus();
+      } else {
+        toast.error(data.message || (isRtl ? "تعذر إكمال دورة الأوتوميشن" : "Automation run failed"));
+      }
+    } catch (err: any) {
+      toast.error(err?.message || (isRtl ? "خطأ في الاتصال بمحرك الأوتوميشن" : "Failed to connect to automation engine"));
+    } finally {
+      setIsTriggeringAutomation(false);
+    }
+  };
+
+  const handleSyncWithServer = async () => {
+    setIsSyncingServer(true);
+    try {
+      const counts = await dynamicStore.syncWithServer();
+      toast.success(
+        isRtl
+          ? `تمت مزامنة قاعدة البيانات بنجاح! (${counts.scholarships} منحة، ${counts.jobs} فرصة عمل)`
+          : `Database synced! (${counts.scholarships} scholarships, ${counts.jobs} jobs)`
+      );
+      await fetchAutomationStatus();
+    } catch {
+      toast.error(isRtl ? "فشلت المزامنة مع الخادم" : "Server sync failed");
+    } finally {
+      setIsSyncingServer(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "automation" && isOpen) {
+      fetchAutomationStatus();
+      const interval = setInterval(fetchAutomationStatus, 4000);
+      return () => clearInterval(interval);
+    }
+  }, [activeTab, isOpen]);
 
   // Forgot Password / OTP Recovery Modal State
   const [isRecoveryOpen, setIsRecoveryOpen] = useState(false);
@@ -778,6 +923,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
         { id: "arab_unis" as const, labelAr: "دليل الجامعات العربية", labelEn: "Arab Universities", icon: Building2, badge: ARAB_UNIVERSITIES.length },
         { id: "global_unis" as const, labelAr: "دليل الجامعات العالمية", labelEn: "Global Universities", icon: Globe2, badge: GLOBAL_COUNTRIES.length },
         { id: "url_parser" as const, labelAr: "محرر الروابط الذكي AI", labelEn: "AI URL Parser", icon: Sparkles },
+        { id: "automation" as const, labelAr: "محرك الأوتوميشن الذكي AI", labelEn: "AI Auto-Ingestion Engine", icon: RefreshCw },
       ],
     },
     {
@@ -797,9 +943,10 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
       ],
     },
     {
-      groupTitleAr: "الإعدادات والنسخ الاحتياطي",
-      groupTitleEn: "Settings & Backups",
+      groupTitleAr: "الإعدادات وقاعدة البيانات",
+      groupTitleEn: "Settings & Database",
       items: [
+        { id: "supabase" as const, labelAr: "مراقبة قاعدة البيانات (Supabase)", labelEn: "Supabase & Keep-Alive", icon: Database },
         { id: "backup" as const, labelAr: "تصدير / استيراد البيانات", labelEn: "Data Backup & Restore", icon: Download },
         { id: "security" as const, labelAr: "تغيير كلمة المرور", labelEn: "Admin Password", icon: KeyRound },
       ],
@@ -811,11 +958,19 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
   const content = (
     <div
       dir={dir}
-      className="fixed inset-0 z-[999999] w-screen h-screen max-w-none max-h-none flex items-center justify-center p-0 bg-black/95 backdrop-blur-xl overflow-hidden"
-      style={{ width: "100vw", height: "100vh", position: "fixed", top: 0, left: 0, right: 0, bottom: 0, pointerEvents: "auto" }}
+      className={
+        isStandalonePage
+          ? "w-full h-screen flex flex-col bg-background overflow-hidden"
+          : "fixed inset-0 z-[999999] w-screen h-screen max-w-none max-h-none flex items-center justify-center p-0 bg-black/95 backdrop-blur-xl overflow-hidden"
+      }
+      style={
+        isStandalonePage
+          ? { width: "100%", height: "100vh" }
+          : { width: "100vw", height: "100vh", position: "fixed", top: 0, left: 0, right: 0, bottom: 0, pointerEvents: "auto" }
+      }
     >
       {/* Backdrop Click Dismiss */}
-      <div className="fixed inset-0" onClick={onClose} />
+      {!isStandalonePage && <div className="fixed inset-0" onClick={onClose} />}
 
       {/* Main Slide-Sidebar Dashboard Window - 100% Fullscreen on all devices */}
       <motion.div
@@ -823,7 +978,11 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.98, opacity: 0, y: 10 }}
         transition={{ type: "spring", damping: 30, stiffness: 350 }}
-        className="relative w-full h-full max-w-none max-h-none bg-card/98 border-0 rounded-none shadow-[0_0_80px_rgba(0,0,0,0.95)] backdrop-blur-3xl overflow-hidden z-10 flex flex-col"
+        className={
+          isStandalonePage
+            ? "relative w-full h-full bg-card/98 border-0 overflow-hidden z-10 flex flex-col"
+            : "relative w-full h-full max-w-none max-h-none bg-card/98 border-0 rounded-none shadow-[0_0_80px_rgba(0,0,0,0.95)] backdrop-blur-3xl overflow-hidden z-10 flex flex-col"
+        }
         onClick={e => e.stopPropagation()}
       >
         {/* Top Header Bar with Multi-Pane Controls */}
@@ -958,6 +1117,21 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
             </div>
           )}
 
+          {/* Direct Supabase Database Connection Status Pill */}
+          {currentUser && (
+            <button
+              type="button"
+              onClick={() => handleSelectTab("supabase")}
+              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-background/70 border border-primary/25 hover:border-primary/60 text-2xs font-semibold text-gray-300 hover:text-white transition-all cursor-pointer"
+              title={isRtl ? "مراقبة اتصال قاعدة البيانات ومانع التجميد" : "Supabase Connection & Keep-Alive Status"}
+            >
+              <Database className="w-3 h-3 text-primary" />
+              <span className="hidden xl:inline">{isRtl ? "قاعدة البيانات:" : "DB:"}</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-emerald-400 font-bold">Supabase</span>
+            </button>
+          )}
+
           <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
             {currentUser && (
               <button
@@ -969,9 +1143,21 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
             )}
             <button
               onClick={onClose}
-              className="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-primary/15 border border-primary/30 hover:bg-primary/25 text-gray-200 hover:text-white flex items-center justify-center transition-all cursor-pointer flex-shrink-0"
+              className={`rounded-xl border border-primary/30 hover:bg-primary/25 text-gray-200 hover:text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer flex-shrink-0 font-bold active:scale-95 shadow-sm ${
+                isStandalonePage
+                  ? "px-3.5 py-2 min-h-[40px] sm:min-h-[44px] bg-primary/20 text-primary hover:text-primary text-xs sm:text-sm"
+                  : "w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-primary/15"
+              }`}
+              title={isRtl ? "العودة إلى التطبيق الرئيسي" : "Back to Main App"}
             >
-              <X className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
+              {isStandalonePage ? (
+                <>
+                  {isRtl ? <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" /> : <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />}
+                  <span>{isRtl ? "العودة للتطبيق" : "Back to App"}</span>
+                </>
+              ) : (
+                <X className="w-5 h-5 text-foreground" />
+              )}
             </button>
           </div>
         </header>
@@ -1310,7 +1496,7 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                               <button
                                 key={item.id}
                                 onClick={() => {
-                                  setActiveTab(item.id);
+                                  handleSelectTab(item.id);
                                 }}
                                 className={`w-full flex items-center justify-between px-2.5 py-2 text-xs font-semibold transition-all cursor-pointer rounded-xl relative ${
                                   isActive
@@ -3574,6 +3760,30 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                   </div>
                 )}
 
+                {/* Automation Engine Tab */}
+                {activeTab === "automation" && (
+                  <AutomationCommandCenter
+                    isRtl={isRtl}
+                    currentUser={currentUser}
+                    scholarshipsCount={scholarships.length}
+                    jobsCount={jobs.length}
+                    onSyncClient={handleSyncWithServer}
+                    initialSubTab="control"
+                  />
+                )}
+
+                {/* Pending Submissions / Reviews Tab */}
+                {activeTab === "pending_reviews" && (
+                  <AutomationCommandCenter
+                    isRtl={isRtl}
+                    currentUser={currentUser}
+                    scholarshipsCount={scholarships.length}
+                    jobsCount={jobs.length}
+                    onSyncClient={handleSyncWithServer}
+                    initialSubTab="pending"
+                  />
+                )}
+
                 {/* 5. Team & Moderators Management & RBAC Permissions */}
                 {activeTab === "team" && (
                   <div className="space-y-4">
@@ -3747,6 +3957,62 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                       )}
                     </div>
 
+                    {/* Self-Healing & Runtime Telemetry Control Panel */}
+                    <div className="p-4 rounded-2xl bg-gradient-to-r from-primary/10 via-card to-background border-2 border-primary/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs shadow-sm mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-primary/20 border border-primary/40 flex items-center justify-center text-primary flex-shrink-0">
+                          <ShieldCheck className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 font-bold text-white text-sm">
+                            <span>{isRtl ? "درع الأمان والإصلاح الذاتي للمستخدمين" : "User Self-Healing & Resilience Shield"}</span>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                              {isRtl ? "نشط ومفعّل" : "Active"}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-gray-400 mt-0.5">
+                            {isRtl
+                              ? `الأعطال المرصودة في الذاكرة: ${selfHealingEngine.getErrors().length} | تدريع فوري لأخطاء React والشبكة`
+                              : `Recorded errors in telemetry: ${selfHealingEngine.getErrors().length} | Runtime crash prevention`}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            selfHealingEngine.healAllJsonStorage();
+                            toast.success(isRtl ? "تم فحص وتنظيف ذاكرة التطبيق وإصلاح أي تلف تلقائياً" : "Storage scrub and auto-heal completed");
+                          }}
+                          className="text-xs border-primary/30 hover:bg-primary/10 h-9 font-semibold"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5 mr-1.5 ml-1.5" />
+                          <span>{isRtl ? "فحص وتطهير الذاكرة" : "Scrub & Self-Heal"}</span>
+                        </Button>
+
+                        {selfHealingEngine.getErrors().length > 0 && (
+                          <Button
+                            variant="luxe"
+                            size="sm"
+                            onClick={() => {
+                              const latest = selfHealingEngine.getErrors()[0];
+                              if (latest) {
+                                const prompt = selfHealingEngine.generateAIFixPrompt(latest);
+                                navigator.clipboard.writeText(prompt);
+                                toast.success(isRtl ? "تم نسخ تقرير الإصلاح الذكي للمطور!" : "AI fix report copied!");
+                              }
+                            }}
+                            className="text-xs h-9 font-bold shadow-gold"
+                          >
+                            <Copy className="w-3.5 h-3.5 mr-1.5 ml-1.5" />
+                            <span>{isRtl ? "نسخ تقرير الخطأ للمطور" : "Copy AI Bug Report"}</span>
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
                     <div className="space-y-2">
                       {auditLogs.map(log => (
                         <div key={log.id} className="p-3.5 rounded-xl bg-card/70 border border-primary/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
@@ -3848,6 +4114,13 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
                       toast.success(isRtl ? "تم تأكيد وتحديث بيانات الأمان" : "Security credentials refreshed");
                     }}
                   />
+                )}
+
+                {/* 10. Supabase Direct Connection & Keep-Alive Monitor */}
+                {activeTab === "supabase" && (
+                  <div className="h-full overflow-y-auto p-1 sm:p-2">
+                    <SupabaseKeepAliveMonitor isRtl={isRtl} />
+                  </div>
                 )}
               </div>
 
@@ -4645,6 +4918,6 @@ export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => voi
     </div>
   );
 
-  if (typeof document === "undefined") return content;
+  if (isStandalonePage || typeof document === "undefined") return content;
   return createPortal(content, document.body);
 };

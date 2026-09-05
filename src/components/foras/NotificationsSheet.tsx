@@ -83,14 +83,12 @@ export const NotificationsSheet = ({ open, onOpenChange }: Props) => {
         side={isRtl ? "left" : "right"}
         className="bg-card border-gold/30 w-[92%] sm:max-w-md overflow-y-auto"
       >
-        <SheetHeader>
+        <SheetHeader className="pe-14 sm:pe-16">
           <SheetTitle
-            className={`text-gold-gradient font-display text-2xl ${alignClass} flex items-center gap-2 ${
-              isRtl ? "justify-end" : "justify-start"
-            }`}
+            className={`text-gold-gradient font-display text-xl sm:text-2xl ${alignClass} flex items-center gap-2`}
           >
-            <Bell className="w-5 h-5 text-primary" />
-            {t("notifications")}
+            <Bell className="w-5 h-5 text-primary shrink-0" />
+            <span>{t("notifications")}</span>
             {unread > 0 && (
               <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-destructive/20 border border-destructive/40 text-destructive">
                 {unread}

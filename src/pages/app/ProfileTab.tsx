@@ -523,16 +523,18 @@ export const ProfileTab = () => {
 
         {/* Modal: Full Image Preview */}
         <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-          <DialogContent className="max-w-md bg-card/95 border border-primary/40 backdrop-blur-2xl p-4 rounded-3xl text-center">
-            <div className="flex items-center justify-between pb-3 border-b border-primary/20">
-              <h3 className="font-display text-base text-gold-gradient font-bold">
+          <DialogContent hideCloseButton className="max-w-md bg-card/95 border border-primary/40 backdrop-blur-2xl p-4 sm:p-5 rounded-3xl text-center">
+            <div className="flex items-center justify-between pb-3 border-b border-primary/20 gap-3">
+              <h3 className="font-display text-base text-gold-gradient font-bold truncate">
                 {ar ? "معاينة الصورة الشخصية" : "Profile Picture Preview"}
               </h3>
               <button
                 onClick={() => setPreviewOpen(false)}
-                className="w-7 h-7 rounded-lg hover:bg-white/10 text-muted-foreground flex items-center justify-center"
+                className="w-10 h-10 rounded-xl hover:bg-primary/10 border border-primary/25 text-foreground flex items-center justify-center transition-all active:scale-95 cursor-pointer shrink-0"
+                aria-label={ar ? "إغلاق" : "Close"}
+                title={ar ? "إغلاق" : "Close"}
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
             <div className="py-4 flex justify-center">
@@ -1656,9 +1658,9 @@ export const ProfileTab = () => {
       {/* Accuracy Guide Dialog */}
       <Dialog open={geoHelpOpen} onOpenChange={setGeoHelpOpen}>
         <DialogContent className="max-w-md bg-card/95 border border-primary/40 backdrop-blur-2xl p-5 rounded-3xl">
-          <div className="flex items-center gap-2 text-gold-gradient font-bold text-base pb-2 border-b border-primary/20">
-            <Compass className="w-5 h-5 text-primary" />
-            <h3>{ar ? "كيف تضمن دقة تحديد موقعك؟" : "How to ensure accurate location?"}</h3>
+          <div className="flex items-center gap-2 text-gold-gradient font-bold text-base pb-2 border-b border-primary/20 pe-12">
+            <Compass className="w-5 h-5 text-primary shrink-0" />
+            <h3 className="truncate">{ar ? "كيف تضمن دقة تحديد موقعك؟" : "How to ensure accurate location?"}</h3>
           </div>
           <div className="space-y-3 py-2 text-xs text-foreground/90 leading-relaxed">
             <p className="font-semibold text-primary">

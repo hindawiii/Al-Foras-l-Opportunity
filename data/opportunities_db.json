@@ -1,0 +1,1387 @@
+{
+  "scholarships": [
+    {
+      "id": "sch_auto_1788601923735_oots",
+      "title": "منحة فولبرايت للطلاب الأجانب في الولايات المتحدة (Fulbright Foreign Student Program)",
+      "titleEn": "Fulbright Foreign Student Program USA",
+      "org": "وزارة الخارجية الأمريكية (ECA)",
+      "country": "الولايات المتحدة الأمريكية",
+      "flag": "🇺🇸",
+      "amount": "ممولة بالكامل (كافة الرسوم + مخصص معيشة + تأمين + تذاكر)",
+      "level": "ماجستير ودراسات عليا",
+      "category": "global",
+      "deadline": "2026-10-15",
+      "url": "https://foreign.fulbrightonline.org/",
+      "tags": [
+        "أمريكا",
+        "فولبرايت",
+        "ماجستير",
+        "تبادل ثقافي"
+      ],
+      "interests": [
+        "جميع التخصصات ما عدا الطب السريري"
+      ],
+      "coverage": "full",
+      "description": "أعرق برنامج للمنح الدراسية في الولايات المتحدة يغطي دراسة الماجستير للطلاب العرب والباحثين الدوليين.",
+      "descriptionEn": "Prestigious US government scholarship funding Master's and graduate degrees for international scholars.",
+      "benefits": [
+        "تغطية كامل الرسوم الدراسية",
+        "راتب شهري مجزي يغطي تكلفة المعيشة",
+        "تأمين صحي وإرشاد أكاديمي",
+        "تذاكر طيران دولية"
+      ],
+      "requirements": [
+        "شهادة جامعية معترف بها",
+        "كفاءة لغوية ممتازة (TOEFL/IELTS)",
+        "خطة بحث أو دافع متميز"
+      ],
+      "is_featured": true,
+      "source": "Fulbright Official Foreign Program",
+      "createdAt": "2026-09-05T09:52:03.836Z",
+      "updatedAt": "2026-09-05T09:52:03.836Z"
+    },
+    {
+      "id": "sch_auto_1788601923646_hbr4",
+      "title": "منحة تشيفنينغ البريطانية للقادة (Chevening UK Government Scholarship)",
+      "titleEn": "Chevening UK Government Master's Scholarship",
+      "org": "وزارة الخارجية والتنمية البريطانية (FCDO)",
+      "country": "المملكة المتحدة",
+      "flag": "🇬🇧",
+      "amount": "ممولة بالكامل (تغطية الرسوم 100% + راتب معيشة شهري + طيران)",
+      "level": "ماجستير ودراسات عليا",
+      "category": "global",
+      "deadline": "2026-11-05",
+      "url": "https://www.chevening.org/apply/",
+      "tags": [
+        "بريطانيا",
+        "ماجستير",
+        "قيادة",
+        "ممولة بالكامل"
+      ],
+      "interests": [
+        "سياسات عامة",
+        "تكنولوجيا",
+        "طاقة وتنمية",
+        "إعلام"
+      ],
+      "coverage": "full",
+      "description": "منحة قادة المستقبل من الحكومة البريطانية لدراسة الماجستير في أي جامعة بريطانية مرموقة ممولة بالكامل 100%.",
+      "descriptionEn": "UK government's global scholarship program funded by FCDO for one-year master's degrees in any UK university.",
+      "benefits": [
+        "تغطية رسوم الدراسة كاملة",
+        "راتب معيشة شهري بالجنيه الإسترليني",
+        "تذاكر سفر من وإلى المملكة المتحدة"
+      ],
+      "requirements": [
+        "شهادة بكالوريوس",
+        "خبرة عمل لا تقل عن سنتين (2,800 ساعة)",
+        "العودة للوطن بعد التخرج"
+      ],
+      "is_featured": true,
+      "source": "Chevening Official Portal",
+      "createdAt": "2026-09-05T09:52:03.733Z",
+      "updatedAt": "2026-09-05T09:52:03.733Z"
+    },
+    {
+      "id": "sch_auto_1788595382169_29qh",
+      "title": "منحة جامعة الملك فهد للبترول والمعادن (KFUPM)",
+      "titleEn": "King Fahd University of Petroleum & Minerals Graduate Scholarship",
+      "org": "جامعة الملك فهد للبترول والمعادن",
+      "country": "السعودية",
+      "flag": "🇸🇦",
+      "amount": "ممولة بالكامل (راتب شهري + سكن فاخر + تمويل بحثي)",
+      "level": "ماجستير / دكتوراه",
+      "category": "arab",
+      "deadline": "2026-11-20",
+      "url": "https://www.kfupm.edu.sa/",
+      "tags": [
+        "السعودية",
+        "هندسة متقدمة",
+        "ذكاء اصطناعي",
+        "KFUPM"
+      ],
+      "interests": [
+        "ذكاء اصطناعي",
+        "هندسة بترول",
+        "روبوتات",
+        "أمن سيبراني"
+      ],
+      "coverage": "full",
+      "description": "تعتبر الجامعة المصنفة الأولى عربياً ومن بين الأفضل عالمياً في الهندسة والذكاء الاصطناعي مع إعفاء وراتب مجزي.",
+      "descriptionEn": "Top ranked university in the Arab world offering full tuition waiver, monthly stipend, and world-class research labs.",
+      "benefits": [
+        "رسوم دراسية مجانية بنسبة 100%",
+        "راتب شهري للباحثين",
+        "سكن جامعي مفرد مكيف",
+        "رعاية طبية في المركز الطبي للجامعة"
+      ],
+      "requirements": [
+        "معدل تراكمي 3.00/4.00 أو أعلى",
+        "اختبار GRE و TOEFL/IELTS",
+        "3 خطابات توصية أكاديمية"
+      ],
+      "is_featured": true,
+      "source": "KFUPM Deanship of Graduate Studies",
+      "createdAt": "2026-09-05T08:03:02.169Z",
+      "updatedAt": "2026-09-05T08:03:02.169Z"
+    },
+    {
+      "id": "sch_auto_1788595382167_ws2k",
+      "title": "منحة داد الألمانية للدراسات العليا والتنمية (DAAD EPOS)",
+      "titleEn": "DAAD EPOS Scholarships for Development-Related Courses",
+      "org": "الهيئة الألمانية للتبادل الثقافي (DAAD)",
+      "country": "ألمانيا",
+      "flag": "🇩🇪",
+      "amount": "ممولة بالكامل (934€ شهرياً + تأمين + سفر)",
+      "level": "ماجستير / دكتوراه",
+      "category": "global",
+      "deadline": "2026-10-31",
+      "url": "https://www.daad.de/en/study-and-research-in-germany/scholarships/",
+      "tags": [
+        "ألمانيا",
+        "تنمية مستدامة",
+        "DAAD",
+        "أوروبا"
+      ],
+      "interests": [
+        "طاقة متجددة",
+        "صحة عامة",
+        "اقتصاد",
+        "تخطيط عمراني"
+      ],
+      "coverage": "full",
+      "description": "برنامج المنح التنموية من الحكومة الألمانية للمهنيين والباحثين من الدول النامية في أرقى الجامعات الألمانية.",
+      "descriptionEn": "Comprehensive German DAAD scholarship offering monthly stipends, health insurance, and travel subsidies.",
+      "benefits": [
+        "راتب شهري 934 يورو للماجستير و1300 يورو للدكتوراه",
+        "تأمين صحي وحوادث ألماني",
+        "بدل سفر دولي",
+        "دورة لغة ألمانية مكثفة"
+      ],
+      "requirements": [
+        "خبرة عملية لا تقل عن سنتين",
+        "شهادة بكالوريوس بتقدير متميز",
+        "شهادة لغة إنجليزية (IELTS/TOEFL)"
+      ],
+      "is_featured": true,
+      "source": "DAAD Official Portal",
+      "createdAt": "2026-09-05T08:03:02.168Z",
+      "updatedAt": "2026-09-05T08:03:02.168Z"
+    },
+    {
+      "id": "sch_auto_1788595382166_1z3w",
+      "title": "منحة معهد الدوحة للدراسات العليا الشاملة",
+      "titleEn": "Doha Institute for Graduate Studies Scholarships",
+      "org": "معهد الدوحة للدراسات العليا",
+      "country": "قطر",
+      "flag": "🇶🇦",
+      "amount": "ممولة بالكامل (إعفاء 100% + سكن + مخصص شهري)",
+      "level": "ماجستير ودراسات عليا",
+      "category": "arab",
+      "deadline": "2026-12-15",
+      "url": "https://www.dohainstitute.edu.qa/",
+      "tags": [
+        "منح عربية",
+        "قطر",
+        "علوم اجتماعية",
+        "إدارة عامة"
+      ],
+      "interests": [
+        "علوم سياسية",
+        "إدارة واقتصاد",
+        "إعلام",
+        "فلسفة"
+      ],
+      "coverage": "full",
+      "description": "منحة التميز الأكاديمي ومنحة سند للطلاب المتميزين عربياً لدراسة برامج الماجستير المتطورة في الدوحة.",
+      "descriptionEn": "Full academic excellence scholarship for Master's programs covering tuition, housing, and monthly allowance.",
+      "benefits": [
+        "تغطية كامل الرسوم الدراسية",
+        "سكن جامعي مؤثث",
+        "مخصصات شهرية وبدل كتب",
+        "تذاكر سفر سنوية"
+      ],
+      "requirements": [
+        "شهادة بكالوريوس بمعدل جيد جداً كحد أدنى",
+        "إتقان اللغة العربية والإنجليزية",
+        "اجتياز المقابلة الشخصية"
+      ],
+      "is_featured": true,
+      "source": "Doha Institute Official Admissions",
+      "createdAt": "2026-09-05T08:03:02.166Z",
+      "updatedAt": "2026-09-05T08:03:02.166Z"
+    },
+    {
+      "id": "turkiye-burslari-2026",
+      "title": "منحة الحكومة التركية الممولة بالكامل (Türkiye Bursları)",
+      "title_ar": "منحة الحكومة التركية الممولة بالكامل (Türkiye Bursları)",
+      "title_en": "Turkiye Scholarships (Fully Funded Government Scholarship)",
+      "university": "كافة الجامعات الحكومية والخاصة في تركيا",
+      "country": "تركيا",
+      "flag": "🇹🇷",
+      "degree": "all",
+      "coverage": "full",
+      "category": "full",
+      "deadline": "2026-11-30",
+      "majors": [
+        "الطب والهندسة",
+        "العلوم الإنسانية",
+        "إدارة الأعمال",
+        "الذكاء الاصطناعي",
+        "العلوم الأساسية"
+      ],
+      "apply_url": "https://turkiyeburslari.gov.tr",
+      "official_website": "https://turkiyeburslari.gov.tr",
+      "stipend": "راتب شهري + تذاكر طيران + سكن مجاني + تأمين صحي شامل + سنة تحضيرية للغة التركية",
+      "description": "منحة الحكومة التركية الرسمية لجميع المراحل الدراسية (بكالوريوس، ماجستير، دكتوراه، وبحوث) ممولة بالكامل 100%.",
+      "description_ar": "منحة الحكومة التركية الرسمية لجميع المراحل الدراسية ممولة بالكامل وتشمل الرسوم وراتب شهري وسكن وتأمين وطيران.",
+      "description_en": "Fully funded Turkish Government scholarship for Bachelor, Master, PhD with monthly stipend, airfare, and housing.",
+      "benefits_ar": [
+        "إعفاء كامل 100% من الرسوم الدراسية",
+        "راتب شهري منتظم طوال فترة الدراسة",
+        "سكن جامعي مؤمن ومجاني",
+        "تذاكر طيران ذهاب وعودة",
+        "تأمين صحي شامل"
+      ],
+      "requirements_ar": [
+        "معدل لا يقل عن 70% للتخصصات العامة و90% للطب",
+        "شهادة الثانوية العامة أو البكالوريوس",
+        "جواز سفر ساري المفعول"
+      ],
+      "is_featured": true,
+      "views_count": 1420,
+      "source": "curated_flagship",
+      "createdAt": "2026-09-05T08:02:56.751Z",
+      "updatedAt": "2026-09-05T08:02:56.751Z"
+    },
+    {
+      "id": "chevening-uk-2026",
+      "title": "منحة تشيفنينغ البريطانية للماجستير (Chevening UK Scholarship)",
+      "title_ar": "منحة تشيفنينغ البريطانية للماجستير (Chevening UK Scholarship)",
+      "title_en": "Chevening UK Government Master's Scholarship",
+      "university": "أي جامعة في المملكة المتحدة (أكسفورد، كامبريدج، إمبريال...)",
+      "country": "المملكة المتحدة",
+      "flag": "🇬🇧",
+      "degree": "master",
+      "coverage": "full",
+      "category": "full",
+      "deadline": "2026-11-05",
+      "majors": [
+        "السياسات العامة",
+        "التكنولوجيا والهندسة",
+        "الصحة العامة",
+        "القيادة والتنمية"
+      ],
+      "apply_url": "https://www.chevening.org/apply/",
+      "official_website": "https://www.chevening.org",
+      "stipend": "تغطية شاملة لكافة الرسوم + راتب شهري يغطي المعيشة في بريطانيا + تذاكر الطيران",
+      "description": "برنامج المنح العالمية للحكومة البريطانية، الممول من وزارة الخارجية والتنمية البريطانية (FCDO) لدراسة الماجستير لمدة عام كامل.",
+      "description_ar": "منحة قادة المستقبل من الحكومة البريطانية لدراسة الماجستير في أي جامعة بريطانية ممولة بالكامل 100%.",
+      "description_en": "UK government's global scholarship program funded by FCDO for one-year master's degrees in any UK university.",
+      "benefits_ar": [
+        "تغطية رسوم الدراسة كاملة مهما بلغت",
+        "راتب معيشة شهري بالجنيه الإسترليني",
+        "تذاكر سفر من وإلى المملكة المتحدة",
+        "بدل وصول وإقامة"
+      ],
+      "requirements_ar": [
+        "شهادة جامعية بكالوريوس",
+        "خبرة عمل لا تقل عن سنتين (2,800 ساعة)",
+        "العودة للوطن بعد التخرج لمدة عامين على الأقل"
+      ],
+      "is_featured": true,
+      "views_count": 2150,
+      "source": "curated_flagship",
+      "createdAt": "2026-09-05T08:02:56.751Z",
+      "updatedAt": "2026-09-05T08:02:56.751Z"
+    },
+    {
+      "id": "daad-germany-2026",
+      "title": "منحة الهيئة الألمانية للتبادل الثقافي (DAAD Helmut-Schmidt)",
+      "title_ar": "منحة الهيئة الألمانية للتبادل الثقافي (DAAD Germany)",
+      "title_en": "DAAD German Academic Exchange Service Scholarship",
+      "university": "أفضل الجامعات ومعاهد البحوث في ألمانيا",
+      "country": "ألمانيا",
+      "flag": "🇩🇪",
+      "degree": "master",
+      "coverage": "full",
+      "category": "full",
+      "deadline": "2026-10-31",
+      "majors": [
+        "الهندسة والعلوم التطبيقية",
+        "التنمية المستدامة",
+        "الاقتصاد والإدارة",
+        "الذكاء الاصطناعي"
+      ],
+      "apply_url": "https://www.daad.de/en/find-funding/",
+      "official_website": "https://www.daad.de",
+      "stipend": "934 يورو شهرياً للماجستير + تأمين صحي + بدلات سفر وبحوث",
+      "description": "أكبر منظمة تمويل للطلاب والباحثين الدوليين في العالم، تقدم منحاً ممولة بالكامل للدراسة باللغة الإنجليزية في ألمانيا.",
+      "description_ar": "منح داد DAAD الألمانية الشهيرة لدراسة الماجستير والدكتوراه باللغة الإنجليزية في كبرى جامعات ألمانيا.",
+      "description_en": "DAAD Germany fully funded scholarships for Master's and PhD programs taught in English with €934 monthly stipend.",
+      "benefits_ar": [
+        "راتب شهري بقيمة 934 يورو",
+        "بدل سفر وتذاكر طيران",
+        "تأمين صحي وتأمين ضد الحوادث",
+        "دورة لغة ألمانية مجانية مكثفة"
+      ],
+      "requirements_ar": [
+        "شهادة بكالوريوس متميزة بحد أقصى 6 سنوات منذ التخرج",
+        "إجادة اللغة الإنجليزية (IELTS / TOEFL)",
+        "خطاب دافع قوي وسيرة ذاتية"
+      ],
+      "is_featured": true,
+      "views_count": 1890,
+      "source": "curated_flagship",
+      "createdAt": "2026-09-05T08:02:56.751Z",
+      "updatedAt": "2026-09-05T08:02:56.751Z"
+    },
+    {
+      "id": "fulbright-usa-2026",
+      "title": "منحة فولبرايت الأمريكية للماجستير والأبحاث (Fulbright Foreign Student)",
+      "title_ar": "منحة فولبرايت الأمريكية (Fulbright Foreign Student Program)",
+      "title_en": "Fulbright Foreign Student Program USA",
+      "university": "كافة الجامعات الرائدة في الولايات المتحدة الأمريكية",
+      "country": "الولايات المتحدة الأمريكية",
+      "flag": "🇺🇸",
+      "degree": "master",
+      "coverage": "full",
+      "category": "full",
+      "deadline": "2026-10-15",
+      "majors": [
+        "كافة التخصصات الأكاديمية (باستثناء التدريب السريري الطبي)"
+      ],
+      "apply_url": "https://foreign.fulbrightonline.org/apply",
+      "official_website": "https://foreign.fulbrightonline.org",
+      "stipend": "راتب شهري بالدولار + تغطية الرسوم الدراسية بالكامل + سكن وتأمين صحي",
+      "description": "البرنامج الرائد للتبادل التعليمي الدولي الذي ترعاه حكومة الولايات المتحدة، ممول بالكامل للطلاب والخريجين المتميزين.",
+      "description_ar": "المنحة الأمريكية الأعرق لطلاب الدراسات العليا للدراسة في أفضل جامعات أمريكا بتمويل شامل.",
+      "description_en": "Prestigious US Department of State fellowship for international students to pursue graduate study at US universities.",
+      "benefits_ar": [
+        "رسوم دراسية كاملة",
+        "راتب شهري لتغطية نفقات المعيشة",
+        "تأمين صحي وإعفاء فيزا J-1",
+        "تذاكر طيران دولية"
+      ],
+      "requirements_ar": [
+        "شهادة جامعية تعادل البكالوريوس الأمريكي",
+        "إتقان اللغة الإنجليزية",
+        "أداء أكاديمي قوي وسجل قيادي"
+      ],
+      "is_featured": true,
+      "views_count": 2310,
+      "source": "curated_flagship",
+      "createdAt": "2026-09-05T08:02:56.751Z",
+      "updatedAt": "2026-09-05T08:02:56.751Z"
+    }
+  ],
+  "jobs": [
+    {
+      "id": "remotive_1185979_lpt",
+      "title_ar": "Freelance Writer - IAPWE",
+      "title_en": "Freelance Writer",
+      "company": "IAPWE",
+      "location": "Worldwide",
+      "salary": "$50-$75 /hour",
+      "category": "remote",
+      "type": "freelance",
+      "country": "عن بعد / Global Remote",
+      "flag": "💻",
+      "deadline": "مستمر حتى اكتمال العدد",
+      "apply_url": "https://remotive.com/remote-jobs/writing/freelance-writer-1185979",
+      "company_url": "https://remotive.com/job/1185979/logo",
+      "skills": [
+        "REST"
+      ],
+      "description_ar": " Our organization is seeking content writers to create articles and blog posts on a variety of topics. \n   \n The rate of pay is $20 per 100 words (this comes out to approximately $100 per article or $50 per hour). \n   \n Some topics you may be asked to write about include the following (you can alway",
+      "description_en": " Our organization is seeking content writers to create articles and blog posts on a variety of topics. \n   \n The rate of pay is $20 per 100 words (this comes out to approximately $100 per article or $50 per hour). \n   \n Some topics you may be asked to write about include the following (you can always turn down a topic if you do not feel comfortable",
+      "benefits_ar": [
+        "مرونة كاملة في أوقات العمل",
+        "عقد عمل دولي عن بعد",
+        "تأمين وبدلات بيئة العمل"
+      ],
+      "verified": true,
+      "featured": true,
+      "source": "Remotive International Feed",
+      "createdAt": "2026-09-05T08:03:02.164Z",
+      "updatedAt": "2026-09-05T08:03:02.164Z"
+    },
+    {
+      "id": "remotive_2091087_cb1",
+      "title_ar": "SaaS Product Support Jedi - Creative Force",
+      "title_en": "SaaS Product Support Jedi",
+      "company": "Creative Force",
+      "location": "Europe, EMEA, UK, Germany, France, European timezones",
+      "salary": "حسب الكفاءة والخبرة (تنافسي)",
+      "category": "remote",
+      "type": "full_time",
+      "country": "عن بعد / Global Remote",
+      "flag": "💻",
+      "deadline": "مستمر حتى اكتمال العدد",
+      "apply_url": "https://remotive.com/remote-jobs/customer-service/saas-product-support-jedi-2091087",
+      "company_url": "https://remotive.com/job/2091087/logo",
+      "skills": [
+        "api",
+        "CSS",
+        "go",
+        "html",
+        "javascript"
+      ],
+      "description_ar": " We’re on the hunt for a sharp, self-driven SaaS pro who’s as comfortable troubleshooting API and integrations as they are navigating human conversations. \n Our European client base is growing fast and we need someone who can keep up. Our software isn’t your average plug-and-play; it has a steep lea",
+      "description_en": " We’re on the hunt for a sharp, self-driven SaaS pro who’s as comfortable troubleshooting API and integrations as they are navigating human conversations. \n Our European client base is growing fast and we need someone who can keep up. Our software isn’t your average plug-and-play; it has a steep learning curve so you’ll need to be technically savvy",
+      "benefits_ar": [
+        "مرونة كاملة في أوقات العمل",
+        "عقد عمل دولي عن بعد",
+        "تأمين وبدلات بيئة العمل"
+      ],
+      "verified": true,
+      "featured": true,
+      "source": "Remotive International Feed",
+      "createdAt": "2026-09-05T08:03:02.108Z",
+      "updatedAt": "2026-09-05T08:03:02.108Z"
+    },
+    {
+      "id": "remotive_2091088_tbd",
+      "title_ar": "Sales Jedi - Creative Force ",
+      "title_en": "Sales Jedi",
+      "company": "Creative Force ",
+      "location": "Europe",
+      "salary": "حسب الكفاءة والخبرة (تنافسي)",
+      "category": "remote",
+      "type": "full_time",
+      "country": "عن بعد / Global Remote",
+      "flag": "💻",
+      "deadline": "مستمر حتى اكتمال العدد",
+      "apply_url": "https://remotive.com/remote-jobs/sales/sales-jedi-2091088",
+      "company_url": "https://remotive.com/job/2091088/logo",
+      "skills": [
+        "saas",
+        "video",
+        "SOLID",
+        "chat",
+        "saas sales"
+      ],
+      "description_ar": "  Great salary | Profit share | 100% remote |   Work from anywhere in Europe | SaaS  \n     \n Awesome opportunity for a self-motivated and energetic people person to join our remote team and help sell our world-leading SaaS products, from anywhere in Europe. \n We pay a great salary, based on experien",
+      "description_en": "  Great salary | Profit share | 100% remote |   Work from anywhere in Europe | SaaS  \n     \n Awesome opportunity for a self-motivated and energetic people person to join our remote team and help sell our world-leading SaaS products, from anywhere in Europe. \n We pay a great salary, based on experience and location. We don’t pay commissions, because",
+      "benefits_ar": [
+        "مرونة كاملة في أوقات العمل",
+        "عقد عمل دولي عن بعد",
+        "تأمين وبدلات بيئة العمل"
+      ],
+      "verified": true,
+      "featured": true,
+      "source": "Remotive International Feed",
+      "createdAt": "2026-09-05T08:03:02.048Z",
+      "updatedAt": "2026-09-05T08:03:02.048Z"
+    },
+    {
+      "id": "remotive_2091045_hey",
+      "title_ar": "Tier III Service Desk Engineer - Unio Digital",
+      "title_en": "Tier III Service Desk Engineer",
+      "company": "Unio Digital",
+      "location": "Worldwide",
+      "salary": "حسب الكفاءة والخبرة (تنافسي)",
+      "category": "remote",
+      "type": "full_time",
+      "country": "عن بعد / Global Remote",
+      "flag": "💻",
+      "deadline": "مستمر حتى اكتمال العدد",
+      "apply_url": "https://remotive.com/remote-jobs/information-technology/tier-iii-service-desk-engineer-2091045",
+      "company_url": "https://remotive.com/job/2091045/logo",
+      "skills": [
+        "azure",
+        "cisco",
+        "security",
+        "video",
+        "documentation"
+      ],
+      "description_ar": " Unió Digital is an Arizona-based managed service provider (MSP) delivering Managed IT Services, Low Voltage Cabling, Access Control, Video Surveillance, and Intrusion Services. We believe technology should be intuitive, not intimidating. \n   \n We are looking for an experienced Tier 3 Service Desk T",
+      "description_en": " Unió Digital is an Arizona-based managed service provider (MSP) delivering Managed IT Services, Low Voltage Cabling, Access Control, Video Surveillance, and Intrusion Services. We believe technology should be intuitive, not intimidating. \n   \n We are looking for an experienced Tier 3 Service Desk Technician with exceptional problem-solving skills.",
+      "benefits_ar": [
+        "مرونة كاملة في أوقات العمل",
+        "عقد عمل دولي عن بعد",
+        "تأمين وبدلات بيئة العمل"
+      ],
+      "verified": true,
+      "featured": true,
+      "source": "Remotive International Feed",
+      "createdAt": "2026-09-05T08:03:01.992Z",
+      "updatedAt": "2026-09-05T08:03:01.992Z"
+    },
+    {
+      "id": "remotive_2086540_aps",
+      "title_ar": "Inside Sales Contractor - Credit Wellness, LLC",
+      "title_en": "Inside Sales Contractor",
+      "company": "Credit Wellness, LLC",
+      "location": "Worldwide",
+      "salary": "OTE $25k - $35k",
+      "category": "remote",
+      "type": "full_time",
+      "country": "عن بعد / Global Remote",
+      "flag": "💻",
+      "deadline": "مستمر حتى اكتمال العدد",
+      "apply_url": "https://remotive.com/remote-jobs/sales/inside-sales-contractor-2086540",
+      "company_url": "https://remotive.com/job/2086540/logo",
+      "skills": [
+        "CRM",
+        "google sheets",
+        "financial services",
+        "Inside Sales"
+      ],
+      "description_ar": "  About Us  \n  We are a financial services start up focusing on helping to improve consumer credit profiles. We are currently seeking KPI driven sales representatives looking to earn up to 45K in their first year while working remotely. We offer comprehensive training and continuous sales coaching t",
+      "description_en": "  About Us  \n  We are a financial services start up focusing on helping to improve consumer credit profiles. We are currently seeking KPI driven sales representatives looking to earn up to 45K in their first year while working remotely. We offer comprehensive training and continuous sales coaching to help you meet your financial goals.  \n  During o",
+      "benefits_ar": [
+        "مرونة كاملة في أوقات العمل",
+        "عقد عمل دولي عن بعد",
+        "تأمين وبدلات بيئة العمل"
+      ],
+      "verified": true,
+      "featured": true,
+      "source": "Remotive International Feed",
+      "createdAt": "2026-09-05T08:03:01.949Z",
+      "updatedAt": "2026-09-05T08:03:01.949Z"
+    },
+    {
+      "id": "remotive_1680495_baq",
+      "title_ar": "Remote Office Assistant - Coalition Technologies ",
+      "title_en": "Remote Office Assistant",
+      "company": "Coalition Technologies ",
+      "location": "Worldwide",
+      "salary": "$31,2k- $52k",
+      "category": "remote",
+      "type": "full_time",
+      "country": "عن بعد / Global Remote",
+      "flag": "💻",
+      "deadline": "مستمر حتى اكتمال العدد",
+      "apply_url": "https://remotive.com/remote-jobs/marketing/remote-office-assistant-1680495",
+      "company_url": "https://remotive.com/job/1680495/logo",
+      "skills": [
+        "CSS",
+        "excel",
+        "frontend",
+        "git",
+        "html"
+      ],
+      "description_ar": " Coalition Technologies is seeking a reliable, detail-oriented, and highly organized Remote Office Assistant to support administrative, bookkeeping, billing, reporting, data entry, and internal operations tasks. This role is ideal for someone with strong communication skills, discretion, attention t",
+      "description_en": " Coalition Technologies is seeking a reliable, detail-oriented, and highly organized Remote Office Assistant to support administrative, bookkeeping, billing, reporting, data entry, and internal operations tasks. This role is ideal for someone with strong communication skills, discretion, attention to detail, and a willingness to learn and grow with",
+      "benefits_ar": [
+        "مرونة كاملة في أوقات العمل",
+        "عقد عمل دولي عن بعد",
+        "تأمين وبدلات بيئة العمل"
+      ],
+      "verified": true,
+      "featured": true,
+      "source": "Remotive International Feed",
+      "createdAt": "2026-09-05T08:03:01.880Z",
+      "updatedAt": "2026-09-05T08:03:01.880Z"
+    },
+    {
+      "id": "remotive_2091093_ucz",
+      "title_ar": "Face Deduplication Collection - TELUS Digital",
+      "title_en": "Face Deduplication Collection",
+      "company": "TELUS Digital",
+      "location": "USA",
+      "salary": "Pay per task",
+      "category": "remote",
+      "type": "part_time",
+      "country": "عن بعد / Global Remote",
+      "flag": "💻",
+      "deadline": "مستمر حتى اكتمال العدد",
+      "apply_url": "https://remotive.com/remote-jobs/all-others/face-deduplication-collection-2091093",
+      "company_url": "https://remotive.com/job/2091093/logo",
+      "skills": [
+        "research"
+      ],
+      "description_ar": " The project compensation rate is $0.55 USD per accepted image.   The objective of this project is to collect a large and diverse dataset of current neutral selfies, head-pose captures, and historical facial images to support machine-learning research and facial recognition model training at TELUS. ",
+      "description_en": " The project compensation rate is $0.55 USD per accepted image.   The objective of this project is to collect a large and diverse dataset of current neutral selfies, head-pose captures, and historical facial images to support machine-learning research and facial recognition model training at TELUS. \n   \n The focus is on capturing real-world variati",
+      "benefits_ar": [
+        "مرونة كاملة في أوقات العمل",
+        "عقد عمل دولي عن بعد",
+        "تأمين وبدلات بيئة العمل"
+      ],
+      "verified": true,
+      "featured": true,
+      "source": "Remotive International Feed",
+      "createdAt": "2026-09-05T08:03:01.824Z",
+      "updatedAt": "2026-09-05T08:03:01.824Z"
+    },
+    {
+      "id": "remotive_2069746_n8a",
+      "title_ar": "Tech Lead Full-Stack Rails Engineer - Mitre Media",
+      "title_en": "Tech Lead Full-Stack Rails Engineer",
+      "company": "Mitre Media",
+      "location": "USA, Canada, USA timezones",
+      "salary": "$170k - $200k",
+      "category": "tech",
+      "type": "full_time",
+      "country": "عن بعد / Global Remote",
+      "flag": "💻",
+      "deadline": "مستمر حتى اكتمال العدد",
+      "apply_url": "https://remotive.com/remote-jobs/software-development/tech-lead-full-stack-rails-engineer-2069746",
+      "company_url": "https://remotive.com/job/2069746/logo",
+      "skills": [
+        "api",
+        "CSS",
+        "docker",
+        "elasticsearch",
+        "fullstack"
+      ],
+      "description_ar": "  About Mitre Media  \n  Mitre Media is redefining FinTech with AI-driven tools that empower millions of investors. Our portfolio, including Dividend.com and MutualFunds.com, leverages LLMs to deliver novel data insights and visually rich user experiences. For over a decade, we’ve served individual i",
+      "description_en": "  About Mitre Media  \n  Mitre Media is redefining FinTech with AI-driven tools that empower millions of investors. Our portfolio, including Dividend.com and MutualFunds.com, leverages LLMs to deliver novel data insights and visually rich user experiences. For over a decade, we’ve served individual investors, financial advisors, and top asset manage",
+      "benefits_ar": [
+        "مرونة كاملة في أوقات العمل",
+        "عقد عمل دولي عن بعد",
+        "تأمين وبدلات بيئة العمل"
+      ],
+      "verified": true,
+      "featured": true,
+      "source": "Remotive International Feed",
+      "createdAt": "2026-09-05T08:03:01.758Z",
+      "updatedAt": "2026-09-05T08:03:01.758Z"
+    },
+    {
+      "id": "remotive_2091068_wfi",
+      "title_ar": "Head of Marketing & Communications - garden3d",
+      "title_en": "Head of Marketing & Communications",
+      "company": "garden3d",
+      "location": "Worldwide",
+      "salary": "$150k - $230k",
+      "category": "remote",
+      "type": "contract",
+      "country": "عن بعد / Global Remote",
+      "flag": "💻",
+      "deadline": "مستمر حتى اكتمال العدد",
+      "apply_url": "https://remotive.com/remote-jobs/marketing/head-of-marketing-communications-2091068",
+      "company_url": "https://remotive.com/job/2091068/logo",
+      "skills": [
+        "C",
+        "video",
+        "open source",
+        "AI/ML",
+        "Figma"
+      ],
+      "description_ar": "  We are hiring a  Head of Marketing &amp; Communications  to tell the garden3d story across the internet, from wherever in the world you happen to be.  \n  More details if you check our  original job posting link   \n  About  garden3d   \n We are worker owned creative collective, innovating on everyth",
+      "description_en": "  We are hiring a  Head of Marketing &amp; Communications  to tell the garden3d story across the internet, from wherever in the world you happen to be.  \n  More details if you check our  original job posting link   \n  About  garden3d   \n We are worker owned creative collective, innovating on everything from brands and IRL communities to IoT devices",
+      "benefits_ar": [
+        "مرونة كاملة في أوقات العمل",
+        "عقد عمل دولي عن بعد",
+        "تأمين وبدلات بيئة العمل"
+      ],
+      "verified": true,
+      "featured": true,
+      "source": "Remotive International Feed",
+      "createdAt": "2026-09-05T08:03:01.701Z",
+      "updatedAt": "2026-09-05T08:03:01.701Z"
+    },
+    {
+      "id": "remotive_1919265_app",
+      "title_ar": "Senior Independent Software Developer - A.Team",
+      "title_en": "Senior Independent Software Developer",
+      "company": "A.Team",
+      "location": "Americas, Europe, Israel",
+      "salary": "$90 - $150 /hour",
+      "category": "tech",
+      "type": "contract",
+      "country": "عن بعد / Global Remote",
+      "flag": "💻",
+      "deadline": "مستمر حتى اكتمال العدد",
+      "apply_url": "https://remotive.com/remote-jobs/software-development/senior-independent-software-developer-1919265",
+      "company_url": "https://remotive.com/job/1919265/logo",
+      "skills": [
+        "go",
+        "wordpress",
+        "chat",
+        "apple",
+        "testing"
+      ],
+      "description_ar": "  You must be located in the Americas, Europe, or Israel to apply.     A·Team  is a VC-backed, stealth, application-only home on the internet for senior independent software builders to team up with hand-picked, high-growth companies on their next big thing.  \n After talking with hundreds of indepen",
+      "description_en": "  You must be located in the Americas, Europe, or Israel to apply.     A·Team  is a VC-backed, stealth, application-only home on the internet for senior independent software builders to team up with hand-picked, high-growth companies on their next big thing.  \n After talking with hundreds of independent engineers, designers, and product folks, we h",
+      "benefits_ar": [
+        "مرونة كاملة في أوقات العمل",
+        "عقد عمل دولي عن بعد",
+        "تأمين وبدلات بيئة العمل"
+      ],
+      "verified": true,
+      "featured": true,
+      "source": "Remotive International Feed",
+      "createdAt": "2026-09-05T08:03:01.645Z",
+      "updatedAt": "2026-09-05T08:03:01.645Z"
+    },
+    {
+      "id": "remotive_1919266_jjk",
+      "title_ar": "Senior Independent AI Engineer / Architect - A.Team",
+      "title_en": "Senior Independent AI Engineer / Architect",
+      "company": "A.Team",
+      "location": "Americas, Europe, Israel",
+      "salary": "$120 - $170 /hour",
+      "category": "tech",
+      "type": "contract",
+      "country": "عن بعد / Global Remote",
+      "flag": "💻",
+      "deadline": "مستمر حتى اكتمال العدد",
+      "apply_url": "https://remotive.com/remote-jobs/software-development/senior-independent-ai-engineer-architect-1919266",
+      "company_url": "https://remotive.com/job/1919266/logo",
+      "skills": [
+        "go",
+        "UI/UX",
+        "wordpress",
+        "chat",
+        "apple"
+      ],
+      "description_ar": " Senior Independent AI Engineer / Architect \n  Remote | Americas, Europe, or Israel  \n   \n Most AI engineers can find work. \n   \n Finding work worth doing is harder. \n   \n A.Team is an invite-only network of senior AI engineers, ML engineers, and AI architects building production AI systems for star",
+      "description_en": " Senior Independent AI Engineer / Architect \n  Remote | Americas, Europe, or Israel  \n   \n Most AI engineers can find work. \n   \n Finding work worth doing is harder. \n   \n A.Team is an invite-only network of senior AI engineers, ML engineers, and AI architects building production AI systems for startups, enterprises, and global companies. \n   \n Sin",
+      "benefits_ar": [
+        "مرونة كاملة في أوقات العمل",
+        "عقد عمل دولي عن بعد",
+        "تأمين وبدلات بيئة العمل"
+      ],
+      "verified": true,
+      "featured": true,
+      "source": "Remotive International Feed",
+      "createdAt": "2026-09-05T08:03:01.586Z",
+      "updatedAt": "2026-09-05T08:03:01.586Z"
+    },
+    {
+      "id": "remotive_2091097_r42",
+      "title_ar": "Senior Data Engineer - Lemon.io",
+      "title_en": "Senior Data Engineer",
+      "company": "Lemon.io",
+      "location": "LATAM, Europe, USA, Canada, APAC",
+      "salary": "حسب الكفاءة والخبرة (تنافسي)",
+      "category": "tech",
+      "type": "full_time",
+      "country": "عن بعد / Global Remote",
+      "flag": "💻",
+      "deadline": "مستمر حتى اكتمال العدد",
+      "apply_url": "https://remotive.com/remote-jobs/software-development/senior-data-engineer-2091097",
+      "company_url": "https://remotive.com/job/2091097/logo",
+      "skills": [
+        ".Net",
+        "android",
+        "apache",
+        "AWS",
+        "azure"
+      ],
+      "description_ar": " Are you a talented Senior Data Engineer looking for a remote job that lets you show your skills and get decent compensation? Look no further than  Lemon.io  — the marketplace that connects you with hand-picked startups in the US and Europe. \n     \n  What we offer:  \n \n The rate depends on your skil",
+      "description_en": " Are you a talented Senior Data Engineer looking for a remote job that lets you show your skills and get decent compensation? Look no further than  Lemon.io  — the marketplace that connects you with hand-picked startups in the US and Europe. \n     \n  What we offer:  \n \n The rate depends on your skills and experience. We've already paid out over $11",
+      "benefits_ar": [
+        "مرونة كاملة في أوقات العمل",
+        "عقد عمل دولي عن بعد",
+        "تأمين وبدلات بيئة العمل"
+      ],
+      "verified": true,
+      "featured": true,
+      "source": "Remotive International Feed",
+      "createdAt": "2026-09-05T08:03:01.538Z",
+      "updatedAt": "2026-09-05T08:03:01.538Z"
+    },
+    {
+      "id": "remotive_2091098_fco",
+      "title_ar": "Senior Golang Developer - Lemon.io",
+      "title_en": "Senior Golang Developer",
+      "company": "Lemon.io",
+      "location": "Europe, USA, UK, Canada, Australia, Singapore",
+      "salary": "حسب الكفاءة والخبرة (تنافسي)",
+      "category": "tech",
+      "type": "full_time",
+      "country": "عن بعد / Global Remote",
+      "flag": "💻",
+      "deadline": "مستمر حتى اكتمال العدد",
+      "apply_url": "https://remotive.com/remote-jobs/software-development/senior-golang-developer-2091098",
+      "company_url": "https://remotive.com/job/2091098/logo",
+      "skills": [
+        ".Net",
+        "android",
+        "C",
+        "C#",
+        "C++"
+      ],
+      "description_ar": " Are you a talented Senior Developer looking for a remote job that lets you show your skills and get decent compensation? Look no further than  Lemon.io  — the marketplace that connects you with hand-picked startups in the US and Europe. \n   \n We are currently seeking a Senior Software Engineer for ",
+      "description_en": " Are you a talented Senior Developer looking for a remote job that lets you show your skills and get decent compensation? Look no further than  Lemon.io  — the marketplace that connects you with hand-picked startups in the US and Europe. \n   \n We are currently seeking a Senior Software Engineer for our client — a research-driven artificial intellig",
+      "benefits_ar": [
+        "مرونة كاملة في أوقات العمل",
+        "عقد عمل دولي عن بعد",
+        "تأمين وبدلات بيئة العمل"
+      ],
+      "verified": true,
+      "featured": true,
+      "source": "Remotive International Feed",
+      "createdAt": "2026-09-05T08:03:01.475Z",
+      "updatedAt": "2026-09-05T08:03:01.475Z"
+    },
+    {
+      "id": "remotive_2091105_9ov",
+      "title_ar": "Content Reviewer - English US - TELUS Digital",
+      "title_en": "Content Reviewer - English US",
+      "company": "TELUS Digital",
+      "location": "USA",
+      "salary": "$14/hour",
+      "category": "remote",
+      "type": "part_time",
+      "country": "عن بعد / Global Remote",
+      "flag": "💻",
+      "deadline": "مستمر حتى اكتمال العدد",
+      "apply_url": "https://remotive.com/remote-jobs/all-others/content-reviewer-english-us-2091105",
+      "company_url": "https://remotive.com/job/2091105/logo",
+      "skills": [
+        "android",
+        "ios",
+        "social media",
+        "AI/ML"
+      ],
+      "description_ar": " Our global AI Community is a vibrant network of more than one million contributors from \n diverse backgrounds who help customers collect, enhance, train, translate, and localize \n content to build better AI models. Become part of our growing community and contribute \n to the development of innovati",
+      "description_en": " Our global AI Community is a vibrant network of more than one million contributors from \n diverse backgrounds who help customers collect, enhance, train, translate, and localize \n content to build better AI models. Become part of our growing community and contribute \n to the development of innovative AI technologies used by some of the world's lar",
+      "benefits_ar": [
+        "مرونة كاملة في أوقات العمل",
+        "عقد عمل دولي عن بعد",
+        "تأمين وبدلات بيئة العمل"
+      ],
+      "verified": true,
+      "featured": true,
+      "source": "Remotive International Feed",
+      "createdAt": "2026-09-05T08:03:01.413Z",
+      "updatedAt": "2026-09-05T08:03:01.413Z"
+    },
+    {
+      "id": "remotive_2091099_zge",
+      "title_ar": "Senior DevOps Engineer - Lemon.io",
+      "title_en": "Senior DevOps Engineer",
+      "company": "Lemon.io",
+      "location": "LATAM, Europe, USA, Canada, APAC",
+      "salary": "حسب الكفاءة والخبرة (تنافسي)",
+      "category": "tech",
+      "type": "full_time",
+      "country": "عن بعد / Global Remote",
+      "flag": "💻",
+      "deadline": "مستمر حتى اكتمال العدد",
+      "apply_url": "https://remotive.com/remote-jobs/devops/senior-devops-engineer-2091099",
+      "company_url": "https://remotive.com/job/2091099/logo",
+      "skills": [
+        ".Net",
+        "android",
+        "AWS",
+        "azure",
+        "C"
+      ],
+      "description_ar": " Are you a talented Senior DevOps looking for a remote job that lets you show your skills and get decent compensation? Look no further than  Lemon.io  — the marketplace that connects you with hand-picked startups in the US and Europe. \n   \n   \n We currently have multiple DevOps openings open at once",
+      "description_en": " Are you a talented Senior DevOps looking for a remote job that lets you show your skills and get decent compensation? Look no further than  Lemon.io  — the marketplace that connects you with hand-picked startups in the US and Europe. \n   \n   \n We currently have multiple DevOps openings open at once, each with a different setup, stack, and benefits",
+      "benefits_ar": [
+        "مرونة كاملة في أوقات العمل",
+        "عقد عمل دولي عن بعد",
+        "تأمين وبدلات بيئة العمل"
+      ],
+      "verified": true,
+      "featured": true,
+      "source": "Remotive International Feed",
+      "createdAt": "2026-09-05T08:03:01.357Z",
+      "updatedAt": "2026-09-05T08:03:01.357Z"
+    },
+    {
+      "id": "remotive_2091100_fzi",
+      "title_ar": "Senior QA Engineer - Lemon.io",
+      "title_en": "Senior QA Engineer",
+      "company": "Lemon.io",
+      "location": "Europe",
+      "salary": "حسب الكفاءة والخبرة (تنافسي)",
+      "category": "remote",
+      "type": "full_time",
+      "country": "عن بعد / Global Remote",
+      "flag": "💻",
+      "deadline": "مستمر حتى اكتمال العدد",
+      "apply_url": "https://remotive.com/remote-jobs/qa/senior-qa-engineer-2091100",
+      "company_url": "https://remotive.com/job/2091100/logo",
+      "skills": [
+        ".Net",
+        "android",
+        "C",
+        "C#",
+        "C++"
+      ],
+      "description_ar": " Are you a talented QA looking for a remote job that lets you show your skills and get better compensation and career growth? Look no further than  Lemon.io  - the marketplace that connects you with hand-picked startups in the US and Europe. \n   \n We are seeking a Senior QA Engineer for our client —",
+      "description_en": " Are you a talented QA looking for a remote job that lets you show your skills and get better compensation and career growth? Look no further than  Lemon.io  - the marketplace that connects you with hand-picked startups in the US and Europe. \n   \n We are seeking a Senior QA Engineer for our client — for direct hire. The client is a B2B service prov",
+      "benefits_ar": [
+        "مرونة كاملة في أوقات العمل",
+        "عقد عمل دولي عن بعد",
+        "تأمين وبدلات بيئة العمل"
+      ],
+      "verified": true,
+      "featured": true,
+      "source": "Remotive International Feed",
+      "createdAt": "2026-09-05T08:03:01.295Z",
+      "updatedAt": "2026-09-05T08:03:01.295Z"
+    },
+    {
+      "id": "remotive_2091101_igi",
+      "title_ar": "Senior React Full-stack Developer - Lemon.io",
+      "title_en": "Senior React Full-stack Developer",
+      "company": "Lemon.io",
+      "location": "LATAM, Europe, USA, Canada, APAC",
+      "salary": "حسب الكفاءة والخبرة (تنافسي)",
+      "category": "tech",
+      "type": "full_time",
+      "country": "عن بعد / Global Remote",
+      "flag": "💻",
+      "deadline": "مستمر حتى اكتمال العدد",
+      "apply_url": "https://remotive.com/remote-jobs/software-development/senior-react-full-stack-developer-2091101",
+      "company_url": "https://remotive.com/job/2091101/logo",
+      "skills": [
+        ".Net",
+        "android",
+        "AWS",
+        "backend",
+        "C"
+      ],
+      "description_ar": " Are you a talented Senior Developer looking for a remote job that lets you show your skills and get decent compensation? Look no further than  Lemon.io  — the marketplace that connects you with hand-picked startups in the US and Europe. \n     \n  What we offer:  \n \n The rate depends on your seniorit",
+      "description_en": " Are you a talented Senior Developer looking for a remote job that lets you show your skills and get decent compensation? Look no further than  Lemon.io  — the marketplace that connects you with hand-picked startups in the US and Europe. \n     \n  What we offer:  \n \n The rate depends on your seniority level, skills and experience. We've already paid",
+      "benefits_ar": [
+        "مرونة كاملة في أوقات العمل",
+        "عقد عمل دولي عن بعد",
+        "تأمين وبدلات بيئة العمل"
+      ],
+      "verified": true,
+      "featured": true,
+      "source": "Remotive International Feed",
+      "createdAt": "2026-09-05T08:03:01.188Z",
+      "updatedAt": "2026-09-05T08:03:01.188Z"
+    },
+    {
+      "id": "remotive_1749306_515",
+      "title_ar": "Freelance Copywriter - Coalition Technologies ",
+      "title_en": "Freelance Copywriter",
+      "company": "Coalition Technologies ",
+      "location": "Worldwide",
+      "salary": "$20k -$35k",
+      "category": "remote",
+      "type": "freelance",
+      "country": "عن بعد / Global Remote",
+      "flag": "💻",
+      "deadline": "مستمر حتى اكتمال العدد",
+      "apply_url": "https://remotive.com/remote-jobs/writing/freelance-copywriter-1749306",
+      "company_url": "https://remotive.com/job/1749306/logo",
+      "skills": [
+        "accounting",
+        "excel",
+        "research",
+        "data analysis",
+        "bookkeeping"
+      ],
+      "description_ar": " CT Marketing Agency is seeking skilled Freelance Copywriters to write high-quality, SEO-driven content for eCommerce and lead generation websites. This is a freelance, project-based writing role. \n   \n The ideal candidate has excellent English writing skills, strong research ability, and experience",
+      "description_en": " CT Marketing Agency is seeking skilled Freelance Copywriters to write high-quality, SEO-driven content for eCommerce and lead generation websites. This is a freelance, project-based writing role. \n   \n The ideal candidate has excellent English writing skills, strong research ability, and experience writing content that follows detailed, client-spe",
+      "benefits_ar": [
+        "مرونة كاملة في أوقات العمل",
+        "عقد عمل دولي عن بعد",
+        "تأمين وبدلات بيئة العمل"
+      ],
+      "verified": true,
+      "featured": true,
+      "source": "Remotive International Feed",
+      "createdAt": "2026-09-05T08:03:01.085Z",
+      "updatedAt": "2026-09-05T08:03:01.085Z"
+    },
+    {
+      "id": "picalica-020",
+      "title_ar": "متجر بيكاليكا للمنتجات والتصاميم الرقمية (عائدات بالدولار)",
+      "title_en": "Picalica Digital Products & UI Marketplace",
+      "company": "Picalica (حسوب)",
+      "location": "عن بعد - العالم العربي والعالم",
+      "salary": "$50 - $2,500 / مبيعات متكررة",
+      "category": "design",
+      "type": "remote_freelance",
+      "country": "الوطن العربي / دولي",
+      "flag": "🎨",
+      "deadline": "مستمر طوال العام",
+      "apply_url": "https://picalica.com",
+      "company_url": "https://picalica.com",
+      "skills": [
+        "UI Kits",
+        "Figma",
+        "WordPress",
+        "Web Templates",
+        "Graphic Assets"
+      ],
+      "benefits_ar": [
+        "دخل سلبي مستمر",
+        "سحب دوري للأرباح بالدولار",
+        "منصة عربية موثوقة 100%"
+      ],
+      "description_ar": "منصة بيكاليكا التابعة لحسوب تتيح للمصممين والمطورين بيع قوالبهم وتصاميمهم الرقمية وجني دخل سلبي مستمر بالدولار.",
+      "description_en": "Leading Arabic digital assets marketplace by Hsoub for UI themes, code scripts, and creative goods.",
+      "verified": true,
+      "featured": true,
+      "source": "curated_platform",
+      "createdAt": "2026-09-05T08:02:56.751Z",
+      "updatedAt": "2026-09-05T08:02:56.751Z"
+    },
+    {
+      "id": "contra-021",
+      "title_ar": "شبكة كونترا العالمية للعمل الحر (0% عمولة وسحب فوري)",
+      "title_en": "Contra Commission-Free Global Freelance Network",
+      "company": "Contra Inc.",
+      "location": "عن بعد / Global Remote",
+      "salary": "$1,500 - $6,000 / شهر",
+      "category": "tech",
+      "type": "remote_contract",
+      "country": "عالمي",
+      "flag": "⚡",
+      "deadline": "مستمر",
+      "apply_url": "https://contra.com",
+      "company_url": "https://contra.com",
+      "skills": [
+        "Frontend",
+        "Product Design",
+        "Marketing",
+        "Writing",
+        "NoCode"
+      ],
+      "benefits_ar": [
+        "0% اقتطاع من الأرباح",
+        "حماية العقود والدفع الفوري",
+        "تواصل مباشر مع الشركات العالمية"
+      ],
+      "description_ar": "أحدث شبكة عمل حر عالمية تتيح للمستقلين إبراز مشاريعهم والتعاقد مع الشركات الناشئة مع الاحتفاظ بـ 100% من أتعابهم دون أي عمولة وساطة.",
+      "description_en": "Modern freelance platform charging 0% commission on independent contracts with top international clients.",
+      "verified": true,
+      "featured": true,
+      "source": "curated_platform",
+      "createdAt": "2026-09-05T08:02:56.751Z",
+      "updatedAt": "2026-09-05T08:02:56.751Z"
+    },
+    {
+      "id": "gengo-022",
+      "title_ar": "منصة جينجو العالمية للترجمة المباشرة (دفع بالكلمة)",
+      "title_en": "Gengo Global Translation Platform (Lionbridge)",
+      "company": "Gengo (Lionbridge)",
+      "location": "عن بعد / Global Remote",
+      "salary": "$0.06 - $0.12 / كلمة ($800 - $2,500 شهرياً)",
+      "category": "writing",
+      "type": "remote_freelance",
+      "country": "عالمي",
+      "flag": "✍️",
+      "deadline": "مفتوح دائماً",
+      "apply_url": "https://gengo.com/translators/",
+      "company_url": "https://gengo.com",
+      "skills": [
+        "Translation",
+        "Arabic Localization",
+        "Proofreading",
+        "English C1"
+      ],
+      "benefits_ar": [
+        "مهام ترجمة جاهزة بدون مزايدات",
+        "سحب منتظم عبر PayPal وبايونيير",
+        "مرونة كاملة في ساعات العمل"
+      ],
+      "description_ar": "منصة تابعة لـ Lionbridge للترجمة السريعة: تجتاز اختباراً بسيطاً وتبدأ فوراً باستلام نصوص للترجمة من الإنجليزية للعربية أو العكس والدفع يتم بالكلمة.",
+      "description_en": "Premier cloud translation platform offering immediate translation tasks with reliable per-word USD payouts.",
+      "verified": true,
+      "featured": true,
+      "source": "curated_platform",
+      "createdAt": "2026-09-05T08:02:56.751Z",
+      "updatedAt": "2026-09-05T08:02:56.751Z"
+    },
+    {
+      "id": "proz-023",
+      "title_ar": "شبكة بروز ProZ العالمية للمترجمين المحترفين (عقود كبرى الوكالات)",
+      "title_en": "ProZ.com World's Largest Translation Network",
+      "company": "ProZ.com",
+      "location": "عن بعد / Global Remote",
+      "salary": "$1,200 - $4,500 / عقود شهرية ومشاريع",
+      "category": "writing",
+      "type": "remote_contract",
+      "country": "عالمي",
+      "flag": "🏛️",
+      "deadline": "مستمر",
+      "apply_url": "https://www.proz.com",
+      "company_url": "https://www.proz.com",
+      "skills": [
+        "Legal Translation",
+        "Medical Translation",
+        "Technical Localization",
+        "CAT Tools"
+      ],
+      "benefits_ar": [
+        "أكبر قاعدة عملاء ووكالات ترجمة في العالم",
+        "0% عمولة وسيط على العقود المباشرة",
+        "أسعار عالمية مرتفعة"
+      ],
+      "description_ar": "أكبر وأعرق منصة ومجتمع للمترجمين في العالم، تضم أكثر من 1.3 مليون عضو ومئات الوكالات والمنظمات الدولية التي تطرح مشاريع مستمرة.",
+      "description_en": "The world's largest linguistics directory connecting translators directly with enterprise agencies and global publishers.",
+      "verified": true,
+      "featured": true,
+      "source": "curated_platform",
+      "createdAt": "2026-09-05T08:02:56.751Z",
+      "updatedAt": "2026-09-05T08:02:56.751Z"
+    },
+    {
+      "id": "hubstaff-024",
+      "title_ar": "دليل هبستاف تالنت للوظائف والتعاقد عن بعد (0% عمولة)",
+      "title_en": "Hubstaff Talent 100% Free Remote Job Directory",
+      "company": "Hubstaff Talent",
+      "location": "عن بعد / Global Remote",
+      "salary": "$1,200 - $5,000 / راتب شهري بالدولار",
+      "category": "tech",
+      "type": "remote_fulltime",
+      "country": "عالمي",
+      "flag": "💼",
+      "deadline": "مستمر طوال العام",
+      "apply_url": "https://talent.hubstaff.com",
+      "company_url": "https://talent.hubstaff.com",
+      "skills": [
+        "Software Engineering",
+        "Customer Support",
+        "Digital Marketing",
+        "Virtual Assistant"
+      ],
+      "benefits_ar": [
+        "مجاني 100% مدى الحياة دون أي رسوم",
+        "رواتب شهرية مستقرة بالدولار",
+        "تواصل وتفاوض مباشر مع الشركات"
+      ],
+      "description_ar": "منصة عالمية مجانية 100% بدون أي رسوم أو اقتطاعات تربط المستقلين والمحترفين بشركات أمريكية وأوروبية تبحث عن موظفين عن بُعد برواتب شهرية.",
+      "description_en": "100% free platform matching remote talent with international tech startups for salaried full-time and part-time roles.",
+      "verified": true,
+      "featured": true,
+      "source": "curated_platform",
+      "createdAt": "2026-09-05T08:02:56.751Z",
+      "updatedAt": "2026-09-05T08:02:56.751Z"
+    }
+  ],
+  "archived": [],
+  "lastUpdated": "2026-09-05T09:52:13.744Z",
+  "automation": {
+    "isRunning": false,
+    "lastRun": "2026-09-05T09:52:03.544Z",
+    "lastStatus": "completed",
+    "totalIngested": 23,
+    "logs": [
+      {
+        "timestamp": "2026-09-05T09:52:03.856Z",
+        "level": "success",
+        "message": "اكتمل الفحص بنجاح! نُشر فورا: 2 منح و 0 وظائف. محتجز للمراجعة: 0 فرص. عاجل/حرج: 2."
+      },
+      {
+        "timestamp": "2026-09-05T09:52:03.837Z",
+        "level": "success",
+        "message": "[نشر تلقائي فوري] تمت إضافة منحة معتمدة: منحة فولبرايت للطلاب الأجانب في الولايات المتحدة (Fulbright Foreign Student Program)"
+      },
+      {
+        "timestamp": "2026-09-05T09:52:03.734Z",
+        "level": "success",
+        "message": "[نشر تلقائي فوري] تمت إضافة منحة معتمدة: منحة تشيفنينغ البريطانية للقادة (Chevening UK Government Scholarship)"
+      },
+      {
+        "timestamp": "2026-09-05T09:52:03.646Z",
+        "level": "info",
+        "message": "جاري فحص وتحديث المنح الدراسية الدولية والعربية المعتمدة..."
+      },
+      {
+        "timestamp": "2026-09-05T09:52:03.644Z",
+        "level": "info",
+        "message": "تم استلام 18 فرصة عمل من المصدر. جاري التدقيق والتقييم..."
+      },
+      {
+        "timestamp": "2026-09-05T09:52:03.546Z",
+        "level": "info",
+        "message": "جاري الاتصال بمصادر وظائف العمل عن بعد المعتمدة دولياً (Remotive)..."
+      },
+      {
+        "timestamp": "2026-09-05T09:52:03.546Z",
+        "level": "info",
+        "message": "بدء جولة الفحص الآلي الذكي (وضع النشر: النشر التلقائي الذكي مع التحقق من المعايير 100%)..."
+      },
+      {
+        "timestamp": "2026-09-05T08:03:46.666Z",
+        "level": "success",
+        "message": "اكتمل الفحص بنجاح! تمت إضافة 0 منح دراسية جديدة و 0 وظيفة عمل عن بعد إلى قاعدة البيانات المركزية."
+      },
+      {
+        "timestamp": "2026-09-05T08:03:46.662Z",
+        "level": "info",
+        "message": "جاري فحص وتحديث المنح الدراسية الدولية والعربية المعتمدة..."
+      },
+      {
+        "timestamp": "2026-09-05T08:03:46.662Z",
+        "level": "info",
+        "message": "تم استلام 18 فرصة عمل من المصدر. جاري المعالجة والفحص الدقيق..."
+      },
+      {
+        "timestamp": "2026-09-05T08:03:46.582Z",
+        "level": "info",
+        "message": "جاري الاتصال بمصادر وظائف العمل عن بعد المعتمدة دولياً..."
+      },
+      {
+        "timestamp": "2026-09-05T08:03:46.581Z",
+        "level": "info",
+        "message": "بدء جولة الفحص الآلي الذكي لجلب المنح وفرص العمل المعتمدة..."
+      },
+      {
+        "timestamp": "2026-09-05T08:03:02.172Z",
+        "level": "success",
+        "message": "اكتمل الفحص بنجاح! تمت إضافة 3 منح دراسية جديدة و 18 وظيفة عمل عن بعد إلى قاعدة البيانات المركزية."
+      },
+      {
+        "timestamp": "2026-09-05T08:03:02.170Z",
+        "level": "success",
+        "message": "تمت إضافة منحة دراسية معتمدة جديدة: منحة جامعة الملك فهد للبترول والمعادن (KFUPM)"
+      },
+      {
+        "timestamp": "2026-09-05T08:03:02.168Z",
+        "level": "success",
+        "message": "تمت إضافة منحة دراسية معتمدة جديدة: منحة داد الألمانية للدراسات العليا والتنمية (DAAD EPOS)"
+      },
+      {
+        "timestamp": "2026-09-05T08:03:02.167Z",
+        "level": "success",
+        "message": "تمت إضافة منحة دراسية معتمدة جديدة: منحة معهد الدوحة للدراسات العليا الشاملة"
+      },
+      {
+        "timestamp": "2026-09-05T08:03:02.165Z",
+        "level": "info",
+        "message": "جاري فحص وتحديث المنح الدراسية الدولية والعربية المعتمدة..."
+      },
+      {
+        "timestamp": "2026-09-05T08:03:02.164Z",
+        "level": "success",
+        "message": "تمت إضافة وظيفة معتمدة جديدة: Freelance Writer - IAPWE (IAPWE)"
+      },
+      {
+        "timestamp": "2026-09-05T08:03:02.109Z",
+        "level": "success",
+        "message": "تمت إضافة وظيفة معتمدة جديدة: SaaS Product Support Jedi - Creative Force (Creative Force)"
+      },
+      {
+        "timestamp": "2026-09-05T08:03:02.049Z",
+        "level": "success",
+        "message": "تمت إضافة وظيفة معتمدة جديدة: Sales Jedi - Creative Force  (Creative Force )"
+      },
+      {
+        "timestamp": "2026-09-05T08:03:01.992Z",
+        "level": "success",
+        "message": "تمت إضافة وظيفة معتمدة جديدة: Tier III Service Desk Engineer - Unio Digital (Unio Digital)"
+      },
+      {
+        "timestamp": "2026-09-05T08:03:01.950Z",
+        "level": "success",
+        "message": "تمت إضافة وظيفة معتمدة جديدة: Inside Sales Contractor - Credit Wellness, LLC (Credit Wellness, LLC)"
+      },
+      {
+        "timestamp": "2026-09-05T08:03:01.881Z",
+        "level": "success",
+        "message": "تمت إضافة وظيفة معتمدة جديدة: Remote Office Assistant - Coalition Technologies  (Coalition Technologies )"
+      },
+      {
+        "timestamp": "2026-09-05T08:03:01.824Z",
+        "level": "success",
+        "message": "تمت إضافة وظيفة معتمدة جديدة: Face Deduplication Collection - TELUS Digital (TELUS Digital)"
+      },
+      {
+        "timestamp": "2026-09-05T08:03:01.758Z",
+        "level": "success",
+        "message": "تمت إضافة وظيفة معتمدة جديدة: Tech Lead Full-Stack Rails Engineer - Mitre Media (Mitre Media)"
+      },
+      {
+        "timestamp": "2026-09-05T08:03:01.702Z",
+        "level": "success",
+        "message": "تمت إضافة وظيفة معتمدة جديدة: Head of Marketing & Communications - garden3d (garden3d)"
+      },
+      {
+        "timestamp": "2026-09-05T08:03:01.646Z",
+        "level": "success",
+        "message": "تمت إضافة وظيفة معتمدة جديدة: Senior Independent Software Developer - A.Team (A.Team)"
+      },
+      {
+        "timestamp": "2026-09-05T08:03:01.586Z",
+        "level": "success",
+        "message": "تمت إضافة وظيفة معتمدة جديدة: Senior Independent AI Engineer / Architect - A.Team (A.Team)"
+      },
+      {
+        "timestamp": "2026-09-05T08:03:01.539Z",
+        "level": "success",
+        "message": "تمت إضافة وظيفة معتمدة جديدة: Senior Data Engineer - Lemon.io (Lemon.io)"
+      },
+      {
+        "timestamp": "2026-09-05T08:03:01.476Z",
+        "level": "success",
+        "message": "تمت إضافة وظيفة معتمدة جديدة: Senior Golang Developer - Lemon.io (Lemon.io)"
+      },
+      {
+        "timestamp": "2026-09-05T08:03:01.413Z",
+        "level": "success",
+        "message": "تمت إضافة وظيفة معتمدة جديدة: Content Reviewer - English US - TELUS Digital (TELUS Digital)"
+      },
+      {
+        "timestamp": "2026-09-05T08:03:01.358Z",
+        "level": "success",
+        "message": "تمت إضافة وظيفة معتمدة جديدة: Senior DevOps Engineer - Lemon.io (Lemon.io)"
+      },
+      {
+        "timestamp": "2026-09-05T08:03:01.295Z",
+        "level": "success",
+        "message": "تمت إضافة وظيفة معتمدة جديدة: Senior QA Engineer - Lemon.io (Lemon.io)"
+      },
+      {
+        "timestamp": "2026-09-05T08:03:01.188Z",
+        "level": "success",
+        "message": "تمت إضافة وظيفة معتمدة جديدة: Senior React Full-stack Developer - Lemon.io (Lemon.io)"
+      },
+      {
+        "timestamp": "2026-09-05T08:03:01.085Z",
+        "level": "success",
+        "message": "تمت إضافة وظيفة معتمدة جديدة: Freelance Copywriter - Coalition Technologies  (Coalition Technologies )"
+      },
+      {
+        "timestamp": "2026-09-05T08:03:00.989Z",
+        "level": "info",
+        "message": "تم استلام 18 فرصة عمل من المصدر. جاري المعالجة والفحص الدقيق..."
+      },
+      {
+        "timestamp": "2026-09-05T08:03:00.911Z",
+        "level": "info",
+        "message": "جاري الاتصال بمصادر وظائف العمل عن بعد المعتمدة دولياً..."
+      },
+      {
+        "timestamp": "2026-09-05T08:03:00.911Z",
+        "level": "info",
+        "message": "بدء جولة الفحص الآلي الذكي لجلب المنح وفرص العمل المعتمدة..."
+      },
+      {
+        "timestamp": "2026-09-05T08:03:00.910Z",
+        "level": "info",
+        "message": "تم تهيئة قاعدة بيانات الخادم المركزية للفرص والمنح بنجاح مع المنصات والمنح الكبرى المعتمدة."
+      }
+    ]
+  },
+  "pendingReviews": [],
+  "settings": {
+    "publishMode": "smart_auto",
+    "qualityThreshold": 90,
+    "emailNotificationsEnabled": true,
+    "whatsappNotificationsEnabled": true,
+    "whatsappApiKey": "",
+    "teamRecipients": [
+      {
+        "id": "team_super_admin",
+        "name": "المشرف العام (محسن)",
+        "email": "mohsentiben@gmail.com",
+        "whatsappPhone": "",
+        "role": "super_admin",
+        "notifyOn": "all",
+        "active": true,
+        "addedAt": "2026-09-05T09:51:59.412Z"
+      }
+    ],
+    "autoScheduleIntervalHours": 24
+  },
+  "notifications": [
+    {
+      "channel": "email",
+      "recipient": "المشرف العام (محسن) <mohsentiben@gmail.com>",
+      "title": "تقرير الفحص الدوري لمحرك الأوتوميشن",
+      "summary": "تقرير أوتوميشن الفرص: تم نشر 2 منح و 0 وظائف، ويوجد 0 فرصة في انتظار المراجعة. عدد الفرص الحرجة: 2.",
+      "status": "sent",
+      "itemsCount": 1,
+      "id": "notif_1788601923855_z2bg",
+      "timestamp": "2026-09-05T09:52:03.855Z"
+    }
+  ]
+}

@@ -103,7 +103,7 @@ export const LinkEditorModal: React.FC<LinkEditorModalProps> = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md bg-card/95 backdrop-blur-xl border border-primary/40 rounded-3xl shadow-2xl p-5 sm:p-6 space-y-4">
-        <DialogHeader className={isRtl ? "text-right" : "text-left"}>
+        <DialogHeader className={`${isRtl ? "text-right" : "text-left"} pe-12`}>
           <DialogTitle className="text-base sm:text-lg font-black text-gold-gradient flex items-center gap-2">
             <span>{currentPlatform.emoji}</span>
             <span>{initialLink ? (ar ? "تعديل الرابط المهني" : "Edit Professional Link") : (ar ? "إضافة رابط مهني أو معرض أعمال" : "Add Professional Link & Portfolio")}</span>

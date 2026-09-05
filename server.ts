@@ -2,6 +2,9 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
+import { opportunitiesDb } from "./server/opportunitiesDb";
+import { runOpportunitiesAutomation } from "./server/automationEngine";
+import { getSupabaseHealthState, pingSupabase, startSupabaseKeepAliveDaemon } from "./server/supabaseKeepAlive";
 
 const PORT = 3000;
 
@@ -114,6 +117,162 @@ async function startServer() {
       status: "ok",
       hasGeminiKey: Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim() !== ""),
     });
+  });
+
+  // Opportunities Persistent Cloud/Server API
+  app.get("/api/opportunities", (_req, res) => {
+    try {
+      const data = opportunitiesDb.get();
+      res.json(data);
+    } catch (err: any) {
+      res.status(500).json({ error: "Failed to read opportunities database" });
+    }
+  });
+
+  app.post("/api/opportunities/scholarships", (req, res) => {
+    try {
+      const item = req.body;
+      if (!item || !item.title) {
+        return res.status(400).json({ error: "Title is required" });
+      }
+      const result = opportunitiesDb.upsertScholarship(item);
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: "Failed to save scholarship" });
+    }
+  });
+
+  app.delete("/api/opportunities/scholarships/:id", (req, res) => {
+    try {
+      const { id } = req.params;
+      const { reason, user } = req.body || {};
+      const success = opportunitiesDb.deleteScholarship(id, reason, user);
+      res.json({ success });
+    } catch (err: any) {
+      res.status(500).json({ error: "Failed to delete scholarship" });
+    }
+  });
+
+  app.post("/api/opportunities/jobs", (req, res) => {
+    try {
+      const job = req.body;
+      if (!job || !job.title_ar) {
+        return res.status(400).json({ error: "Title is required" });
+      }
+      const result = opportunitiesDb.upsertJob(job);
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: "Failed to save job" });
+    }
+  });
+
+  app.delete("/api/opportunities/jobs/:id", (req, res) => {
+    try {
+      const { id } = req.params;
+      const { reason, user } = req.body || {};
+      const success = opportunitiesDb.deleteJob(id, reason, user);
+      res.json({ success });
+    } catch (err: any) {
+      res.status(500).json({ error: "Failed to delete job" });
+    }
+  });
+
+  // Automated Ingestion Engine Endpoints
+  app.get("/api/automation/status", (_req, res) => {
+    try {
+      const data = opportunitiesDb.get();
+      res.json(data.automation);
+    } catch (err: any) {
+      res.status(500).json({ error: "Failed to fetch automation status" });
+    }
+  });
+
+  app.get("/api/automation/settings", (_req, res) => {
+    try {
+      const settings = opportunitiesDb.getSettings();
+      res.json(settings);
+    } catch (err: any) {
+      res.status(500).json({ error: "Failed to fetch automation settings" });
+    }
+  });
+
+  app.post("/api/automation/settings", (req, res) => {
+    try {
+      const updated = opportunitiesDb.updateSettings(req.body || {});
+      res.json({ success: true, settings: updated });
+    } catch (err: any) {
+      res.status(500).json({ error: "Failed to update automation settings" });
+    }
+  });
+
+  app.get("/api/automation/pending", (_req, res) => {
+    try {
+      const pending = opportunitiesDb.getPendingReviews();
+      res.json(pending);
+    } catch (err: any) {
+      res.status(500).json({ error: "Failed to fetch pending reviews" });
+    }
+  });
+
+  app.post("/api/automation/pending/:id/approve", (req, res) => {
+    try {
+      const { id } = req.params;
+      const { user } = req.body || {};
+      const result = opportunitiesDb.approvePendingReview(id, user);
+      if (!result.success) {
+        return res.status(400).json(result);
+      }
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: "Failed to approve pending review", message: err?.message });
+    }
+  });
+
+  app.post("/api/automation/pending/:id/reject", (req, res) => {
+    try {
+      const { id } = req.params;
+      const { reason, user } = req.body || {};
+      const success = opportunitiesDb.rejectPendingReview(id, reason, user);
+      res.json({ success });
+    } catch (err: any) {
+      res.status(500).json({ error: "Failed to reject pending review" });
+    }
+  });
+
+  app.get("/api/automation/notifications", (_req, res) => {
+    try {
+      const notifications = opportunitiesDb.getNotificationHistory();
+      res.json(notifications);
+    } catch (err: any) {
+      res.status(500).json({ error: "Failed to fetch notification history" });
+    }
+  });
+
+  app.post("/api/automation/notify/test", (req, res) => {
+    try {
+      const { recipient, channel = "whatsapp" } = req.body || {};
+      const log = opportunitiesDb.addNotificationLog({
+        channel: channel as any,
+        recipient: recipient || "المشرف العام",
+        title: "بلاغ تجريبي لاختبار قناة التنبيهات",
+        summary: "تم إرسال إشعار فحص تجريبي ناجح من محرك أوتوميشن منصة الفرص.",
+        status: "sent",
+        itemsCount: 1,
+      });
+      res.json({ success: true, log });
+    } catch (err: any) {
+      res.status(500).json({ error: "Failed to send test notification" });
+    }
+  });
+
+  app.post("/api/automation/run", async (_req, res) => {
+    try {
+      const ai = getGeminiClient();
+      const result = await runOpportunitiesAutomation(ai);
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: "Failed to execute automation", message: err?.message });
+    }
   });
 
   // 2. Real AI URL Parser & Opportunity Scraper
@@ -407,7 +566,21 @@ Always respond in ${lang === "ar" ? "Arabic" : "English"}.
     }
   });
 
-  // 4. Vite middleware integration
+  // 4. Supabase Direct Connection & Keep-Alive Monitoring API
+  app.get("/api/supabase/status", (_req, res) => {
+    res.json(getSupabaseHealthState());
+  });
+
+  app.post("/api/supabase/ping", async (_req, res) => {
+    try {
+      const result = await pingSupabase("manual");
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Failed to execute Supabase health ping" });
+    }
+  });
+
+  // 5. Vite middleware integration
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -424,6 +597,16 @@ Always respond in ${lang === "ar" ? "Arabic" : "English"}.
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://0.0.0.0:${PORT}`);
+
+    // Start Supabase 24-hour Keep-Alive daemon to prevent free-tier 7-day auto-pausing
+    startSupabaseKeepAliveDaemon(24);
+
+    // Auto-schedule background ingestion check on startup
+    setTimeout(() => {
+      runOpportunitiesAutomation(getGeminiClient()).catch((e) => {
+        console.error("Initial background automation note:", e?.message);
+      });
+    }, 4000);
   });
 }
 

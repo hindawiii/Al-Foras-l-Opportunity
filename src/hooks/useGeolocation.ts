@@ -18,7 +18,7 @@ export interface GeoInfo {
 const STORAGE_KEY = "foras-geo";
 
 // Country ISO to Arabic & English translation map
-const COUNTRY_MAP: Record<string, { ar: string; en: string }> = {
+export const COUNTRY_MAP: Record<string, { ar: string; en: string }> = {
   SD: { ar: "السودان", en: "Sudan" },
   SA: { ar: "السعودية", en: "Saudi Arabia" },
   EG: { ar: "مصر", en: "Egypt" },
@@ -49,6 +49,63 @@ const COUNTRY_MAP: Record<string, { ar: string; en: string }> = {
   FR: { ar: "فرنسا", en: "France" },
   MY: { ar: "ماليزيا", en: "Malaysia" },
 };
+
+/**
+ * Silent zero-permission detection based on device timezone and locale
+ * Fully compliant with Google Play Store permissions policy (no GPS dialog triggered)
+ */
+export function detectCountryFromTimezone(): GeoInfo | null {
+  try {
+    if (typeof Intl === "undefined") return null;
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+    const tzMap: Record<string, { code: string; cityAr: string; cityEn: string }> = {
+      "Africa/Khartoum": { code: "SD", cityAr: "الخرطوم", cityEn: "Khartoum" },
+      "Africa/Cairo": { code: "EG", cityAr: "القاهرة", cityEn: "Cairo" },
+      "Asia/Riyadh": { code: "SA", cityAr: "الرياض", cityEn: "Riyadh" },
+      "Asia/Dubai": { code: "AE", cityAr: "دبي", cityEn: "Dubai" },
+      "Asia/Kuwait": { code: "KW", cityAr: "الكويت", cityEn: "Kuwait City" },
+      "Asia/Qatar": { code: "QA", cityAr: "الدوحة", cityEn: "Doha" },
+      "Asia/Bahrain": { code: "BH", cityAr: "المنامة", cityEn: "Manama" },
+      "Asia/Muscat": { code: "OM", cityAr: "مسقط", cityEn: "Muscat" },
+      "Asia/Amman": { code: "JO", cityAr: "عَمّان", cityEn: "Amman" },
+      "Asia/Baghdad": { code: "IQ", cityAr: "بغداد", cityEn: "Baghdad" },
+      "Africa/Casablanca": { code: "MA", cityAr: "الدار البيضاء", cityEn: "Casablanca" },
+      "Africa/Algiers": { code: "DZ", cityAr: "الجزائر", cityEn: "Algiers" },
+      "Africa/Tunis": { code: "TN", cityAr: "تونس", cityEn: "Tunis" },
+      "Africa/Tripoli": { code: "LY", cityAr: "طرابلس", cityEn: "Tripoli" },
+      "Asia/Aden": { code: "YE", cityAr: "عدن", cityEn: "Aden" },
+      "Asia/Damascus": { code: "SY", cityAr: "دمشق", cityEn: "Damascus" },
+      "Asia/Beirut": { code: "LB", cityAr: "بيروت", cityEn: "Beirut" },
+      "Asia/Jerusalem": { code: "PS", cityAr: "القدس", cityEn: "Jerusalem" },
+      "Asia/Gaza": { code: "PS", cityAr: "غزة", cityEn: "Gaza" },
+      "Asia/Hebron": { code: "PS", cityAr: "الخليل", cityEn: "Hebron" },
+      "Europe/London": { code: "GB", cityAr: "لندن", cityEn: "London" },
+      "Europe/Berlin": { code: "DE", cityAr: "برلين", cityEn: "Berlin" },
+      "Europe/Paris": { code: "FR", cityAr: "باريس", cityEn: "Paris" },
+      "Europe/Istanbul": { code: "TR", cityAr: "إسطنبول", cityEn: "Istanbul" },
+      "America/New_York": { code: "US", cityAr: "نيويورك", cityEn: "New York" },
+    };
+
+    const found = tzMap[tz];
+    if (found && COUNTRY_MAP[found.code]) {
+      const meta = COUNTRY_MAP[found.code];
+      return {
+        countryCode: found.code,
+        country: meta.ar,
+        countryAr: meta.ar,
+        countryEn: meta.en,
+        city: found.cityAr,
+        cityAr: found.cityAr,
+        cityEn: found.cityEn,
+        formatted: `${meta.ar} - ${found.cityAr}`,
+        provider: "ip",
+      };
+    }
+  } catch {
+    // Ignore timezone read error
+  }
+  return null;
+}
 
 /**
  * Fetch geolocation via IP if GPS is not available or denied
@@ -199,14 +256,15 @@ async function reverseGeocodeCoords(lat: number, lon: number): Promise<GeoInfo> 
   };
 }
 
-export const useGeolocation = (auto = true) => {
+export const useGeolocation = (auto = false) => {
   const [info, setInfo] = useState<GeoInfo | null>(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? (JSON.parse(raw) as GeoInfo) : null;
+      if (raw) return JSON.parse(raw) as GeoInfo;
     } catch {
-      return null;
+      // ignore
     }
+    return detectCountryFromTimezone();
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -281,10 +339,27 @@ export const useGeolocation = (auto = true) => {
 
   useEffect(() => {
     if (!auto) return;
-    if (info?.city && info?.country) return;
+    if (info?.countryCode) return;
     if (typeof window !== "undefined" && localStorage.getItem("foras-location-sharing") === "false") return;
-    request(false);
-  }, [auto, info?.city, info?.country, request]);
+    // Silent zero-permission detection via timezone/IP (NEVER invoke navigator.geolocation automatically)
+    const tzRes = detectCountryFromTimezone();
+    if (tzRes) {
+      setInfo(tzRes);
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(tzRes));
+      } catch {}
+      return;
+    }
+    // Secondary silent IP check without browser popup
+    fetchIpLocation().then((ipRes) => {
+      if (ipRes) {
+        setInfo(ipRes);
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(ipRes));
+        } catch {}
+      }
+    });
+  }, [auto, info?.countryCode]);
 
   return { info, loading, error, request };
 };

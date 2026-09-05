@@ -38,20 +38,22 @@ export const InAppBrowser = ({ url, title, onClose }: Props) => {
     <Sheet open={!!url} onOpenChange={(v) => !v && onClose()}>
       <SheetContent
         side="bottom"
-        className="bg-card border-gold/30 rounded-t-3xl p-0 h-[92vh] max-h-[92vh] overflow-hidden flex flex-col"
+        hideCloseButton
+        className="bg-card border-primary/30 h-[100dvh] max-h-[100dvh] md:h-[95vh] md:max-h-[95vh] md:max-w-5xl md:rounded-3xl rounded-none p-0 overflow-hidden flex flex-col mx-auto shadow-2xl"
       >
-        {/* Toolbar */}
-        <div className="flex items-center gap-2 p-2 border-b border-border bg-background/80 backdrop-blur-sm flex-shrink-0" dir="rtl">
+        {/* Toolbar with Safe Spacing & Standard 44px Touch Targets */}
+        <div className="flex items-center gap-2.5 p-3 sm:p-3.5 border-b border-border bg-card/95 backdrop-blur-md shrink-0" dir="rtl">
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-full bg-card border border-border hover:border-primary/40 flex items-center justify-center transition-colors"
-            aria-label="إغلاق"
+            className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-card border border-primary/30 hover:border-primary/60 flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-sm text-foreground shrink-0"
+            aria-label="إغلاق المتصفح"
+            title="إغلاق المتصفح"
           >
-            <X className="w-4 h-4 text-foreground" />
+            <X className="w-5 h-5 text-foreground" />
           </button>
           <div className="flex-1 min-w-0 px-2">
-            <p className="text-[12px] font-medium text-foreground truncate text-right">{title ?? "الموقع الرسمي"}</p>
-            <p className="text-[10px] text-primary truncate" dir="ltr">{url}</p>
+            <p className="text-xs sm:text-sm font-semibold text-foreground truncate text-right">{title ?? "الموقع الرسمي"}</p>
+            <p className="text-[10px] sm:text-xs text-primary truncate" dir="ltr">{url}</p>
           </div>
           <button
             onClick={() => {
@@ -59,8 +61,9 @@ export const InAppBrowser = ({ url, title, onClose }: Props) => {
               setBlockedHint(false);
               setReloadKey(k => k + 1);
             }}
-            className="w-9 h-9 rounded-full bg-card border border-border hover:border-primary/40 flex items-center justify-center transition-colors"
+            className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-card border border-border hover:border-primary/40 flex items-center justify-center transition-all active:scale-95 cursor-pointer shrink-0"
             aria-label="تحديث"
+            title="تحديث"
           >
             <RefreshCw className={`w-4 h-4 text-foreground ${loading ? "animate-spin" : ""}`} />
           </button>
@@ -68,11 +71,12 @@ export const InAppBrowser = ({ url, title, onClose }: Props) => {
             href={url}
             target="_blank"
             rel="noopener noreferrer"
-            className="px-3 h-9 rounded-full bg-gold-gradient flex items-center justify-center gap-1.5 shadow-gold text-primary-foreground text-xs font-bold active:scale-95 transition-transform"
-            aria-label="فتح في المتصفح"
+            className="px-3.5 h-10 sm:h-11 rounded-xl bg-gold-gradient flex items-center justify-center gap-1.5 shadow-gold text-primary-foreground text-xs font-bold active:scale-95 transition-transform shrink-0"
+            aria-label="فتح في المتصفح الخارجي"
+            title="فتح في المتصفح الخارجي"
           >
-            <ExternalLink className="w-3.5 h-3.5" />
-            <span>فتح بالمتصفح</span>
+            <ExternalLink className="w-4 h-4" />
+            <span className="hidden sm:inline">فتح بالمتصفح</span>
           </a>
         </div>
 

@@ -494,45 +494,55 @@ export const ScholarshipsTab = () => {
       )}
 
       <Sheet open={!!detail} onOpenChange={(v) => !v && setDetail(null)}>
-        <SheetContent side="bottom" className="bg-card border-gold/30 rounded-t-3xl max-h-[92vh] overflow-y-auto">
+        <SheetContent
+          side="bottom"
+          className="bg-card border-primary/30 h-[100dvh] max-h-[100dvh] md:h-[94vh] md:max-h-[94vh] md:max-w-4xl md:rounded-3xl rounded-none w-full p-0 flex flex-col overflow-hidden mx-auto shadow-2xl"
+        >
           {detail && (
-            <>
-              <SheetHeader>
-                <div className="flex items-start justify-between gap-2 mb-3">
-                  <div className="flex flex-wrap gap-2">
+            <div className="flex flex-col h-full overflow-hidden">
+              {/* Sticky Safe Header with Safe Area Clearance for Close Button & Actions */}
+              <div className="shrink-0 p-4 sm:p-5 border-b border-border/80 bg-card/95 backdrop-blur-md relative">
+                <div className="pe-14 sm:pe-16 flex items-start justify-between gap-3">
+                  <div className="flex flex-wrap gap-2 items-center">
                     {detail.verified && (
-                      <span className="inline-flex items-center gap-1 bg-verified/15 border border-verified/40 text-verified px-2 py-1 rounded-full text-xs font-medium">
+                      <span className="inline-flex items-center gap-1 bg-verified/15 border border-verified/40 text-verified px-2.5 py-1 rounded-full text-xs font-medium">
                         <BadgeCheck className="w-3.5 h-3.5" /> {t("verified")}
                       </span>
                     )}
                     {detail.manualReview && (
-                      <span className="inline-flex items-center gap-1 bg-review/15 border border-review/40 text-review px-2 py-1 rounded-full text-xs">
+                      <span className="inline-flex items-center gap-1 bg-review/15 border border-review/40 text-review px-2.5 py-1 rounded-full text-xs">
                         <Search className="w-3.5 h-3.5" /> {t("manualReview")}
                       </span>
                     )}
                   </div>
                   <button
                     onClick={shareDetail}
-                    className="w-9 h-9 rounded-full bg-primary/10 border border-primary/30 hover:bg-primary/20 flex items-center justify-center"
-                    aria-label="مشاركة"
+                    className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-primary/10 border border-primary/30 hover:bg-primary/20 flex items-center justify-center shrink-0 cursor-pointer text-primary transition-all active:scale-95"
+                    aria-label={isRtl ? "مشاركة" : "Share"}
+                    title={isRtl ? "مشاركة" : "Share"}
                   >
-                    <Share2 className="w-4 h-4 text-primary" />
+                    <Share2 className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                   </button>
                 </div>
-                <SheetTitle className={`${alignClass} font-display text-2xl text-gold-gradient`}>
-                  {detailTitle}
-                </SheetTitle>
-                <p className={`text-primary text-sm ${alignClass}`}>{detailOrg}</p>
-              </SheetHeader>
-              <div className="space-y-4 mt-6 pb-6">
-                <div className="bg-primary/10 border border-primary/30 rounded-xl p-3 flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-primary" />
-                  <span className="text-sm text-foreground">{t("matchPercent")}</span>
-                  <span className={`font-bold text-primary text-lg ${isRtl ? "mr-auto" : "ml-auto"}`}>
+
+                <div className="pe-14 sm:pe-16 mt-2">
+                  <SheetTitle className={`${alignClass} font-display text-lg sm:text-2xl text-gold-gradient`}>
+                    {detailTitle}
+                  </SheetTitle>
+                  <p className={`text-primary text-xs sm:text-sm mt-0.5 ${alignClass}`}>{detailOrg}</p>
+                </div>
+              </div>
+
+              {/* Scrollable Content Body */}
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 pb-8">
+                <div className="bg-primary/10 border border-primary/30 rounded-xl p-3.5 flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-primary shrink-0" />
+                  <span className="text-xs sm:text-sm text-foreground">{t("matchPercent")}</span>
+                  <span className={`font-bold text-primary text-base sm:text-lg ${isRtl ? "mr-auto" : "ml-auto"}`}>
                     {computeMatchScore(detail, profile)}%
                   </span>
                 </div>
-                <p className="text-foreground leading-relaxed">{detailDesc}</p>
+                <p className="text-foreground leading-relaxed text-xs sm:text-sm">{detailDesc}</p>
                 <div className="grid grid-cols-2 gap-3">
                   {detailCountry && <Detail icon={MapPin} label={t("country")} value={detailCountry} />}
                   {detailAmount && <Detail icon={Award} label={t("amount")} value={detailAmount} />}
@@ -598,7 +608,7 @@ export const ScholarshipsTab = () => {
                   </a>
                 </div>
               </div>
-            </>
+            </div>
           )}
         </SheetContent>
       </Sheet>

@@ -595,7 +595,11 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
 
       {/* Standalone University Details Modal */}
       <Sheet open={!!selectedUniDetail} onOpenChange={(open) => !open && setSelectedUniDetail(null)}>
-        <SheetContent side="bottom" dir={dir} className="max-h-[90vh] overflow-y-auto bg-card/95 backdrop-blur-xl border-primary/20 rounded-t-3xl">
+        <SheetContent
+          side="bottom"
+          dir={dir}
+          className="h-[100dvh] max-h-[100dvh] md:h-[94vh] md:max-h-[94vh] md:max-w-4xl md:rounded-3xl rounded-none w-full p-0 flex flex-col overflow-hidden mx-auto bg-card/95 backdrop-blur-xl border-primary/25 shadow-2xl"
+        >
           {selectedUniDetail && (() => {
             const { uni, country } = selectedUniDetail;
             const cityText = ar ? uni.city : (uni.cityEn || getGlobalCityLabel(uni.city, lang));
@@ -650,24 +654,26 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
             )}`;
 
             return (
-              <>
-                <SheetHeader>
-                  <div className={`flex items-center gap-3 mb-2 ${isRtl ? "" : "flex-row-reverse"}`}>
-                    <div className="w-12 h-12 rounded-2xl bg-gold-gradient flex items-center justify-center text-2xl shadow-gold flex-shrink-0">
+              <div className="flex flex-col h-full overflow-hidden">
+                {/* Sticky Safe Header with Clearance for Close Button */}
+                <div className="shrink-0 p-4 sm:p-5 border-b border-border/80 bg-card/95 backdrop-blur-md relative pe-16">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-gold-gradient flex items-center justify-center text-2xl shadow-gold shrink-0">
                       {country.flag}
                     </div>
-                    <div className={`flex-1 ${alignClass}`}>
-                      <SheetTitle className="text-lg font-bold font-display text-gold-gradient">
+                    <div className={`min-w-0 flex-1 ${alignClass}`}>
+                      <SheetTitle className="text-lg font-bold font-display text-gold-gradient truncate">
                         {ar ? uni.name : (uni.nameEn || uni.name)}
                       </SheetTitle>
-                      <p className="text-xs text-muted-foreground mt-0.5">
+                      <p className="text-xs text-muted-foreground mt-0.5 truncate">
                         {cityText} · {countryText}
                       </p>
                     </div>
                   </div>
-                </SheetHeader>
+                </div>
 
-                <div className={`space-y-4 mt-4 ${alignClass}`}>
+                {/* Scrollable Content Body */}
+                <div className={`flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 ${alignClass}`}>
                   {/* University Highlights Summary */}
                   <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
                     {ar ? uni.highlights : (uni.highlightsEn || uni.highlights)}
@@ -834,7 +840,7 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
                     </a>
                   </div>
                 </div>
-              </>
+              </div>
             );
           })()}
         </SheetContent>

@@ -31,12 +31,22 @@ const tabs = [
 
 export const AppShell = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialTab = searchParams.get("tab");
-  const validInitial = (initialTab === "arab_universities" || initialTab === "universities")
-    ? "arabUnis"
-    : (tabs.some(t => t.id === initialTab) ? (initialTab as typeof tabs[number]["id"]) : "scholarships");
+  const getInitialTab = (): typeof tabs[number]["id"] => {
+    const fromUrl = searchParams.get("tab");
+    const normalizedUrl = (fromUrl === "arab_universities" || fromUrl === "universities") ? "arabUnis" : fromUrl;
+    if (normalizedUrl && tabs.some(t => t.id === normalizedUrl)) {
+      return normalizedUrl as typeof tabs[number]["id"];
+    }
+    if (typeof window !== "undefined") {
+      const fromStorage = localStorage.getItem("foras_last_active_tab");
+      if (fromStorage && tabs.some(t => t.id === fromStorage)) {
+        return fromStorage as typeof tabs[number]["id"];
+      }
+    }
+    return "scholarships";
+  };
 
-  const [tab, setTab] = useState<typeof tabs[number]["id"]>(validInitial);
+  const [tab, setTab] = useState<typeof tabs[number]["id"]>(getInitialTab);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
@@ -46,11 +56,23 @@ export const AppShell = () => {
   useGeoSync();
   const { lang, toggleLang, t: tr } = useLanguage();
 
+  const changeTab = (newTab: typeof tabs[number]["id"]) => {
+    setTab(newTab);
+    try {
+      localStorage.setItem("foras_last_active_tab", newTab);
+      setSearchParams(prev => {
+        const next = new URLSearchParams(prev);
+        next.set("tab", newTab);
+        return next;
+      }, { replace: true });
+    } catch {}
+  };
+
   useEffect(() => {
     const requested = searchParams.get("tab");
     if (requested) {
       const normalized = (requested === "arab_universities" || requested === "universities") ? "arabUnis" : requested;
-      if (tabs.some(t => t.id === normalized)) {
+      if (tabs.some(t => t.id === normalized) && normalized !== tab) {
         setTab(normalized as typeof tabs[number]["id"]);
       }
     }
@@ -62,7 +84,7 @@ export const AppShell = () => {
       if (!detail?.tab) return;
       const target = detail.tab === "arab_universities" || detail.tab === "universities" ? "arabUnis" : detail.tab;
       const match = tabs.find(t => t.id === target);
-      if (match) setTab(match.id);
+      if (match) changeTab(match.id);
     };
     window.addEventListener("foras:navigate", onNav as EventListener);
     return () => window.removeEventListener("foras:navigate", onNav as EventListener);
@@ -162,7 +184,7 @@ export const AppShell = () => {
             const Icon = tabItem.icon;
             const active = tab === tabItem.id;
             return (
-              <button key={tabItem.id} onClick={() => setTab(tabItem.id)}
+              <button key={tabItem.id} onClick={() => changeTab(tabItem.id)}
                 className="relative flex flex-col items-center gap-1 py-3 transition-colors">
                 {active && (
                   <motion.div layoutId="activeTab"

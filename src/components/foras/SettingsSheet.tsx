@@ -132,7 +132,7 @@ export const SettingsSheet = ({ open, onOpenChange, onOpenAdmin }: Props) => {
         className="bg-card/95 backdrop-blur-xl border-primary/20 w-[90%] sm:max-w-md md:max-w-lg flex flex-col p-0 shadow-2xl z-50"
       >
         {/* Header */}
-        <SheetHeader className="px-5 pt-5 pb-3 flex-shrink-0 border-b border-primary/10 flex flex-row items-center justify-between">
+        <SheetHeader className="px-5 pt-5 pb-3 pe-16 flex-shrink-0 border-b border-primary/10 flex flex-row items-center justify-between">
           <div className={`min-w-0 ${alignClass}`}>
             <SheetTitle className="text-gold-gradient font-display text-xl sm:text-2xl flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-primary flex-shrink-0" />
@@ -328,11 +328,7 @@ export const SettingsSheet = ({ open, onOpenChange, onOpenAdmin }: Props) => {
                   alignClass={alignClass}
                   onClick={() => {
                     onOpenChange(false);
-                    if (onOpenAdmin) {
-                      onOpenAdmin();
-                    } else {
-                      window.dispatchEvent(new CustomEvent("foras:open-admin"));
-                    }
+                    nav("/admin");
                   }}
                   highlighted
                   trailing={
@@ -452,7 +448,7 @@ export const SettingsSheet = ({ open, onOpenChange, onOpenAdmin }: Props) => {
         {/* Currency Selection Dialog */}
         <Dialog open={currencyModalOpen} onOpenChange={setCurrencyModalOpen}>
           <DialogContent className="bg-card border-primary/30 max-w-sm rounded-2xl p-4 sm:p-5" dir={dir}>
-            <DialogHeader className="pb-2">
+            <DialogHeader className="pb-2 pe-12">
               <DialogTitle className={`text-gold-gradient font-display text-lg flex items-center gap-2 ${alignClass}`}>
                 <Coins className="w-5 h-5 text-primary" />
                 <span>{t("settingsSelectCurrency")}</span>
