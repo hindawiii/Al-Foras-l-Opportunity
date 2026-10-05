@@ -492,7 +492,11 @@ export const adminAuthStore = {
       logs.unshift(newLog);
       // Keep last 150 events
       localStorage.setItem(AUDIT_LOGS_KEY, JSON.stringify(logs.slice(0, 150)));
-      window.dispatchEvent(new CustomEvent("foras:audit-updated"));
+      if (typeof window !== "undefined") {
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent("foras:audit-updated"));
+        }, 0);
+      }
     } catch {}
   },
 

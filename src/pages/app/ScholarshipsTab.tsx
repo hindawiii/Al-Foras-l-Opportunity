@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import {
   ExternalLink, BadgeCheck, Search, Award, MapPin, Clock, Link2, Share2,
   Sparkles, Globe, Star, GraduationCap, Briefcase, ArrowLeft, ArrowRight,
-  Layers, List, Heart, X, Mic, FileText, Bot
+  Layers, List, Heart, X, Mic, FileText, Bot, RotateCcw, Info
 } from "lucide-react";
 import { ScholarshipCard } from "@/components/foras/ScholarshipCard";
 import { SCHOLARSHIPS, Scholarship, computeMatchScore } from "@/lib/mockData";
@@ -426,33 +426,35 @@ export const ScholarshipsTab = () => {
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   onClick={() => setDetail(s)}
-                  className={`cursor-pointer rounded-2xl p-3.5 bg-card/50 backdrop-blur-md border transition-all hover:bg-primary/5
-                    ${s.category === "arab" ? "border-primary/30 hover:border-primary/60" : "border-[hsl(210_70%_60%/0.35)] hover:border-[hsl(210_70%_60%/0.7)]"} ${alignClass}`}
+                  className={`cursor-pointer rounded-2xl p-3.5 bg-card/75 backdrop-blur-md border transition-all hover:bg-card
+                    ${s.category === "arab" ? "border-gold/35 hover:border-gold/70 shadow-sm" : "border-border hover:border-primary/50"} ${alignClass}`}
                 >
                   <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-full bg-background/70 border border-primary/30 flex items-center justify-center text-xl flex-shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-background/80 border border-border flex items-center justify-center text-xl flex-shrink-0">
                       <span>{s.flag}</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-primary text-xs font-extrabold truncate">{itemOrg}</p>
-                      <h4 className="text-sm font-bold text-foreground leading-snug line-clamp-2">{itemTitle}</h4>
+                      <p className={`text-xs font-extrabold truncate ${s.category === "arab" ? "text-gold" : "text-primary"}`}>{itemOrg}</p>
+                      <h4 className="text-sm font-bold text-foreground leading-snug line-clamp-2 mt-0.5">{itemTitle}</h4>
                       <div className="flex flex-wrap items-center gap-2 mt-1.5 text-[10px] text-muted-foreground">
                         <span className="inline-flex items-center gap-1">
-                          <MapPin className="w-3 h-3 text-primary" />
+                          <MapPin className="w-3 h-3 text-muted-foreground" />
                           {itemCountry}
                         </span>
                         <span className="inline-flex items-center gap-1">
-                          <Award className="w-3 h-3 text-primary" />
+                          <Award className="w-3 h-3 text-gold" />
                           {itemAmount}
                         </span>
                         <span className="inline-flex items-center gap-1">
-                          <Clock className="w-3 h-3 text-primary" />
+                          <Clock className="w-3 h-3 text-muted-foreground" />
                           {new Date(s.deadline).toLocaleDateString(isRtl ? "ar-EG" : "en-US")}
                         </span>
                       </div>
                     </div>
                     <div className="flex flex-col items-center gap-2 flex-shrink-0">
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/15 border border-primary/40 text-primary">
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        s.category === "arab" ? "bg-gold/15 border border-gold/40 text-gold" : "bg-primary/15 border border-primary/40 text-primary"
+                      }`}>
                         <Sparkles className="w-3 h-3" />{computeMatchScore(s, profile)}%
                       </span>
                       <div className="flex items-center gap-1.5">
@@ -483,25 +485,30 @@ export const ScholarshipsTab = () => {
           {deck.length === 0 ? (
             <EmptyState t={t} onReload={() => { setSearchQuery(""); setSelectedTag(null); setDeck(orderedDeck); }} />
           ) : (
-            deck.slice(0, 3).map((s, i) => (
-              <ScholarshipCard
-                key={s.id}
-                scholarship={s}
-                index={i}
-                active={i === 0}
-                matchScore={computeMatchScore(s, profile)}
-                onSwipe={(d) => handleSwipe(d, s)}
-                onTap={() => i === 0 && setDetail(s)}
-              />
-            ))
+            deck.slice(0, 3).map((s, i) => {
+              if (!s) return null;
+              return (
+                <ScholarshipCard
+                  key={s.id || i}
+                  scholarship={s}
+                  index={i}
+                  active={i === 0}
+                  matchScore={computeMatchScore(s, profile)}
+                  onSwipe={(d) => handleSwipe(d, s)}
+                  onTap={() => i === 0 && setDetail(s)}
+                />
+              );
+            })
           )}
         </div>
       )}
 
-      {viewMode === "deck" && (
-        <p className="text-center text-muted-foreground pt-3 my-[10px] text-xs">
-          {t("swipeHint")}
-        </p>
+      {viewMode === "deck" && deck.length > 0 && (
+        <div className="pt-2 pb-1 text-center">
+          <p className="text-muted-foreground text-xs font-medium">
+            {t("swipeHint")}
+          </p>
+        </div>
       )}
 
       <Sheet open={!!detail} onOpenChange={(v) => !v && setDetail(null)}>

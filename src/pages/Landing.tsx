@@ -25,6 +25,7 @@ import {
   TrendingUp,
   Star,
   CheckCircle2,
+  BookmarkCheck,
   ChevronRight,
   ChevronLeft,
   ChevronDown,
@@ -94,17 +95,17 @@ const Landing = () => {
     const custom = dynamicStore.getJobs();
     const convertedCustom: Job[] = custom.map((c) => ({
       id: c.id,
-      title: c.title_ar,
-      titleEn: c.title_en,
-      company: c.company,
+      title: c.title_ar || "فرصة عمل عن بعد",
+      titleEn: c.title_en || "Remote Freelance Opportunity",
+      company: c.company || "Global Platform",
       emoji: "💼",
       type: "عمل عن بعد / مشروع حر",
       typeEn: "Remote / Freelance",
       category: "programming" as any,
       salary: { min: 500, max: 2500, currency: "USD", period: "project" as const, average: c.salary || "$1,500+" },
       rating: { score: 4.9, totalReviews: 95, trustLevel: "موثوق", trustLevelEn: "Verified" },
-      description: c.description_ar,
-      descriptionEn: c.description_en,
+      description: c.description_ar || "فرصة عمل حر مميزة وموثوقة.",
+      descriptionEn: c.description_en || "Verified freelance opportunity for remote professionals.",
       skills: c.skills || ["مهارات مهنية", "تواصل"],
       skillsEn: ["Professional Skills", "Communication"],
       availability: { global: true, countries: ["كل الدول"], restrictedCountries: [] },
@@ -150,30 +151,40 @@ const Landing = () => {
       title: t("landingFeature1Title"),
       body: t("landingFeature1Body"),
       tag: isRtl ? "موثوق & AI" : "Verified & AI",
+      tab: "scholarships",
+      badgeColor: "bg-primary/10 border-primary/25 text-primary",
     },
     {
       icon: GraduationCap,
       title: t("landingFeature2Title"),
       body: t("landingFeature2Body"),
       tag: isRtl ? "أكاديمي" : "Academic",
+      tab: "arabUnis",
+      badgeColor: "bg-amber-500/10 border-amber-500/25 text-amber-400",
     },
     {
       icon: Briefcase,
       title: t("landingFeature3Title"),
       body: t("landingFeature3Body"),
       tag: isRtl ? "مهني / عن بعد" : "Remote & Global",
+      tab: "jobs",
+      badgeColor: "bg-sky-500/10 border-sky-500/25 text-sky-400",
     },
     {
       icon: FileText,
       title: t("landingFeature4Title"),
       body: t("landingFeature4Body"),
       tag: isRtl ? "تنسيق ATS" : "ATS Format",
+      tab: "profile",
+      badgeColor: "bg-emerald-500/10 border-emerald-500/25 text-emerald-400",
     },
     {
-      icon: Coins,
+      icon: BookmarkCheck,
       title: t("landingFeature5Title"),
       body: t("landingFeature5Body"),
-      tag: isRtl ? "تحديث لحظي" : "Real-Time",
+      tag: isRtl ? "تتبع ذكي" : "Smart Tracking",
+      tab: "applications",
+      badgeColor: "bg-purple-500/10 border-purple-500/25 text-purple-400",
     },
   ];
 
@@ -595,7 +606,7 @@ const Landing = () => {
 
                 <div className="mt-4 pt-2.5 border-t border-primary/10 flex items-center justify-between text-2xs">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    {((lang === "en" ? job.skillsEn : job.skills) || []).slice(0, 2).map((sk) => (
+                    {((lang === "en" ? (job.skillsEn || job.skills) : job.skills) || []).slice(0, 2).map((sk) => (
                       <span key={sk} className="px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20">
                         {sk}
                       </span>
@@ -640,22 +651,32 @@ const Landing = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.08 }}
-              whileHover={{ y: -3 }}
-              className={`glass rounded-2xl p-6 border-primary/25 shadow-luxe hover:border-primary/50 transition-all flex flex-col justify-between ${
-                i === 0 ? "sm:col-span-2 bg-gradient-to-br from-primary/10 via-card to-card border-primary/40" : ""
+              whileHover={{ y: -4 }}
+              onClick={() => goApp(f.tab)}
+              className={`glass rounded-2xl p-6 border-border/80 shadow-luxe hover:border-primary/50 transition-all duration-300 flex flex-col justify-between cursor-pointer group hover:bg-card/90 ${
+                i === 0
+                  ? "sm:col-span-2 bg-gradient-to-br from-primary/10 via-card to-card border-primary/30 hover:border-primary/60"
+                  : "bg-card/75"
               }`}
             >
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center text-primary shadow-sm">
+                  <div className="w-12 h-12 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center text-primary shadow-sm group-hover:scale-105 group-hover:bg-primary/25 transition-all">
                     <f.icon className="w-6 h-6" />
                   </div>
-                  <span className="px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-2xs font-bold">
+                  <span className={`px-2.5 py-1 rounded-full border text-2xs font-bold ${f.badgeColor}`}>
                     {f.tag}
                   </span>
                 </div>
-                <h3 className="font-display font-bold text-base sm:text-lg text-foreground mb-2 leading-snug">{f.title}</h3>
+                <h3 className="font-display font-bold text-base sm:text-lg text-foreground mb-2 leading-snug group-hover:text-primary transition-colors">
+                  {f.title}
+                </h3>
                 <p className="text-xs sm:text-sm text-gray-300 leading-relaxed">{f.body}</p>
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-border/60 flex items-center justify-between text-2xs font-bold text-primary group-hover:text-primary-glow">
+                <span>{isRtl ? "دخول واستكشاف هذا الركن" : "Explore this hub"}</span>
+                <ArrowRight className={`w-3.5 h-3.5 transition-transform group-hover:translate-x-1 ${isRtl ? "rotate-180 group-hover:-translate-x-1" : ""}`} />
               </div>
             </motion.div>
           ))}

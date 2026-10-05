@@ -94,7 +94,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           fullName: userDocData?.full_name || fUser.displayName || fUser.email?.split("@")[0] || "مستخدم",
           avatarUrl: userDocData?.avatar_url || fUser.photoURL || null,
           isGuest: false,
-          role: fUser.email === "alforas.one@gmail.com" ? "admin" : (userDocData?.role || "user"),
+          role:
+            (fUser.email === "alforas.one@gmail.com" || fUser.email === "mohsentiben@gmail.com")
+              ? "admin"
+              : (userDocData?.role || "user"),
         };
         setUser(appUser);
       } else {

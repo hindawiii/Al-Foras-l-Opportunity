@@ -62,14 +62,14 @@ export const ScholarshipDuplicateBanner: React.FC<DuplicateBannerProps> = ({
         <div className="p-2.5 rounded-lg bg-background/80 border border-amber-500/30 flex items-center justify-between gap-3 text-xs">
           <div className="min-w-0 flex-1">
             <div className="font-bold text-white truncate">
-              {matched.title}
+              {matched?.title || ""}
             </div>
             <div className="text-[11px] text-gray-400 truncate flex items-center gap-2 mt-0.5">
-              <span>{matched.org || matched.country}</span>
+              <span>{matched?.org || matched?.country}</span>
               <span>•</span>
-              <span>{matched.deadline}</span>
+              <span>{matched?.deadline}</span>
               <span>•</span>
-              <span className="font-mono text-[10px] text-primary">{matched.id}</span>
+              <span className="font-mono text-[10px] text-primary">{matched?.id}</span>
             </div>
           </div>
 
@@ -221,14 +221,14 @@ export const QuickExistenceCheckerModal: React.FC<QuickExistenceCheckerModalProp
 
                 <div className="p-3 rounded-lg bg-background border border-amber-500/30">
                   <div className="font-bold text-white text-xs sm:text-sm">
-                    {result.scholarship.title}
+                    {result?.scholarship?.title || ""}
                   </div>
                   <div className="text-[11px] text-gray-400 flex items-center gap-2 mt-1">
-                    <span>{result.scholarship.org || result.scholarship.country}</span>
+                    <span>{result?.scholarship?.org || result?.scholarship?.country}</span>
                     <span>•</span>
-                    <span>{result.scholarship.deadline}</span>
+                    <span>{result?.scholarship?.deadline}</span>
                     <span>•</span>
-                    <span className="text-primary font-mono text-[10px]">{result.scholarship.id}</span>
+                    <span className="text-primary font-mono text-[10px]">{result?.scholarship?.id}</span>
                   </div>
                   <p className="text-[11px] text-amber-300/90 mt-2 leading-relaxed">
                     {isRtl ? result.reasonAr : result.reasonEn}

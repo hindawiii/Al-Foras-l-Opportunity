@@ -374,17 +374,17 @@ export const ArabUniversitiesTab = () => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: Math.min(i * 0.02, 0.3) }}
                   onClick={() => setCountry(c.country)}
-                  className={`relative text-start rounded-2xl border p-3.5 bg-card/60 backdrop-blur-md transition-all hover:-translate-y-0.5 hover:border-primary/60 hover:bg-primary/5 ${
-                    mine ? "border-primary shadow-[0_0_18px_-6px_hsl(var(--primary)/0.6)]" : "border-primary/20"
+                  className={`relative text-start rounded-2xl border p-3.5 bg-card/75 backdrop-blur-md transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:bg-card/90 ${
+                    mine ? "border-primary/70 bg-primary/10 shadow-sm" : "border-border/80"
                   }`}
                 >
                   {mine && (
-                    <span className={`absolute top-2.5 ${isRtl ? "left-2.5" : "right-2.5"} text-[9px] px-1.5 py-0.5 rounded-full bg-primary/20 border border-primary text-primary font-bold`}>
+                    <span className={`absolute top-2.5 ${isRtl ? "left-2.5" : "right-2.5"} text-[9px] px-2 py-0.5 rounded-full bg-primary/20 border border-primary/40 text-primary font-bold`}>
                       {t("arabUniYourCountry")}
                     </span>
                   )}
-                  <div className="text-2xl mb-1">{c.flag}</div>
-                  <p className="text-sm font-bold text-primary truncate leading-tight">
+                  <div className="text-2xl mb-1.5">{c.flag}</div>
+                  <p className="text-sm font-bold text-foreground group-hover:text-primary truncate leading-tight">
                     {ar ? c.country : c.countryEn}
                   </p>
                   <p className="text-[11px] text-muted-foreground mt-0.5">

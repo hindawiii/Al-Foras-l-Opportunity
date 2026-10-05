@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, Briefcase, Globe, ExternalLink, Sparkles, Filter, Clock,
@@ -48,37 +48,43 @@ export const JobsTab = () => {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethodItem | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
 
-  const convertCustomJobs = (custom: any[]): Job[] => {
+  const convertCustomJobs = useCallback((custom: any[]): Job[] => {
     if (!Array.isArray(custom)) return [];
     return custom.filter(Boolean).map(c => ({
       id: c.id,
       title: c.title_ar || "فرصة عمل عن بعد",
-      titleEn: c.title_en || c.title_ar,
-      company: c.company || "شركة عالمية",
+      titleEn: c.title_en || (ar ? c.title_ar : "Remote Freelance Opportunity"),
+      company: c.company || (ar ? "منصة عالمية" : "Global Platform"),
       emoji: "💼",
-      type: "عن بعد",
-      typeEn: "Remote",
+      type: "عمل حر عن بعد",
+      typeEn: "Remote Freelance",
       region: "arab" as any,
+      regionLabel: { ar: "الوطن العربي والعالم", en: "Arab World & Global" },
+      subCategory: "عمل حر وتقني",
+      subCategoryEn: "Freelance & Tech",
       category: (c.category as any) || "programming",
       availability: {
         global: true,
-        countries: ["كل الدول العربية", "عالمي"],
+        countries: ["كل الدول"],
+        countriesEn: ["All Countries"],
         restrictedCountries: [],
+        notes: "متاح للتسجيل والتقديم المباشر",
+        notesEn: "Open for direct registration and application",
       },
       salary: {
         min: 500,
         max: 3500,
-        currency: "$",
+        currency: "USD",
         period: "month",
-        average: c.salary || "$1,500/month",
+        average: c.salary || "$1,500/mo",
       },
       withdrawal: {
         minAmount: 50,
-        currency: "$",
+        currency: "USD",
         methods: [
           {
-            name: (c as any).payout_method || "تحويل بنكي / بايبال / بايونير",
-            nameEn: (c as any).payout_method || "Bank Wire / PayPal / Payoneer",
+            name: "تحويل بنكي / بايبال / بايونير",
+            nameEn: "Bank Wire / PayPal / Payoneer",
             availableInSudan: true,
           }
         ],
@@ -87,64 +93,64 @@ export const JobsTab = () => {
       },
       rating: {
         score: 4.8,
-        reviewsCount: 120,
+        totalReviews: 120,
         trustLevel: "عالي جداً",
         trustLevelEn: "Very High",
       },
       description: c.description_ar || "فرصة مميزة للمستقلين للعمل عن بعد.",
-      descriptionEn: c.description_en || c.description_ar,
-      requirements: (Array.isArray(c.requirements_ar) && c.requirements_ar.length > 0) ? c.requirements_ar : ["مهارات مناسبة", "الالتزام والجودة"],
-      requirementsEn: (c as any).requirements_en || ["Relevant skills", "Dedication & Quality"],
+      descriptionEn: c.description_en || "Prime remote opportunity for verified freelance professionals.",
+      requirements: (Array.isArray(c.requirements_ar) && c.requirements_ar.length > 0) ? c.requirements_ar : ["مهارات مناسبة", "الالتزام بالجودة ومواعيد التسليم"],
+      requirementsEn: (Array.isArray(c.requirements_en) && c.requirements_en.length > 0) ? c.requirements_en : ["Demonstrated professional skills", "Commitment to quality and deadlines"],
       registrationGuide: {
         steps: [
           {
             step: 1,
             title: "الانتقال لرابط التقديم الرسمي",
             titleEn: "Visit Official Application Portal",
-            description: "ادخل إلى الرابط الرسمي للوظيفة وتأكد من قراءة الشروط.",
+            description: "ادخل إلى الرابط الرسمي للمنصة وتأكد من استيفاء الشروط.",
+            descriptionEn: "Visit the official platform portal and review requirements.",
           },
           {
             step: 2,
             title: "إرسال السيرة الذاتية ونماذج العمل",
-            titleEn: "Submit Resume & Portfolio",
-            description: "ارفق سيرتك الذاتية المحدثة ورابط حسابك المهني.",
+            titleEn: "Submit Portfolio & Resume",
+            description: "ارفق سيرتك الذاتية المحدثة ورابط أعمالك المعتمدة.",
+            descriptionEn: "Upload your updated resume and relevant portfolio links.",
           },
         ],
         estimatedTime: "5 - 10 دقائق",
         estimatedTimeEn: "5 - 10 mins",
       },
       pros: (Array.isArray(c.benefits_ar) && c.benefits_ar.length > 0) ? c.benefits_ar : ["مرونة العمل من أي مكان", "دخل بالدولار الأمريكي"],
-      prosEn: ["100% Remote flexibility", "USD compensation"],
-      cons: ["تتطلب إدارة ذاتية للوقت والمهام"],
-      consEn: ["Requires self time management"],
+      prosEn: ["100% remote flexibility", "Direct USD payout compensation"],
+      cons: ["تتطلب التزاماً ذاتياً بالوقت"],
+      consEn: ["Requires disciplined self-time management"],
       skills: Array.isArray(c.skills) && c.skills.length > 0
         ? c.skills
-        : (Array.isArray(c.skills_ar) && c.skills_ar.length > 0
-            ? c.skills_ar
-            : ["العمل الحر", "إدارة الوقت", "التواصل"]),
+        : (Array.isArray(c.skills_ar) && c.skills_ar.length > 0 ? c.skills_ar : ["العمل الحر", "إدارة الوقت", "التواصل"]),
       skillsEn: Array.isArray(c.skillsEn) && c.skillsEn.length > 0
         ? c.skillsEn
         : (Array.isArray(c.skills_en) && c.skills_en.length > 0
             ? c.skills_en
-            : (Array.isArray(c.skills) && c.skills.length > 0 ? c.skills : ["Freelancing", "Time Management", "Communication"])),
+            : ["Freelancing", "Time Management", "Effective Communication"]),
       successStories: Array.isArray(c.successStories) ? c.successStories : [],
       isVerified: true,
       eligibility: c.eligibility || {
         type: "global_remote",
         badgeAr: "🌐 متاح للعمل عن بُعد",
-        badgeEn: "🌐 Remote Eligible",
+        badgeEn: "🌐 Remote Eligible Worldwide",
         reasonAr: "فرصة عمل عن بُعد متاحة للتقديم الرقمي للمؤهلين بدون قيود جغرافية.",
-        reasonEn: "Remote position open for qualified applicants worldwide.",
+        reasonEn: "Remote position open for qualified applicants worldwide without geographic restrictions.",
         proofSourceUrl: c.apply_url || "https://example.com",
         proofSourceNameAr: "بوابة التقديم الرسمية للوظيفة",
-        proofSourceNameEn: "Official Job Portal",
+        proofSourceNameEn: "Official Opportunity Portal",
         targetCountries: ["GLOBAL"]
       },
       dateAdded: (c as any).posted_date || new Date().toISOString().split("T")[0],
       contact: { website: c.apply_url || "https://example.com" },
       ...((c as any).custom_fields ? { custom_fields: (c as any).custom_fields } : {}),
     } as any));
-  };
+  }, [ar]);
 
   const [liveJobs, setLiveJobs] = useState<Job[]>(() => {
     const custom = dynamicStore.getJobs();
@@ -167,7 +173,7 @@ export const JobsTab = () => {
     };
     window.addEventListener("foras:data-updated", handleUpdate);
     return () => window.removeEventListener("foras:data-updated", handleUpdate);
-  }, []);
+  }, [convertCustomJobs]);
 
   // Filtered jobs list
   const filteredJobs = useMemo(() => {
@@ -234,19 +240,19 @@ export const JobsTab = () => {
   return (
     <div className="space-y-5 w-full pb-12">
       {/* 🌟 LUXE PRO TWO-PILLAR SEGMENTED SWITCHER 🌟 */}
-      <div className="p-1.5 bg-card/80 backdrop-blur-xl border-2 border-primary/30 rounded-2xl shadow-luxe flex items-center justify-between gap-1.5">
+      <div className="p-1.5 bg-card/90 backdrop-blur-xl border border-border/80 rounded-2xl shadow-luxe flex items-center justify-between gap-1.5">
         <button
           onClick={() => setMainPillar("jobs")}
           className={`flex-1 h-12 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 relative overflow-hidden ${
             mainPillar === "jobs"
-              ? "bg-gradient-to-r from-[hsl(210_70%_50%)] to-[hsl(220_60%_45%)] text-white shadow-md font-extrabold"
+              ? "bg-primary text-primary-foreground shadow-sm font-extrabold"
               : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
           }`}
         >
           <Briefcase className="w-4 h-4 text-primary-foreground/90" />
           <span>{ar ? "منصات العمل الحر" : "Freelance Platforms"}</span>
           <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-            mainPillar === "jobs" ? "bg-white/20 text-white" : "bg-primary/10 text-primary"
+            mainPillar === "jobs" ? "bg-primary-foreground/20 text-primary-foreground" : "bg-primary/10 text-primary"
           }`}>
             {liveJobs.length}
           </span>
@@ -275,32 +281,32 @@ export const JobsTab = () => {
       {/* ======================================================================= */}
       {mainPillar === "jobs" && (
         <div className="space-y-4">
-          {/* Radiant Search Bar */}
-          <div className="relative group">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-[hsl(210_70%_50%)] via-[hsl(43_90%_55%)] to-[hsl(220_60%_45%)] rounded-2xl blur-md opacity-40 group-hover:opacity-75 group-focus-within:opacity-100 transition-all duration-300" />
-            <div className="relative flex items-center w-full bg-card/90 backdrop-blur-xl border-2 border-primary/40 rounded-2xl shadow-luxe focus-within:border-primary transition-all">
-              <div className={`flex items-center justify-center w-11 h-11 ${isRtl ? "pr-1" : "pl-1"} text-primary flex-shrink-0`}>
-                <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center">
-                  <Search className="w-4 h-4 text-primary" strokeWidth={2.5} />
+            {/* Radiant Search Bar */}
+            <div className="relative group">
+              <div className="absolute -inset-0.5 bg-primary/20 rounded-2xl blur-md opacity-20 group-hover:opacity-40 group-focus-within:opacity-60 transition-all duration-300" />
+              <div className="relative flex items-center w-full bg-card/90 backdrop-blur-xl border border-border/80 rounded-2xl shadow-luxe focus-within:border-primary/70 transition-all">
+                <div className="flex items-center justify-center w-11 h-11 ps-1 text-primary flex-shrink-0">
+                  <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center">
+                    <Search className="w-4 h-4 text-primary" strokeWidth={2.5} />
+                  </div>
                 </div>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder={ar ? "ابحث عن منصة، مهارة، شركة..." : "Search platform, skill, company..."}
+                  className="w-full h-12 py-2.5 ps-2 pe-10 text-xs sm:text-sm bg-transparent font-medium text-foreground placeholder:text-muted-foreground/80 focus:outline-none"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute end-3 w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-bold"
+                  >
+                    ✕
+                  </button>
+                )}
               </div>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={ar ? "ابحث عن منصة، مهارة..." : "Search platform, skill..."}
-                className={`w-full h-12 py-2.5 ${isRtl ? "pr-2 pl-10" : "pl-2 pr-10"} text-xs sm:text-sm bg-transparent font-medium text-foreground placeholder:text-muted-foreground/80 focus:outline-none`}
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className={`absolute ${isRtl ? "left-3" : "right-3"} w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-bold`}
-                >
-                  ✕
-                </button>
-              )}
             </div>
-          </div>
 
           {/* Region Filter (Continents & Arab World) */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
@@ -337,8 +343,8 @@ export const JobsTab = () => {
                   onClick={() => setSelectedCategory(cat.id)}
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all border flex items-center gap-1.5 ${
                     active
-                      ? "bg-gradient-to-r from-[hsl(210_70%_50%)] to-[hsl(220_60%_45%)] text-white border-transparent shadow-md"
-                      : "bg-card/50 border-border/80 text-muted-foreground hover:text-foreground hover:border-primary/40"
+                      ? "bg-primary text-primary-foreground border-primary/50 shadow-sm"
+                      : "bg-card/70 border-border/80 text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-card"
                   }`}
                 >
                   <span>{cat.emoji}</span>
@@ -360,8 +366,29 @@ export const JobsTab = () => {
           </div>
 
           {/* Platforms Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-            {filteredJobs.map((job, idx) => {
+          {filteredJobs.length === 0 ? (
+            <div className="py-12 text-center rounded-2xl border border-dashed border-border bg-card/40 p-8 space-y-3">
+              <Briefcase className="w-10 h-10 text-muted-foreground/60 mx-auto" />
+              <h4 className="font-bold text-foreground text-sm">
+                {ar ? "لم يتم العثور على منصات تطابق بحثك" : "No platforms matching your filters"}
+              </h4>
+              <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+                {ar ? "جرّب تغيير التصنيف أو مسح كلمات البحث للاطلاع على كافة الفرص." : "Try resetting the filters or clearing the search query to view all opportunities."}
+              </p>
+              <button
+                onClick={() => {
+                  setSearchQuery("");
+                  setSelectedCategory("all");
+                  setSelectedRegion("all");
+                }}
+                className="px-4 py-1.5 rounded-full bg-primary/10 border border-primary/30 text-primary text-xs font-bold hover:bg-primary/20 transition-all"
+              >
+                {ar ? "إعادة ضبط الفلاتر" : "Reset Filters"}
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {filteredJobs.map((job, idx) => {
               const title = ar ? job.title : (job.titleEn || job.title);
               const desc = ar ? job.description : (job.descriptionEn || job.description);
               const type = ar ? job.type : (job.typeEn || job.type);
@@ -374,7 +401,7 @@ export const JobsTab = () => {
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   onClick={() => setSelectedJob(job)}
-                  className={`cursor-pointer rounded-2xl p-4 bg-card/60 backdrop-blur-md border border-primary/20 hover:border-primary/60 hover:bg-card/90 transition-all shadow-sm hover:shadow-gold flex flex-col justify-between ${alignClass}`}
+                  className={`cursor-pointer rounded-2xl p-4 bg-card/75 backdrop-blur-md border border-border/80 hover:border-primary/50 hover:bg-card/95 transition-all shadow-sm hover:shadow-gold flex flex-col justify-between ${alignClass}`}
                 >
                   <div>
                     <div className="flex items-start justify-between gap-2 mb-2">
@@ -457,7 +484,11 @@ export const JobsTab = () => {
                       <DollarSign className="w-3.5 h-3.5 text-primary" />
                       <span>
                         {job.salary.min} - {job.salary.max} {job.salary.currency}
-                        <span className="text-[10px] text-muted-foreground font-normal">/{ar ? (job.salary.period === "hour" ? "ساعة" : "مشروع") : job.salary.period}</span>
+                        <span className="text-[10px] text-muted-foreground font-normal">
+                          /{ar
+                            ? (job.salary.period === "hour" ? "ساعة" : (job.salary.period === "month" ? "شهر" : "مشروع"))
+                            : (job.salary.period === "hour" ? "hr" : (job.salary.period === "month" ? "mo" : "project"))}
+                        </span>
                       </span>
                     </div>
 
@@ -470,6 +501,7 @@ export const JobsTab = () => {
               );
             })}
           </div>
+          )}
         </div>
       )}
 
@@ -488,7 +520,7 @@ export const JobsTab = () => {
           <div className="relative group">
             <div className="absolute -inset-0.5 bg-gradient-to-r from-amber-500 via-primary to-emerald-500 rounded-2xl blur-md opacity-40 group-hover:opacity-75 group-focus-within:opacity-100 transition-all duration-300" />
             <div className="relative flex items-center w-full bg-card/90 backdrop-blur-xl border-2 border-amber-500/40 rounded-2xl shadow-luxe focus-within:border-amber-500 transition-all">
-              <div className={`flex items-center justify-center w-11 h-11 ${isRtl ? "pr-1" : "pl-1"} text-amber-500 flex-shrink-0`}>
+              <div className="flex items-center justify-center w-11 h-11 ps-1 text-amber-500 flex-shrink-0">
                 <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center">
                   <Search className="w-4 h-4 text-amber-500" strokeWidth={2.5} />
                 </div>
@@ -498,12 +530,12 @@ export const JobsTab = () => {
                 value={paymentSearchQuery}
                 onChange={(e) => setPaymentSearchQuery(e.target.value)}
                 placeholder={ar ? "ابحث عن محفظة، عملة، بنك (مثل Payoneer, بنكك, Binance, USDT)..." : "Search wallet, USD bank, currency..."}
-                className={`w-full h-12 py-2.5 ${isRtl ? "pr-2 pl-10" : "pl-2 pr-10"} text-xs sm:text-sm bg-transparent font-medium text-foreground placeholder:text-muted-foreground/80 focus:outline-none`}
+                className="w-full h-12 py-2.5 ps-2 pe-10 text-xs sm:text-sm bg-transparent font-medium text-foreground placeholder:text-muted-foreground/80 focus:outline-none"
               />
               {paymentSearchQuery && (
                 <button
                   onClick={() => setPaymentSearchQuery("")}
-                  className={`absolute ${isRtl ? "left-3" : "right-3"} w-6 h-6 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center text-xs font-bold`}
+                  className="absolute end-3 w-6 h-6 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center text-xs font-bold"
                 >
                   ✕
                 </button>
@@ -545,8 +577,28 @@ export const JobsTab = () => {
           </div>
 
           {/* Payment Methods Luxe Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-            {filteredPaymentMethods.map((method, idx) => {
+          {filteredPaymentMethods.length === 0 ? (
+            <div className="py-12 text-center rounded-2xl border border-dashed border-border bg-card/40 p-8 space-y-3">
+              <Wallet className="w-10 h-10 text-muted-foreground/60 mx-auto" />
+              <h4 className="font-bold text-foreground text-sm">
+                {ar ? "لم يتم العثور على وسائل دفع تطابق بحثك" : "No payout methods matching your filters"}
+              </h4>
+              <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+                {ar ? "جرّب مسح كلمات البحث للاطلاع على كافة خيارات السحب والتحويل." : "Try clearing the search query to view all verified payout options."}
+              </p>
+              <button
+                onClick={() => {
+                  setPaymentSearchQuery("");
+                  setSelectedPaymentCat("all");
+                }}
+                className="px-4 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-500 text-xs font-bold hover:bg-amber-500/20 transition-all"
+              >
+                {ar ? "إعادة ضبط الفلاتر" : "Reset Filters"}
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {filteredPaymentMethods.map((method, idx) => {
               const name = ar ? method.name : method.nameEn;
               const badge = ar ? method.badge : method.badgeEn;
               const desc = ar ? method.shortDesc : method.shortDescEn;
@@ -626,6 +678,7 @@ export const JobsTab = () => {
               );
             })}
           </div>
+          )}
         </div>
       )}
 
@@ -719,16 +772,18 @@ export const JobsTab = () => {
 
                   {/* AI Copilot in Job Modal */}
                   <OpportunityAICopilot
+                    type="job"
+                    item={selectedJob}
                     opportunity={{
-                      id: selectedJob.id,
-                      title: ar ? selectedJob.title : (selectedJob.titleEn || selectedJob.title),
-                      company: selectedJob.company,
-                      category: selectedJob.category,
+                      id: selectedJob?.id,
+                      title: ar ? selectedJob?.title : (selectedJob?.titleEn || selectedJob?.title),
+                      company: selectedJob?.company,
+                      category: selectedJob?.category,
                       type: "job",
-                      requirements: ar ? selectedJob.requirements : (selectedJob.requirementsEn || selectedJob.requirements),
-                      skills: ((ar ? (selectedJob.skills || []) : (selectedJob.skillsEn || selectedJob.skills || [])) || []),
-                      payoutMethods: (selectedJob.withdrawal?.methods || []).map(m => ar ? m.name : (m.nameEn || m.name)),
-                      tips: selectedJob.successStories?.[0]?.tips ? [selectedJob.successStories[0].tips] : []
+                      requirements: ar ? selectedJob?.requirements : (selectedJob?.requirementsEn || selectedJob?.requirements),
+                      skills: ((ar ? (selectedJob?.skills || []) : (selectedJob?.skillsEn || selectedJob?.skills || [])) || []),
+                      payoutMethods: (selectedJob?.withdrawal?.methods || []).map(m => ar ? m.name : (m.nameEn || m.name)),
+                      tips: selectedJob?.successStories?.[0]?.tips ? [selectedJob.successStories[0].tips] : []
                     }}
                   />
                 </div>
@@ -739,25 +794,31 @@ export const JobsTab = () => {
                 <div className="space-y-3 text-xs">
                   <p className="text-muted-foreground">
                     {ar
-                      ? `الوقت المقدر للبدء: ${selectedJob.registrationGuide.estimatedTime}`
-                      : `Estimated onboarding time: ${selectedJob.registrationGuide.estimatedTimeEn || selectedJob.registrationGuide.estimatedTime}`}
+                      ? `الوقت المقدر للبدء: ${selectedJob.registrationGuide?.estimatedTime || "10 - 20 دقيقة"}`
+                      : `Estimated onboarding time: ${selectedJob.registrationGuide?.estimatedTimeEn || selectedJob.registrationGuide?.estimatedTime || "10 - 20 minutes"}`}
                   </p>
                   <div className="space-y-2.5">
-                    {selectedJob.registrationGuide.steps.map((st) => (
-                      <div key={st.step} className="p-3 rounded-xl bg-card border border-border flex items-start gap-2.5">
-                        <div className="w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-xs flex-shrink-0">
-                          {st.step}
+                    {Array.isArray(selectedJob.registrationGuide?.steps) && selectedJob.registrationGuide.steps.length > 0 ? (
+                      selectedJob.registrationGuide.steps.map((st, sIdx) => (
+                        <div key={st?.step || sIdx} className="p-3 rounded-xl bg-card border border-border flex items-start gap-2.5">
+                          <div className="w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-xs flex-shrink-0">
+                            {st?.step || sIdx + 1}
+                          </div>
+                          <div className="space-y-1">
+                            <h5 className="font-bold text-foreground">
+                              {st ? (ar ? st.title : (st.titleEn || st.title)) : (ar ? "خطوة التسجيل" : "Registration Step")}
+                            </h5>
+                            <p className="text-muted-foreground leading-relaxed">
+                              {st ? (ar ? st.description : (st.descriptionEn || st.description)) : ""}
+                            </p>
+                          </div>
                         </div>
-                        <div className="space-y-1">
-                          <h5 className="font-bold text-foreground">
-                            {ar ? st.title : (st.titleEn || st.title)}
-                          </h5>
-                          <p className="text-muted-foreground leading-relaxed">
-                            {ar ? st.description : (st.descriptionEn || st.description)}
-                          </p>
-                        </div>
+                      ))
+                    ) : (
+                      <div className="p-3 rounded-xl bg-card border border-border text-center text-muted-foreground">
+                        {ar ? "راجع رابط التقديم الرسمي للتعرف على خطوات التسجيل." : "Please check the official portal for application steps."}
                       </div>
-                    ))}
+                    )}
                   </div>
                 </div>
               )}

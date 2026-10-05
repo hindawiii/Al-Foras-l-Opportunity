@@ -4195,7 +4195,7 @@ export const AdminDashboardModal: React.FC<{
               </div>
 
               <p className="text-xs sm:text-sm text-gray-300 leading-relaxed">
-                {t("adminDeleteModalDesc").replace("{title}", pendingDeleteAction.title)}
+                {t("adminDeleteModalDesc").replace("{title}", pendingDeleteAction?.title || "")}
               </p>
 
               <div className="flex gap-2 justify-end pt-2">

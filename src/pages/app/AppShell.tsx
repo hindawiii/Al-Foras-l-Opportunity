@@ -201,10 +201,10 @@ export const AppShell = () => {
                 className="relative flex flex-col items-center justify-center gap-1 py-2.5 min-h-[52px] transition-colors">
                 {active && (
                   <motion.div layoutId="activeTab"
-                    className="absolute top-0 inset-x-3 h-0.5 bg-brand-gradient rounded-full" />
+                    className="absolute top-0 inset-x-3 h-0.5 bg-gold-gradient rounded-full shadow-gold" />
                 )}
-                <Icon className={`w-5 h-5 transition-colors ${active ? "text-primary font-bold" : "text-muted-foreground"}`} />
-                <span className={`text-[10px] font-medium leading-none ${active ? "text-primary font-bold" : "text-muted-foreground"}`}>
+                <Icon className={`w-5 h-5 transition-colors ${active ? "text-gold font-bold drop-shadow-sm" : "text-muted-foreground hover:text-foreground"}`} />
+                <span className={`text-[10px] font-medium leading-none ${active ? "text-gold font-bold" : "text-muted-foreground"}`}>
                   {tr(tabItem.key)}
                 </span>
               </button>
@@ -233,7 +233,7 @@ export const AppShell = () => {
       />
       <AIAdvisor />
       <UndoBanner />
-      <AdminDashboardModal isOpen={adminOpen} onClose={() => setAdminOpen(false)} />
+      {adminOpen && <AdminDashboardModal isOpen={adminOpen} onClose={() => setAdminOpen(false)} />}
     </div>
   );
 };

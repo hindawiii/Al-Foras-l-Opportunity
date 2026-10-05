@@ -163,7 +163,9 @@ class SelfHealingEngine {
 
     // Dispatch event for UI reactivity
     if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("foras:telemetry-error", { detail: errorEvent }));
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent("foras:telemetry-error", { detail: errorEvent }));
+      }, 0);
     }
 
     return { event: errorEvent, autoResolved, actionTaken };

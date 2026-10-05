@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   User, Shield, Info, Trash2, LogOut, Share2, Languages, ShieldCheck,
   Moon, Zap, Coins, ChevronLeft, ChevronRight, Sparkles, Crown, X, Check,
@@ -20,6 +20,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { nativeShare } from "@/lib/share";
 import { guestStorage } from "@/lib/guestStorage";
 import { profileExtras } from "@/lib/profileExtras";
+import { adminAuthStore } from "@/lib/adminAuthStore";
 import { PrivacySecurityPage } from "@/components/foras/PrivacySecurityPage";
 import { AboutDialog } from "@/components/foras/AboutDialog";
 
@@ -61,6 +62,45 @@ export const SettingsSheet = ({ open, onOpenChange, onOpenAdmin }: Props) => {
   const Chevron = isRtl ? ChevronLeft : ChevronRight;
 
   const [persona, setPersona] = useState<"student" | "professional">("student");
+
+  // Admin Role & Active Session Detection (Restricts Admin Portal visibility to authorized admins only)
+  const [hasAdminSession, setHasAdminSession] = useState(() => !!adminAuthStore.getCurrentSession());
+
+  useEffect(() => {
+    if (open) {
+      setHasAdminSession(!!adminAuthStore.getCurrentSession());
+    }
+  }, [open]);
+
+  // Determine if the current user is an authorized admin
+  const isAdmin =
+    user?.role === "admin" ||
+    user?.email === "alforas.one@gmail.com" ||
+    user?.email === "mohsentiben@gmail.com" ||
+    hasAdminSession;
+
+  // Discrete secret trigger for administrators (5 quick taps on footer version tag)
+  const secretTapCount = useRef(0);
+  const secretTapTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  const handleFooterSecretTap = () => {
+    secretTapCount.current += 1;
+    if (secretTapTimeout.current) clearTimeout(secretTapTimeout.current);
+    secretTapTimeout.current = setTimeout(() => {
+      secretTapCount.current = 0;
+    }, 2500);
+
+    if (secretTapCount.current >= 5) {
+      secretTapCount.current = 0;
+      onOpenChange(false);
+      if (onOpenAdmin) {
+        onOpenAdmin();
+      } else {
+        nav("/admin");
+      }
+      toast.info(isRtl ? "جاري فتح بوابة الإدارة الآمنة..." : "Accessing secure admin portal...");
+    }
+  };
 
   // Load persona from extras
   useEffect(() => {
@@ -320,23 +360,29 @@ export const SettingsSheet = ({ open, onOpenChange, onOpenAdmin }: Props) => {
                   trailing={<Chevron className="w-4 h-4 text-muted-foreground flex-shrink-0" />}
                 />
 
-                {/* Admin Portal (Highlighted) */}
-                <SettingRow
-                  icon={Crown}
-                  title={isRtl ? "لوحة تحكم الإدارة والتحديثات 👑" : "Admin & Management Portal 👑"}
-                  description={t("settingsAdminDesc")}
-                  alignClass={alignClass}
-                  onClick={() => {
-                    onOpenChange(false);
-                    nav("/admin");
-                  }}
-                  highlighted
-                  trailing={
-                    <span className="text-[10px] font-bold text-primary bg-primary/20 border border-primary/40 px-2.5 py-1 rounded-full flex-shrink-0 shadow-sm">
-                      {isRtl ? "دخول آمن" : "Secure Portal"}
-                    </span>
-                  }
-                />
+                {/* Admin Portal (Strictly hidden from regular users - visible only to verified Admins) */}
+                {isAdmin && (
+                  <SettingRow
+                    icon={Crown}
+                    title={isRtl ? "لوحة تحكم الإدارة والتحديثات 👑" : "Admin & Management Portal 👑"}
+                    description={t("settingsAdminDesc")}
+                    alignClass={alignClass}
+                    onClick={() => {
+                      onOpenChange(false);
+                      if (onOpenAdmin) {
+                        onOpenAdmin();
+                      } else {
+                        nav("/admin");
+                      }
+                    }}
+                    highlighted
+                    trailing={
+                      <span className="text-[10px] font-bold text-primary bg-primary/20 border border-primary/40 px-2.5 py-1 rounded-full flex-shrink-0 shadow-sm">
+                        {isRtl ? "دخول آمن" : "Secure Portal"}
+                      </span>
+                    }
+                  />
+                )}
               </div>
             </div>
 
@@ -435,9 +481,13 @@ export const SettingsSheet = ({ open, onOpenChange, onOpenAdmin }: Props) => {
                 </AlertDialogContent>
               </AlertDialog>
 
-              {/* Version Tag */}
+              {/* Version Tag (With subtle secret trigger for authorized admins) */}
               <div className="text-center py-2">
-                <p className="text-[11px] text-muted-foreground/80 font-medium">
+                <p
+                  onClick={handleFooterSecretTap}
+                  className="text-[11px] text-muted-foreground/80 font-medium select-none cursor-default active:text-primary/70 transition-colors"
+                  title="Al-Foras v2.5"
+                >
                   {isRtl ? "الفرص © 2026 · منصة الفرص والمنح الدراسية العالمية v2.5" : "Al-Foras © 2026 · Global Opportunities & Scholarships Platform v2.5"}
                 </p>
               </div>

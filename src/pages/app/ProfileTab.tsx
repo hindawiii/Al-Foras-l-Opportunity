@@ -443,7 +443,7 @@ export const ProfileTab = () => {
             {/* Integrated Avatar with Progress Ring following Video Guidelines */}
             <div className="relative group flex flex-col items-center">
               {/* Outer Glow */}
-              <div className="absolute -inset-2 bg-gradient-to-tr from-[hsl(var(--primary))] via-[hsl(var(--primary-glow))] to-[hsl(var(--primary-deep))] rounded-[36px] blur-lg opacity-40 group-hover:opacity-75 transition-opacity pointer-events-none" />
+              <div className="absolute -inset-2 bg-gradient-to-tr from-[hsl(var(--gold)/0.4)] via-[hsl(var(--primary)/0.3)] to-[hsl(var(--gold)/0.4)] rounded-[36px] blur-lg opacity-40 group-hover:opacity-75 transition-opacity pointer-events-none" />
 
               {/* Modern Avatar with Full Fallback Chain + Progress Ring */}
               <div

@@ -101,7 +101,6 @@ export const dynamicStore = {
           countryEn: s.countryEn || s.country || "International",
           flag: s.flag || (detectedCat === "arab" ? "🏛️" : "🌍"),
           coverage: s.coverage || "full",
-          category: detectedCat,
           amount: s.amount || s.stipend || (s.coverage === "full" ? "ممولة بالكامل" : "تمويل جزئي"),
           level: s.level || s.degree || "بكالوريوس / ماجستير",
           deadline: s.deadline || new Date().toISOString().split("T")[0],

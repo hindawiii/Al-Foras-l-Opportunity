@@ -5,15 +5,17 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
-interface OpportunityAICopilotProps {
-  type: "scholarship" | "job";
-  item: any;
+export interface OpportunityAICopilotProps {
+  type?: "scholarship" | "job";
+  item?: any;
+  opportunity?: any;
   onOpenAdvisor?: (prompt?: string) => void;
 }
 
 export const OpportunityAICopilot: React.FC<OpportunityAICopilotProps> = ({
-  type,
+  type = "scholarship",
   item,
+  opportunity,
   onOpenAdvisor,
 }) => {
   const { lang, dir } = useLanguage();
@@ -24,8 +26,22 @@ export const OpportunityAICopilot: React.FC<OpportunityAICopilotProps> = ({
   const [activeStep, setActiveStep] = useState<"actions" | "match_analysis" | "interview_prep">("actions");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  const title = ar ? (item.title || item.title_ar) : (item.titleEn || item.title_en || item.title || item.title_ar);
-  const org = ar ? (item.org || item.company) : (item.orgEn || item.company);
+  const target = item || opportunity;
+  if (!target) {
+    return null;
+  }
+
+  const title =
+    (ar
+      ? target?.title || target?.title_ar || target?.name
+      : target?.titleEn || target?.title_en || target?.title || target?.title_ar || target?.name) ||
+    (ar ? "الفرصة المحددة" : "Selected Opportunity");
+
+  const org =
+    (ar
+      ? target?.org || target?.company || target?.university
+      : target?.orgEn || target?.company || target?.org || target?.university) ||
+    (ar ? "الجهة المانحة" : "Offering Organization");
 
   // Trigger Advisor with loaded context
   const handleAskAdvisor = (actionType: "inquiry" | "eligibility" | "interview") => {

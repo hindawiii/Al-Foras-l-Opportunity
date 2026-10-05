@@ -514,9 +514,10 @@ export const AIAdvisor = () => {
   };
 
   const saveOpportunity = (s: Scholarship) => {
+    if (!s) return;
     applicationsStore.upsert({
       id: s.id,
-      title: s.title,
+      title: s?.title || (s as any)?.title_ar || "منحة دراسية",
       type: "scholarship",
       status: "saved",
       deadline: s.deadline,
@@ -1353,14 +1354,14 @@ export const AIAdvisor = () => {
                         </p>
                         <div className="space-y-1.5">
                           {atsResult.matchedScholarships.map(s => (
-                            <div key={s.id} className="p-2 rounded-xl bg-card border border-primary/20 flex items-center justify-between text-2xs">
+                            <div key={s?.id || Math.random()} className="p-2 rounded-xl bg-card border border-primary/20 flex items-center justify-between text-2xs">
                               <div className="truncate flex-1">
-                                <p className="font-semibold text-foreground truncate">{s.title}</p>
-                                <p className="text-muted-foreground">{s.country} • {s.level}</p>
+                                <p className="font-semibold text-foreground truncate">{s?.title || ""}</p>
+                                <p className="text-muted-foreground">{s?.country} • {s?.level}</p>
                               </div>
                               <button
                                 onClick={() => saveOpportunity(s)}
-                                className="px-2.5 py-1 rounded-lg bg-primary/20 text-primary hover:bg-primary/30 font-medium ml-2"
+                                className="px-2.5 py-1 rounded-lg bg-primary/20 text-primary hover:bg-primary/30 font-medium ms-2 cursor-pointer"
                               >
                                 {isRtl ? "حفظ الطلب" : "Save"}
                               </button>
