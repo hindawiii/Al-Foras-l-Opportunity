@@ -63,10 +63,7 @@ const QUICK_ACTIONS = [
   },
 ];
 
-const FUNCTION_URL = import.meta.env.VITE_SUPABASE_URL
-  ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-advisor`
-  : "";
-const ANON = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string) || (import.meta.env.VITE_SUPABASE_ANON_KEY as string) || "";
+const FUNCTION_URL = "/api/ai-advisor";
 
 export const AIAdvisor = () => {
   const { user, isGuest } = useAuth();
@@ -367,47 +364,36 @@ export const AIAdvisor = () => {
     abortRef.current = controller;
 
     try {
-      if (!FUNCTION_URL || !ANON) {
-        const reply = generateLocalAIResponse(content, nextMsgs, getProfile(), lang);
-        let currentText = "";
-        const words = reply.split(" ");
-        for (let i = 0; i < words.length; i++) {
-          if (controller.signal.aborted) break;
-          currentText += (i === 0 ? "" : " ") + words[i];
-          setMessages(prev => prev.map(m => m.id === assistantMsg.id ? { ...m, content: currentText } : m));
-          await new Promise(r => setTimeout(r, 18));
-        }
-        if (mode === "voice" || isLiveCallActiveRef.current) speakText(reply);
-        setBusy(false);
-        return;
-      }
-
       const payload = {
         messages: nextMsgs
           .filter(m => m.id !== assistantMsg.id && m.content.trim())
           .map(m => ({ role: m.role, content: m.content })),
-        profile: getProfile(),
+        userProfile: getProfile(),
         lang,
       };
 
       const res = await fetch(FUNCTION_URL, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${ANON}`,
-          "apikey": ANON,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
         signal: controller.signal,
       });
 
-      if (!res.ok || !res.body) {
-        const reply = generateLocalAIResponse(content, nextMsgs, getProfile(), lang);
+      if (res.ok) {
+        const data = await res.json();
+        const reply = data.reply || generateLocalAIResponse(content, nextMsgs, getProfile(), lang);
         setMessages(prev => prev.map(m => m.id === assistantMsg.id ? { ...m, content: reply } : m));
         if (mode === "voice" || isLiveCallActiveRef.current) speakText(reply);
         setBusy(false);
         return;
       }
+
+      // Fallback to local response if server offline
+      const reply = generateLocalAIResponse(content, nextMsgs, getProfile(), lang);
+      setMessages(prev => prev.map(m => m.id === assistantMsg.id ? { ...m, content: reply } : m));
+      if (mode === "voice" || isLiveCallActiveRef.current) speakText(reply);
+      setBusy(false);
+      return;
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -640,7 +626,7 @@ export const AIAdvisor = () => {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 4, scale: 0.94 }}
                 transition={{ duration: 0.18, ease: "easeOut" }}
-                className={`absolute bottom-full mb-3.5 whitespace-nowrap px-3.5 py-2 rounded-2xl bg-gradient-to-br from-[#0c2411] via-[#103017] to-[#1c4824] border border-primary/55 text-foreground text-xs shadow-[0_10px_30px_-5px_rgba(0,0,0,0.8),0_0_20px_rgba(212,175,55,0.35)] backdrop-blur-xl z-50 pointer-events-none max-w-[290px] sm:max-w-[320px] ${
+                className={`absolute bottom-full mb-3.5 whitespace-nowrap px-3.5 py-2 rounded-2xl bg-gradient-to-br from-[#0B1528] via-[#10203D] to-[#1B3566] border border-primary/55 text-foreground text-xs shadow-[0_10px_30px_-5px_rgba(0,0,0,0.8),0_0_20px_rgba(43,118,238,0.35)] backdrop-blur-xl z-50 pointer-events-none max-w-[290px] sm:max-w-[320px] ${
                   tipSide === "left" ? "left-0" : "right-0"
                 }`}
                 dir={dir}
@@ -660,7 +646,7 @@ export const AIAdvisor = () => {
                 </div>
                 {/* Pointer Caret with dynamic alignment */}
                 <div
-                  className={`absolute -bottom-1.5 w-3 h-3 bg-[#103017] border-r border-b border-primary/50 rotate-45 ${
+                  className={`absolute -bottom-1.5 w-3 h-3 bg-[#10203D] border-r border-b border-primary/50 rotate-45 ${
                     tipSide === "left" ? "left-5" : "right-5"
                   }`}
                 />
@@ -680,7 +666,7 @@ export const AIAdvisor = () => {
             }}
             aria-label={isRtl ? "مستشار الفرص الذكي" : "AI Advisor"}
             style={{ borderRadius: 18 }}
-            className="relative w-14 h-14 bg-gradient-to-br from-[#123816] via-[#1B5E20] to-[#B8860B] border-2 border-primary/70 flex items-center justify-center shadow-[0_8px_25px_-4px_rgba(0,0,0,0.7),0_0_20px_rgba(212,175,55,0.45)] hover:scale-105 active:scale-95 transition-all duration-300 group cursor-pointer"
+            className="relative w-14 h-14 bg-gradient-to-br from-[#1E3A8A] via-[#2563EB] to-[#D97706] border-2 border-primary/70 flex items-center justify-center shadow-[0_8px_25px_-4px_rgba(0,0,0,0.7),0_0_20px_rgba(43,118,238,0.45)] hover:scale-105 active:scale-95 transition-all duration-300 group cursor-pointer"
           >
             <AnimatePresence mode="wait">
               {open ? (
@@ -724,7 +710,7 @@ export const AIAdvisor = () => {
                 : "inset-0 sm:inset-4 md:inset-8 lg:inset-x-auto lg:right-8 lg:bottom-12 lg:top-auto lg:w-[580px] lg:h-[720px] lg:max-h-[88vh] rounded-none sm:rounded-3xl"
             }`}
             style={{
-              background: "linear-gradient(165deg, rgba(14,35,18,0.98) 0%, rgba(8,18,10,0.99) 100%)",
+              background: "linear-gradient(165deg, rgba(11,21,40,0.98) 0%, rgba(5,8,17,0.99) 100%)",
               backdropFilter: "blur(24px)",
               WebkitBackdropFilter: "blur(24px)",
             }}
@@ -733,7 +719,7 @@ export const AIAdvisor = () => {
             <div className="px-4 py-3 border-b border-primary/30 bg-black/40 flex items-center justify-between flex-shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="relative">
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#164319] via-[#1B5E20] to-[#B8860B] border border-primary/60 flex items-center justify-center shadow-gold p-1">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#1E3A8A] via-[#2563EB] to-[#D97706] border border-primary/60 flex items-center justify-center shadow-gold p-1">
                     <img src="/al-foras-icon.png" alt="Advisor" className="w-full h-full object-contain drop-shadow" />
                   </div>
                   <span className="absolute -bottom-0.5 -left-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-background animate-pulse" />

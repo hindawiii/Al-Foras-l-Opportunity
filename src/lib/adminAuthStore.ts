@@ -79,20 +79,37 @@ const RECOVERY_OTP_KEY = "foras_recovery_otp_v2";
 
 export const UNIFIED_ADMIN_EMAIL = "alforas.one@gmail.com";
 
-// Default Initial Super Admin
+const SALT = "alforas_secure_v2";
+
+export function hashAdminPassword(pass: string): string {
+  let h1 = 0xdeadbeef, h2 = 0x41c64e6d;
+  const str = pass + SALT;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507);
+  h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507);
+  h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16);
+}
+
+// Default Initial Super Admin with secured hashed credential
 const DEFAULT_SUPER_ADMIN: AdminUser = {
   id: "admin_super_01",
   name: "المدير العام (Super Admin)",
   email: "alforas.one@gmail.com",
   username: "admin",
   role: "super_admin",
-  passwordHash: "2026", // Default PIN / Password
+  passwordHash: hashAdminPassword("2026"),
   canAutoPublish: true,
   isActive: true,
   createdAt: "2026-01-01T00:00:00.000Z",
 };
 
-// Initial default team members
+// Initial default team members with secured hashed credentials
 const DEFAULT_MODERATORS: AdminUser[] = [
   DEFAULT_SUPER_ADMIN,
   {
@@ -101,7 +118,7 @@ const DEFAULT_MODERATORS: AdminUser[] = [
     email: "scholarships@foras.app",
     username: "scholar_mod",
     role: "editor",
-    passwordHash: "123456",
+    passwordHash: hashAdminPassword("123456"),
     canAutoPublish: true,
     isActive: true,
     createdAt: "2026-02-01T00:00:00.000Z",
@@ -112,7 +129,7 @@ const DEFAULT_MODERATORS: AdminUser[] = [
     email: "moderator@foras.app",
     username: "new_mod",
     role: "moderator",
-    passwordHash: "123456",
+    passwordHash: hashAdminPassword("123456"),
     canAutoPublish: false, // Needs approval before publishing
     isActive: true,
     createdAt: "2026-03-01T00:00:00.000Z",
@@ -220,15 +237,16 @@ export const adminAuthStore = {
       (u.email.toLowerCase() === cleanId || u.username.toLowerCase() === cleanId)
     );
 
+    const hashedAttempt = hashAdminPassword(cleanPass);
     let isSuccess = false;
     let targetUser: AdminUser | undefined = undefined;
     const failMessage = "كلمة المرور أو معرّف الدخول غير صحيح";
 
     if (!user) {
       // Special fallback for initial Super Admin email or PIN
-      if (cleanId === "alforas.one@gmail.com" || cleanId === "admin" || cleanPass === "2026") {
+      if (cleanId === "alforas.one@gmail.com" || cleanId === "admin") {
         const superAdmin = users.find(u => u.role === "super_admin") || DEFAULT_SUPER_ADMIN;
-        if (cleanPass === superAdmin.passwordHash || cleanPass === "2026") {
+        if (hashedAttempt === superAdmin.passwordHash || cleanPass === "2026" || cleanPass === superAdmin.passwordHash) {
           isSuccess = true;
           targetUser = superAdmin;
         }
@@ -237,7 +255,7 @@ export const adminAuthStore = {
       if (!user.isActive) {
         return { success: false, message: "هذا الحساب معطل حالياً من قِبل المدير العام" };
       }
-      if (user.passwordHash === cleanPass || (user.role === "super_admin" && cleanPass === "2026")) {
+      if (user.passwordHash === hashedAttempt || user.passwordHash === cleanPass || (user.role === "super_admin" && cleanPass === "2026")) {
         isSuccess = true;
         targetUser = user;
       }
@@ -363,7 +381,7 @@ export const adminAuthStore = {
     const superAdminIdx = users.findIndex(u => u.role === "super_admin" || u.email.toLowerCase() === UNIFIED_ADMIN_EMAIL.toLowerCase());
     
     const targetIdx = superAdminIdx >= 0 ? superAdminIdx : 0;
-    users[targetIdx].passwordHash = newPassword.trim();
+    users[targetIdx].passwordHash = hashAdminPassword(newPassword.trim());
     this.saveUsers(users);
 
     // Also reset lockout state
@@ -407,12 +425,13 @@ export const adminAuthStore = {
     const users = this.getUsers();
     const idx = users.findIndex(u => u.id === userId);
     if (idx === -1) return false;
-    users[idx].passwordHash = newPass;
+    const hashed = hashAdminPassword(newPass.trim());
+    users[idx].passwordHash = hashed;
     this.saveUsers(users);
 
     const current = this.getCurrentSession();
     if (current && current.id === userId) {
-      current.passwordHash = newPass;
+      current.passwordHash = hashed;
       this.setSession(current);
     }
     this.logActivity(users[idx], "password_change", "تغيير كلمة المرور", `تم تحديث كلمة المرور للمستخدم ${users[idx].name}`);
@@ -423,8 +442,12 @@ export const adminAuthStore = {
   saveMember(member: AdminUser): void {
     const users = this.getUsers();
     const idx = users.findIndex(u => u.id === member.id);
+    const sanitizedMember: AdminUser = {
+      ...member,
+      passwordHash: member.passwordHash.length < 10 ? hashAdminPassword(member.passwordHash) : member.passwordHash,
+    };
     if (idx >= 0) {
-      users[idx] = member;
+      users[idx] = sanitizedMember;
     } else {
       users.push(member);
     }

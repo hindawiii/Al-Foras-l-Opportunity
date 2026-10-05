@@ -6,51 +6,55 @@
 
 @layer base {
   :root {
-    /* Al-Foras Haute Couture Theme — Royal Obsidian & Imperial Warm Champagne Gold */
-    --background: 222 47% 7%;         /* Deep Royal Obsidian Navy #0A0F1D */
-    --foreground: 210 40% 98%;        /* Pristine Ivory White #F8FAFC */
+    /* Al-Foras Signature Luxe Pro Theme — Royal Sapphire & Champagne Pearl */
+    --background: 224 71% 4%;          /* Deep Obsidian Midnight #050811 */
+    --foreground: 210 40% 98%;         /* Pristine Ice White #F8FAFC */
 
-    --card: 222 40% 11%;              /* Royal Card Slate #101726 */
+    --card: 222 47% 8%;               /* Elevated Obsidian Card #0A101D */
     --card-foreground: 210 40% 98%;
 
-    --popover: 222 42% 12%;           /* Elevated Popover #121A2B */
+    --popover: 222 47% 9%;            /* Elevated Obsidian Popover #0D1424 */
     --popover-foreground: 210 40% 98%;
 
-    --primary: 44 68% 46%;            /* Imperial Warm Champagne Gold #C99E2A */
-    --primary-foreground: 222 47% 8%; /* High contrast deep navy text on gold */
-    --primary-glow: 44 78% 58%;       /* Glowing gold accent */
-    --primary-deep: 42 65% 32%;
+    --primary: 217 91% 56%;           /* Royal Sapphire Blue #2B76EE */
+    --primary-foreground: 0 0% 100%;  /* Pure White for ultimate clarity & WCAG AAA contrast */
+    --primary-glow: 217 91% 66%;      /* Soft sapphire accent #5B95F4 */
+    --primary-deep: 221 83% 44%;      /* Deep sapphire #1C55CA */
 
-    --secondary: 222 35% 15%;         /* Subtle secondary slate #192338 */
+    --secondary: 222 35% 13%;         /* Refined Slate Surface #151E2E */
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 222 30% 16%;
-    --muted-foreground: 215 25% 82%;  /* Soft ivory slate silver #C5CEE0 */
+    --muted: 222 30% 12%;
+    --muted-foreground: 215 25% 72%;  /* Soft Silver Slate for comfortable reading */
 
-    --accent: 44 68% 46%;
-    --accent-foreground: 222 47% 8%;
+    --accent: 217 91% 56%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 75% 58%;
     --destructive-foreground: 210 40% 98%;
 
-    --success: 155 65% 42%;           /* Emerald green */
-    --verified: 215 88% 60%;          /* Sapphire blue */
+    --success: 152 69% 41%;           /* Harmonious Emerald Success (Not blinding) */
+    --verified: 217 91% 60%;          /* Sapphire Blue */
     --review: 270 60% 65%;            /* Royal Amethyst */
+    --gold: 43 85% 54%;               /* Royal Champagne Amber Gold for VIP / Full Funding */
+    --gold-foreground: 222 47% 6%;
 
-    --border: 222 30% 20%;            /* Refined subtle slate border */
-    --input: 222 38% 12%;
-    --ring: 44 68% 48%;
+    --border: 222 28% 16%;            /* Elegant Subtle Slate Border */
+    --input: 222 38% 11%;
+    --ring: 217 91% 56%;
 
     --radius: 1rem;
 
-    --gradient-gold: linear-gradient(135deg, hsl(44 68% 44%), hsl(44 78% 58%) 50%, hsl(44 68% 42%));
-    --gradient-dark: linear-gradient(180deg, hsl(222 47% 9%) 0%, hsl(222 47% 6%) 100%);
-    --gradient-card: linear-gradient(145deg, hsl(222 40% 12%) 0%, hsl(222 45% 8%) 100%);
-    --gradient-radial-gold: radial-gradient(circle at 35% 0%, hsl(44 68% 46% / 0.16), transparent 65%);
+    --gradient-brand: linear-gradient(135deg, hsl(221 83% 48%), hsl(217 91% 58%) 50%, hsl(213 94% 68%));
+    --gradient-gold: linear-gradient(135deg, hsl(38 85% 46%), hsl(43 92% 58%) 50%, hsl(40 88% 50%));
+    --gradient-dark: linear-gradient(180deg, hsl(224 71% 5%) 0%, hsl(224 71% 3%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(222 47% 9%) 0%, hsl(222 47% 6%) 100%);
+    --gradient-radial-brand: radial-gradient(circle at 40% -10%, hsl(217 91% 56% / 0.10), transparent 70%);
 
-    --shadow-gold: 0 10px 40px -10px hsl(44 68% 46% / 0.4);
-    --shadow-luxe: 0 25px 60px -20px hsl(222 47% 4% / 0.85);
-    --shadow-inner-gold: inset 0 1px 0 0 hsl(44 78% 58% / 0.35);
+    --shadow-brand: 0 10px 35px -10px hsl(217 91% 56% / 0.30);
+    --shadow-gold: 0 10px 30px -10px hsl(43 85% 54% / 0.30);
+    --shadow-luxe: 0 25px 60px -20px hsl(224 71% 2% / 0.90);
+    --shadow-inner-brand: inset 0 1px 0 0 hsl(217 91% 75% / 0.30);
 
     --transition-smooth: cubic-bezier(0.22, 1, 0.36, 1);
   }
@@ -81,7 +85,7 @@
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
     font-feature-settings: "kern", "liga", "calt";
-    background-image: var(--gradient-radial-gold);
+    background-image: var(--gradient-radial-brand);
     background-attachment: fixed;
     min-height: 100vh;
   }
@@ -93,24 +97,31 @@
 }
 
 @layer utilities {
-  .text-gold-gradient {
+  .text-brand-gradient, .text-gold-gradient {
+    background: var(--gradient-brand);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .text-prestige-gold {
     background: var(--gradient-gold);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
   }
-  .bg-gold-gradient { background: var(--gradient-gold); }
+  .bg-brand-gradient, .bg-gold-gradient { background: var(--gradient-brand); }
+  .bg-prestige-gold { background: var(--gradient-gold); }
   .bg-card-gradient { background: var(--gradient-card); }
-  .shadow-gold { box-shadow: var(--shadow-gold); }
+  .shadow-brand, .shadow-gold { box-shadow: var(--shadow-brand); }
   .shadow-luxe { box-shadow: var(--shadow-luxe); }
-  .border-gold { border-color: hsl(var(--primary) / 0.4); }
-  .glow-gold { box-shadow: 0 0 30px hsl(var(--primary) / 0.3); }
+  .border-brand, .border-gold { border-color: hsl(var(--primary) / 0.4); }
+  .glow-brand, .glow-gold { box-shadow: 0 0 30px hsl(var(--primary) / 0.3); }
   .font-display { font-family: 'Amiri', 'Tajawal', serif; }
   .glass {
-    background: hsl(222 45% 10% / 0.72);
+    background: hsl(224 71% 7% / 0.75);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border: 1px solid hsl(var(--primary) / 0.2);
+    border: 1px solid hsl(222 28% 18% / 0.6);
   }
 }
 

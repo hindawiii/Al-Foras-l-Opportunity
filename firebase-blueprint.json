@@ -1,0 +1,80 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile with personal and academic preferences",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "email": { "type": "string" },
+        "full_name": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "avatar_url": { "type": "string" },
+        "location": { "type": "string" },
+        "skills": { "type": "string" },
+        "interests": { "type": "string" },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["id"]
+    },
+    "Scholarship": {
+      "title": "Scholarship",
+      "description": "Scholarship opportunity item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "titleEn": { "type": "string" },
+        "org": { "type": "string" },
+        "country": { "type": "string" },
+        "flag": { "type": "string" },
+        "coverage": { "type": "string" },
+        "category": { "type": "string" },
+        "deadline": { "type": "string" },
+        "description": { "type": "string" },
+        "descriptionEn": { "type": "string" },
+        "url": { "type": "string" },
+        "is_featured": { "type": "boolean" },
+        "views_count": { "type": "number" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["id", "title"]
+    },
+    "Job": {
+      "title": "Job",
+      "description": "Freelance or remote job opportunity",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title_ar": { "type": "string" },
+        "title_en": { "type": "string" },
+        "company": { "type": "string" },
+        "location": { "type": "string" },
+        "salary": { "type": "string" },
+        "description_ar": { "type": "string" },
+        "description_en": { "type": "string" },
+        "apply_url": { "type": "string" },
+        "deadline": { "type": "string" },
+        "category": { "type": "string" },
+        "verified": { "type": "boolean" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["id", "title_ar", "company"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profiles"
+    },
+    "/scholarships/{scholarshipId}": {
+      "schema": { "$ref": "#/entities/Scholarship" },
+      "description": "Curated and dynamic scholarships"
+    },
+    "/jobs/{jobId}": {
+      "schema": { "$ref": "#/entities/Job" },
+      "description": "Freelance and remote job opportunities"
+    }
+  }
+}

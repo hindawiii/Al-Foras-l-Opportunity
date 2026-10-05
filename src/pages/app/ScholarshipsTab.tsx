@@ -11,7 +11,8 @@ import { SCHOLARSHIPS, Scholarship, computeMatchScore } from "@/lib/mockData";
 import { dynamicStore, isArabCountry } from "@/lib/dynamicStore";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/integrations/firebase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { nativeShare } from "@/lib/share";
 import { useGeolocation } from "@/hooks/useGeolocation";
@@ -150,8 +151,18 @@ export const ScholarshipsTab = () => {
 
   useEffect(() => {
     if (!user) return;
-    supabase.from("profiles").select("location, skills, interests").eq("id", user.id).maybeSingle()
-      .then(({ data }) => { if (data) setProfile(data as any); });
+    getDoc(doc(db, "users", user.id))
+      .then((snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          setProfile({
+            location: data.location,
+            skills: data.skills,
+            interests: data.interests,
+          } as any);
+        }
+      })
+      .catch(() => {});
   }, [user]);
 
   const handleSwipe = async (dir: "left" | "right", s: Scholarship) => {

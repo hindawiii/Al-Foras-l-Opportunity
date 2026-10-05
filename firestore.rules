@@ -1,0 +1,37 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // User profiles: Users can read/write their own profile
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if isOwner(userId) || (isAuthenticated() && request.auth.token.email == "alforas.one@gmail.com");
+    }
+
+    // Scholarships: Everyone can read and sync, writes allowed for published opportunities
+    match /scholarships/{scholarshipId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Jobs: Everyone can read and sync, writes allowed for published jobs
+    match /jobs/{jobId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

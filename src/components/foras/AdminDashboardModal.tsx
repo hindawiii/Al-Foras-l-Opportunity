@@ -27,7 +27,7 @@ import { checkScholarshipDuplicate, checkJobDuplicate } from "@/lib/duplicateChe
 import { ScholarshipDuplicateBanner, UrlDuplicateNotice } from "@/components/foras/ScholarshipDuplicateGuard";
 import { ExtractedOpportunityPreview } from "@/components/foras/ExtractedOpportunityPreview";
 import { AutomationCommandCenter } from "@/components/foras/AutomationCommandCenter";
-import { SupabaseKeepAliveMonitor } from "@/components/foras/SupabaseKeepAliveMonitor";
+import { CloudDatabaseHealthMonitor } from "@/components/foras/CloudDatabaseHealthMonitor";
 import { selfHealingEngine } from "@/lib/selfHealingEngine";
 
 export const AdminDashboardModal: React.FC<{
@@ -54,7 +54,7 @@ export const AdminDashboardModal: React.FC<{
     | "audit_logs"
     | "backup"
     | "security"
-    | "supabase";
+    | "database";
 
   const validAdminTabs: AdminTab[] = [
     "scholarships",
@@ -69,7 +69,7 @@ export const AdminDashboardModal: React.FC<{
     "audit_logs",
     "backup",
     "security",
-    "supabase",
+    "database",
   ];
 
   const getInitialAdminTab = (): AdminTab => {
@@ -946,7 +946,7 @@ export const AdminDashboardModal: React.FC<{
       groupTitleAr: "الإعدادات وقاعدة البيانات",
       groupTitleEn: "Settings & Database",
       items: [
-        { id: "supabase" as const, labelAr: "مراقبة قاعدة البيانات (Supabase)", labelEn: "Supabase & Keep-Alive", icon: Database },
+        { id: "database" as const, labelAr: "قاعدة البيانات السحابية (Firebase)", labelEn: "Cloud Database (Firebase)", icon: Database },
         { id: "backup" as const, labelAr: "تصدير / استيراد البيانات", labelEn: "Data Backup & Restore", icon: Download },
         { id: "security" as const, labelAr: "تغيير كلمة المرور", labelEn: "Admin Password", icon: KeyRound },
       ],
@@ -1117,18 +1117,18 @@ export const AdminDashboardModal: React.FC<{
             </div>
           )}
 
-          {/* Direct Supabase Database Connection Status Pill */}
+          {/* Direct Firebase Database Connection Status Pill */}
           {currentUser && (
             <button
               type="button"
-              onClick={() => handleSelectTab("supabase")}
+              onClick={() => handleSelectTab("database")}
               className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-background/70 border border-primary/25 hover:border-primary/60 text-2xs font-semibold text-gray-300 hover:text-white transition-all cursor-pointer"
-              title={isRtl ? "مراقبة اتصال قاعدة البيانات ومانع التجميد" : "Supabase Connection & Keep-Alive Status"}
+              title={isRtl ? "مراقبة اتصال قاعدة البيانات السحابية" : "Firebase Connection Status"}
             >
               <Database className="w-3 h-3 text-primary" />
               <span className="hidden xl:inline">{isRtl ? "قاعدة البيانات:" : "DB:"}</span>
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-emerald-400 font-bold">Supabase</span>
+              <span className="text-emerald-400 font-bold">Firebase</span>
             </button>
           )}
 
@@ -4116,10 +4116,10 @@ export const AdminDashboardModal: React.FC<{
                   />
                 )}
 
-                {/* 10. Supabase Direct Connection & Keep-Alive Monitor */}
-                {activeTab === "supabase" && (
+                {/* 10. Firebase Cloud Database Health & Security */}
+                {activeTab === "database" && (
                   <div className="h-full overflow-y-auto p-1 sm:p-2">
-                    <SupabaseKeepAliveMonitor isRtl={isRtl} />
+                    <CloudDatabaseHealthMonitor />
                   </div>
                 )}
               </div>

@@ -1,8 +1,16 @@
+# ==============================================================================
+# Al-Foras Platform (منصة الفرص) - Search Engine Robots Directives
+# ==============================================================================
+
 User-agent: Googlebot
 Allow: /
+Disallow: /admin
+Disallow: /api/
 
 User-agent: Bingbot
 Allow: /
+Disallow: /admin
+Disallow: /api/
 
 User-agent: Twitterbot
 Allow: /
@@ -10,5 +18,13 @@ Allow: /
 User-agent: facebookexternalhit
 Allow: /
 
+User-agent: Applebot
+Allow: /
+
 User-agent: *
 Allow: /
+Disallow: /admin
+Disallow: /api/
+
+# Official XML Sitemap Reference
+Sitemap: https://al-foras.vercel.app/sitemap.xml

@@ -4,7 +4,7 @@ import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import { opportunitiesDb } from "./server/opportunitiesDb";
 import { runOpportunitiesAutomation } from "./server/automationEngine";
-import { getSupabaseHealthState, pingSupabase, startSupabaseKeepAliveDaemon } from "./server/supabaseKeepAlive";
+import { buildAdvisorGroundingContext } from "./server/knowledgeRepository";
 
 const PORT = 3000;
 
@@ -518,7 +518,7 @@ Respond ONLY with pure JSON. Do not include markdown code block backticks.
     }
   });
 
-  // 3. Real AI Advisor Chat
+  // 3. Real AI Advisor Chat with Live Opportunities Grounding
   app.post("/api/ai-advisor", async (req, res) => {
     const { messages, userProfile, lang = "ar" } = req.body;
     const ai = getGeminiClient();
@@ -530,16 +530,41 @@ Respond ONLY with pure JSON. Do not include markdown code block backticks.
     }
 
     try {
+      // 1. Fetch live comprehensive platform opportunities (Mock, Arab & Global Flagships, Jobs, and Server DB)
+      const grounding = buildAdvisorGroundingContext(messages || [], userProfile);
+      const scholarshipsSummary = grounding.scholarshipsText;
+      const jobsSummary = grounding.jobsText;
+
       const userContextStr = userProfile
-        ? `User Profile Context: Name: ${userProfile.full_name || "N/A"}, Major: ${userProfile.major || "N/A"}, GPA: ${userProfile.gpa || "N/A"}, Target: ${userProfile.target_country || "N/A"}, Skills: ${(userProfile.skills || []).join(", ")}`
+        ? `User Profile Context: Name: ${userProfile.full_name || "N/A"}, Major: ${userProfile.major || "N/A"}, Degree Level: ${userProfile.degree || "N/A"}, GPA: ${userProfile.gpa || "N/A"}, Target Country: ${userProfile.target_country || "N/A"}, English: ${userProfile.english_level || "N/A"}, Skills: ${(userProfile.skills || []).join(", ")}, Interests: ${(userProfile.interests || []).join(", ")}`
         : "";
 
       const systemInstruction = `
-You are the official Senior Academic & Career Advisor for the "Al-Foras" (الفرص) platform.
-You are fully bilingual (Arabic & English).
-Tone: Professional, warm, highly encouraging, precise, and practical.
-Provide structured bullet points, clear actionable roadmaps, and specific advice on scholarships, universities, remote jobs, and motivation letters.
+You are the official Senior Academic, Scholarship & Career Advisor for the "Al-Foras" (منصة الفرص) platform.
+You are fully bilingual (Arabic & English) with deep native mastery of Modern Standard Arabic, Arabic dialects (Sudanese, Egyptian, Gulf, Levantine, Maghrebi), and professional international English.
+Tone: Warm, prestigious, inspiring, authoritative, structured, and highly practical.
+
+MISSION & SCOPE:
+You provide comprehensive, world-class advisory for:
+1. Students: Full and partial scholarships (Bachelor's, Master's, PhD, Postdoc, Fellowships), university admission procedures, GPA equivalencies, language proficiency exams (IELTS, TOEFL, Duolingo, GRE, GMAT), and study visas.
+2. Job Seekers & Workers: Remote jobs, freelance work, international careers, tech jobs, salary expectations, high-ROI professional certifications (PMP, AWS, GCP, Cisco, Data Science, AI), and career transitions.
+3. Document Preparation: Statement of Purpose (SOP / Motivation Letter), Research Proposals, Recommendation Letters, and CV ATS Compliance (Action verbs, metrics, clean formatting).
+4. Interview Coaching: Interactive mock interview simulation using the STAR Framework (Situation, Task, Action, Result) with constructive real-time evaluation.
+
+CRITICAL LIVE PLATFORM KNOWLEDGE BASE (${grounding.totalScholarships} Scholarships, ${grounding.totalJobs} Curated Jobs & Global Directories):
+=== HIGH-RELEVANCE SCHOLARSHIPS ON "AL-FORAS" PLATFORM ===
+${scholarshipsSummary}
+
+=== HIGH-RELEVANCE REMOTE & GLOBAL JOBS ON "AL-FORAS" PLATFORM ===
+${jobsSummary}
+
+STRICT OPERATIONAL RULES:
+1. Grounding First: When recommending opportunities or answering questions about available programs, ALWAYS prioritize and cite matching opportunities from the database above with their exact official names, universities/organizations, countries, funding coverage, deadlines, and official links.
+2. Omniscient Support: You can answer ANY question regarding scholarships, universities, jobs, and professional development worldwide. If an opportunity or university is not in the excerpt above, draw upon your comprehensive knowledge of global higher education (e.g. Erasmus Mundus, Fulbright, Chevening, DAAD, Turkiye Burslari, MEXT, Gates Cambridge, Rhodes, Vanier, KAUST, King Saud, etc.) and clarify with clear actionable guidance.
+3. STAR Method for Interviews: When coaching or conducting mock interviews, guide the candidate using Situation, Task, Action, and Result. Evaluate their answers with specific positive feedback and actionable improvements.
+4. Dialect & Language Harmony: If the user writes or speaks in an Arabic dialect (e.g., Sudanese like "داير استفسر" or Egyptian like "عاوز أقدم"), respond with welcoming cultural warmth in their dialect or accessible clear Arabic, while maintaining academic and professional rigor.
 ${userContextStr}
+
 Always respond in ${lang === "ar" ? "Arabic" : "English"}.
 `;
 
@@ -566,21 +591,7 @@ Always respond in ${lang === "ar" ? "Arabic" : "English"}.
     }
   });
 
-  // 4. Supabase Direct Connection & Keep-Alive Monitoring API
-  app.get("/api/supabase/status", (_req, res) => {
-    res.json(getSupabaseHealthState());
-  });
-
-  app.post("/api/supabase/ping", async (_req, res) => {
-    try {
-      const result = await pingSupabase("manual");
-      res.json(result);
-    } catch (err: any) {
-      res.status(500).json({ error: err?.message || "Failed to execute Supabase health ping" });
-    }
-  });
-
-  // 5. Vite middleware integration
+  // 4. Vite middleware integration
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -597,9 +608,6 @@ Always respond in ${lang === "ar" ? "Arabic" : "English"}.
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://0.0.0.0:${PORT}`);
-
-    // Start Supabase 24-hour Keep-Alive daemon to prevent free-tier 7-day auto-pausing
-    startSupabaseKeepAliveDaemon(24);
 
     // Auto-schedule background ingestion check on startup
     setTimeout(() => {

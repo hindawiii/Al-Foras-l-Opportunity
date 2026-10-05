@@ -5,7 +5,11 @@
 import { Scholarship, SCHOLARSHIPS } from "./mockData";
 import { Job, JOBS } from "./jobsData";
 import { adminAuthStore, AdminUser } from "./adminAuthStore";
-import { supabase } from "@/integrations/supabase/client";
+import { collection, getDocs, doc, setDoc, deleteDoc, onSnapshot, Unsubscribe } from "firebase/firestore";
+import { db } from "@/integrations/firebase/client";
+
+let realtimeScholarshipsUnsub: Unsubscribe | null = null;
+let realtimeJobsUnsub: Unsubscribe | null = null;
 
 export interface CustomJobItem {
   id: string;
@@ -125,72 +129,112 @@ export const dynamicStore = {
     }
   },
 
-  // Cloud sync initialization from Supabase
+  // Cloud sync & realtime subscription from Firestore + Server Database
   async syncWithCloud(): Promise<void> {
     if (typeof window === "undefined") return;
-    try {
-      // 1. Fetch scholarships from Supabase
-      const { data: cloudSch, error: schErr } = await (supabase as any)
-        .from("scholarships")
-        .select("*");
-      if (!schErr && Array.isArray(cloudSch) && cloudSch.length > 0) {
-        const customRaw = localStorage.getItem(SCHOLARSHIPS_STORAGE_KEY);
-        const parsed = customRaw ? JSON.parse(customRaw) : [];
-        const localList: Scholarship[] = Array.isArray(parsed) ? parsed : [];
-        const localMap = new Map(localList.filter(s => s && s.id).map(s => [s.id, s]));
-        
-        cloudSch.forEach((item: any) => {
-          if (item && item.id) {
-            const normalized: Scholarship = {
-              id: item.id,
-              title: item.title_ar || item.title || "منحة دراسية معتمدة",
-              titleEn: item.title_en || item.titleEn || "Scholarship Opportunity",
-              org: item.university || item.org || "جامعة معتمدة",
-              country: item.country || "دولي",
-              flag: item.flag || "🌍",
-              coverage: item.coverage || "full",
-              category: item.category || "global",
-              deadline: item.deadline || new Date().toISOString().split("T")[0],
-              tags: Array.isArray(item.majors) && item.majors.length > 0 ? item.majors : (Array.isArray(item.tags) ? item.tags : ["منح"]),
-              description: item.description_ar || item.description || "",
-              descriptionEn: item.description_en || item.descriptionEn || "",
-              url: item.apply_url || item.url || "#",
-              is_featured: Boolean(item.is_featured),
-              views_count: item.views_count || 0,
-              ...(item as any),
-            };
-            localMap.set(item.id, normalized);
-          }
-        });
-        const merged = Array.from(localMap.values());
-        localStorage.setItem(SCHOLARSHIPS_STORAGE_KEY, JSON.stringify(merged));
-        window.dispatchEvent(new CustomEvent("foras:data-updated", { detail: { type: "scholarship" } }));
-      }
 
-      // 2. Fetch jobs from Supabase
-      const { data: cloudJobs, error: jobsErr } = await (supabase as any)
-        .from("jobs")
-        .select("*");
-      if (!jobsErr && Array.isArray(cloudJobs) && cloudJobs.length > 0) {
-        const customRaw = localStorage.getItem(JOBS_STORAGE_KEY);
-        const parsed = customRaw ? JSON.parse(customRaw) : [];
-        const localList: CustomJobItem[] = Array.isArray(parsed) ? parsed : [];
-        const localMap = new Map(localList.filter(j => j && j.id).map(j => [j.id, j]));
-        cloudJobs.forEach((item: any) => {
-          if (item && item.id) {
-            localMap.set(item.id, item);
+    // 1. Setup realtime listeners once
+    if (!realtimeScholarshipsUnsub) {
+      try {
+        realtimeScholarshipsUnsub = onSnapshot(collection(db, "scholarships"), (schSnap) => {
+          if (!schSnap.empty) {
+            const customRaw = localStorage.getItem(SCHOLARSHIPS_STORAGE_KEY);
+            const parsed = customRaw ? JSON.parse(customRaw) : [];
+            const localList: Scholarship[] = Array.isArray(parsed) ? parsed : [];
+            const localMap = new Map(localList.filter(s => s && s.id).map(s => [s.id, s]));
+
+            schSnap.forEach((docSnap) => {
+              const item = docSnap.data();
+              if (item && item.id) {
+                const normalized: Scholarship = {
+                  id: item.id,
+                  title: item.title_ar || item.title || "منحة دراسية معتمدة",
+                  titleEn: item.title_en || item.titleEn || "Scholarship Opportunity",
+                  org: item.university || item.org || "جامعة معتمدة",
+                  country: item.country || "دولي",
+                  flag: item.flag || "🌍",
+                  coverage: item.coverage || "full",
+                  category: item.category || "global",
+                  deadline: item.deadline || new Date().toISOString().split("T")[0],
+                  tags: Array.isArray(item.majors) && item.majors.length > 0 ? item.majors : (Array.isArray(item.tags) ? item.tags : ["منح"]),
+                  description: item.description_ar || item.description || "",
+                  descriptionEn: item.description_en || item.descriptionEn || "",
+                  url: item.apply_url || item.url || "#",
+                  is_featured: Boolean(item.is_featured),
+                  views_count: item.views_count || 0,
+                  ...(item as any),
+                };
+                localMap.set(item.id, normalized);
+              }
+            });
+            const merged = Array.from(localMap.values());
+            localStorage.setItem(SCHOLARSHIPS_STORAGE_KEY, JSON.stringify(merged));
+            window.dispatchEvent(new CustomEvent("foras:data-updated", { detail: { type: "scholarship" } }));
           }
-        });
-        const merged = Array.from(localMap.values());
-        localStorage.setItem(JOBS_STORAGE_KEY, JSON.stringify(merged));
-        window.dispatchEvent(new CustomEvent("foras:data-updated", { detail: { type: "job" } }));
+        }, (err) => console.info("Firestore scholarships live listener note:", err));
+      } catch (subErr) {
+        console.info("Firestore scholarships subscription note:", subErr);
+      }
+    }
+
+    if (!realtimeJobsUnsub) {
+      try {
+        realtimeJobsUnsub = onSnapshot(collection(db, "jobs"), (jobsSnap) => {
+          if (!jobsSnap.empty) {
+            const customRaw = localStorage.getItem(JOBS_STORAGE_KEY);
+            const parsed = customRaw ? JSON.parse(customRaw) : [];
+            const localList: CustomJobItem[] = Array.isArray(parsed) ? parsed : [];
+            const localMap = new Map(localList.filter(j => j && j.id).map(j => [j.id, j]));
+            jobsSnap.forEach((docSnap) => {
+              const item = docSnap.data() as CustomJobItem;
+              if (item && item.id) {
+                localMap.set(item.id, item);
+              }
+            });
+            const merged = Array.from(localMap.values());
+            localStorage.setItem(JOBS_STORAGE_KEY, JSON.stringify(merged));
+            window.dispatchEvent(new CustomEvent("foras:data-updated", { detail: { type: "job" } }));
+          }
+        }, (err) => console.info("Firestore jobs live listener note:", err));
+      } catch (subErr) {
+        console.info("Firestore jobs subscription note:", subErr);
+      }
+    }
+
+    // 2. Initial fetch from server database (/api/opportunities) as backup sync
+    try {
+      const res = await fetch("/api/opportunities");
+      if (res.ok) {
+        const cloudData = await res.json();
+        if (Array.isArray(cloudData.scholarships) && cloudData.scholarships.length > 0) {
+          const customRaw = localStorage.getItem(SCHOLARSHIPS_STORAGE_KEY);
+          const parsed = customRaw ? JSON.parse(customRaw) : [];
+          const localList: Scholarship[] = Array.isArray(parsed) ? parsed : [];
+          const localMap = new Map(localList.filter(s => s && s.id).map(s => [s.id, s]));
+          cloudData.scholarships.forEach((s: any) => {
+            if (s && s.id) localMap.set(s.id, s);
+          });
+          localStorage.setItem(SCHOLARSHIPS_STORAGE_KEY, JSON.stringify(Array.from(localMap.values())));
+          window.dispatchEvent(new CustomEvent("foras:data-updated", { detail: { type: "scholarship" } }));
+        }
+        if (Array.isArray(cloudData.jobs) && cloudData.jobs.length > 0) {
+          const customRaw = localStorage.getItem(JOBS_STORAGE_KEY);
+          const parsed = customRaw ? JSON.parse(customRaw) : [];
+          const localList: CustomJobItem[] = Array.isArray(parsed) ? parsed : [];
+          const localMap = new Map(localList.filter(j => j && j.id).map(j => [j.id, j]));
+          cloudData.jobs.forEach((j: any) => {
+            if (j && j.id) localMap.set(j.id, j);
+          });
+          localStorage.setItem(JOBS_STORAGE_KEY, JSON.stringify(Array.from(localMap.values())));
+          window.dispatchEvent(new CustomEvent("foras:data-updated", { detail: { type: "job" } }));
+        }
       }
     } catch (e) {
-      console.info("Supabase sync standby:", e);
+      console.info("Server cloud sync standby note:", e);
     }
   },
 
-  // Save or update a scholarship (Local + Cloud Supabase)
+  // Save or update a scholarship (Local + Cloud Firestore + Server Central DB)
   saveScholarship(item: Scholarship): void {
     if (typeof window === "undefined") return;
     try {
@@ -231,7 +275,15 @@ export const dynamicStore = {
       this.undeleteItem(normalized.id);
       window.dispatchEvent(new CustomEvent("foras:data-updated", { detail: { type: "scholarship", item: normalized } }));
 
-      // Asynchronously persist to Server Central Database
+      // 1. Asynchronously persist to Cloud Firestore for global synchronization across all user devices
+      try {
+        setDoc(doc(db, "scholarships", normalized.id), normalized, { merge: true })
+          .catch(err => console.warn("Firestore scholarship save note:", err));
+      } catch (fsErr) {
+        console.warn("Firestore scholarship write error:", fsErr);
+      }
+
+      // 2. Asynchronously persist to Server Central Database
       try {
         fetch("/api/opportunities/scholarships", {
           method: "POST",
@@ -260,7 +312,7 @@ export const dynamicStore = {
     }
   },
 
-  // Save or update a job (Local + Cloud Supabase)
+  // Save or update a job (Local + Cloud Firestore + Server Central DB)
   saveJob(job: CustomJobItem): void {
     if (typeof window === "undefined") return;
     try {
@@ -276,7 +328,15 @@ export const dynamicStore = {
       this.undeleteItem(job.id);
       window.dispatchEvent(new CustomEvent("foras:data-updated", { detail: { type: "job" } }));
 
-      // Asynchronously persist to Server Central Database
+      // 1. Asynchronously persist to Cloud Firestore for global synchronization across all user devices
+      try {
+        setDoc(doc(db, "jobs", job.id), job, { merge: true })
+          .catch(err => console.warn("Firestore job save note:", err));
+      } catch (fsErr) {
+        console.warn("Firestore job write error:", fsErr);
+      }
+
+      // 2. Asynchronously persist to Server Central Database
       try {
         fetch("/api/opportunities/jobs", {
           method: "POST",
@@ -359,7 +419,15 @@ export const dynamicStore = {
       // Mark ID as deleted in active list
       this.markIdDeleted(id);
 
-      // Persist deletion to Server Central Database
+      // 1. Delete from Cloud Firestore for global real-time synchronization
+      try {
+        deleteDoc(doc(db, type === "scholarship" ? "scholarships" : "jobs", id))
+          .catch(err => console.warn("Firestore delete note:", err));
+      } catch (fsDelErr) {
+        console.warn("Firestore delete error:", fsDelErr);
+      }
+
+      // 2. Persist deletion to Server Central Database
       try {
         const deleteEndpoint =
           type === "scholarship"
@@ -505,6 +573,16 @@ export const dynamicStore = {
       
       // Undelete from deleted list
       this.undeleteItem(id);
+
+      // Re-save to Firestore if itemData exists
+      if (target.itemData) {
+        try {
+          setDoc(doc(db, target.type === "scholarship" ? "scholarships" : "jobs", id), target.itemData, { merge: true })
+            .catch(err => console.warn("Firestore restore write note:", err));
+        } catch (fsResErr) {
+          console.warn("Firestore restore error:", fsResErr);
+        }
+      }
 
       const activeUser = adminAuthStore.getCurrentSession();
       if (activeUser) {

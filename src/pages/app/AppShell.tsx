@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Award, Newspaper, Bookmark, User, Settings as SettingsIcon, Bell, Languages, Briefcase, GraduationCap } from "lucide-react";
+import { Award, Bookmark, User, Settings as SettingsIcon, Bell, Languages, Briefcase, GraduationCap } from "lucide-react";
 import { BrandMark } from "@/components/foras/Logo";
 import { SettingsSheet } from "@/components/foras/SettingsSheet";
 import { NotificationsSheet } from "@/components/foras/NotificationsSheet";
@@ -9,7 +9,6 @@ import { AIAdvisor } from "@/components/foras/AIAdvisor";
 import { UndoBanner } from "@/components/foras/UndoBanner";
 import { AdminDashboardModal } from "@/components/foras/AdminDashboardModal";
 import { ScholarshipsTab } from "./ScholarshipsTab";
-import { EconomyNewsTab } from "./EconomyNewsTab";
 import { ApplicationsTab } from "./ApplicationsTab";
 import { ProfileTab } from "./ProfileTab";
 import { JobsTab } from "./JobsTab";
@@ -23,7 +22,6 @@ import { toast } from "sonner";
 const tabs = [
   { id: "scholarships" as const, key: "tabScholarships", icon: Award, comp: ScholarshipsTab },
   { id: "jobs" as const, key: "tabJobs", icon: Briefcase, comp: JobsTab },
-  { id: "news" as const, key: "tabNews", icon: Newspaper, comp: EconomyNewsTab },
   { id: "arabUnis" as const, key: "tabArabUnis", icon: GraduationCap, comp: ArabUniversitiesTab },
   { id: "applications" as const, key: "tabApplications", icon: Bookmark, comp: ApplicationsTab },
   { id: "profile" as const, key: "tabProfile", icon: User, comp: ProfileTab },
@@ -33,14 +31,20 @@ export const AppShell = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const getInitialTab = (): typeof tabs[number]["id"] => {
     const fromUrl = searchParams.get("tab");
-    const normalizedUrl = (fromUrl === "arab_universities" || fromUrl === "universities") ? "arabUnis" : fromUrl;
+    const normalizedUrl =
+      fromUrl === "arab_universities" || fromUrl === "universities"
+        ? "arabUnis"
+        : fromUrl === "news" || fromUrl === "economy"
+        ? "jobs"
+        : fromUrl;
     if (normalizedUrl && tabs.some(t => t.id === normalizedUrl)) {
       return normalizedUrl as typeof tabs[number]["id"];
     }
     if (typeof window !== "undefined") {
       const fromStorage = localStorage.getItem("foras_last_active_tab");
-      if (fromStorage && tabs.some(t => t.id === fromStorage)) {
-        return fromStorage as typeof tabs[number]["id"];
+      const normalizedStorage = (fromStorage === "news" || fromStorage === "economy") ? "jobs" : fromStorage;
+      if (normalizedStorage && tabs.some(t => t.id === normalizedStorage)) {
+        return normalizedStorage as typeof tabs[number]["id"];
       }
     }
     return "scholarships";
@@ -71,18 +75,28 @@ export const AppShell = () => {
   useEffect(() => {
     const requested = searchParams.get("tab");
     if (requested) {
-      const normalized = (requested === "arab_universities" || requested === "universities") ? "arabUnis" : requested;
+      const normalized =
+        requested === "arab_universities" || requested === "universities"
+          ? "arabUnis"
+          : requested === "news" || requested === "economy"
+          ? "jobs"
+          : requested;
       if (tabs.some(t => t.id === normalized) && normalized !== tab) {
         setTab(normalized as typeof tabs[number]["id"]);
       }
     }
-  }, [searchParams]);
+  }, [searchParams, tab]);
 
   useEffect(() => {
     const onNav = (e: Event) => {
       const detail = (e as CustomEvent).detail as { tab?: string };
       if (!detail?.tab) return;
-      const target = detail.tab === "arab_universities" || detail.tab === "universities" ? "arabUnis" : detail.tab;
+      const target =
+        detail.tab === "arab_universities" || detail.tab === "universities"
+          ? "arabUnis"
+          : detail.tab === "news" || detail.tab === "economy"
+          ? "jobs"
+          : detail.tab;
       const match = tabs.find(t => t.id === target);
       if (match) changeTab(match.id);
     };
@@ -176,22 +190,21 @@ export const AppShell = () => {
 
       {/* Bottom navigation */}
       <nav
-        className="fixed bottom-0 left-0 right-0 z-30 backdrop-blur-md border-t border-primary/30"
-        style={{ backgroundColor: "rgba(0,0,0,0.85)" }}
+        className="fixed bottom-0 left-0 right-0 z-30 backdrop-blur-xl border-t border-border/70 bg-background/90"
       >
-        <div className="max-w-2xl mx-auto grid grid-cols-6">
+        <div className="max-w-2xl mx-auto grid grid-cols-5">
           {tabs.map(tabItem => {
             const Icon = tabItem.icon;
             const active = tab === tabItem.id;
             return (
               <button key={tabItem.id} onClick={() => changeTab(tabItem.id)}
-                className="relative flex flex-col items-center gap-1 py-3 transition-colors">
+                className="relative flex flex-col items-center justify-center gap-1 py-2.5 min-h-[52px] transition-colors">
                 {active && (
                   <motion.div layoutId="activeTab"
-                    className="absolute top-0 inset-x-4 h-0.5 bg-gold-gradient rounded-full" />
+                    className="absolute top-0 inset-x-3 h-0.5 bg-brand-gradient rounded-full" />
                 )}
-                <Icon className={`w-5 h-5 transition-colors ${active ? "text-primary" : "text-muted-foreground"}`} />
-                <span className={`text-[10px] font-medium ${active ? "text-primary" : "text-muted-foreground"}`}>
+                <Icon className={`w-5 h-5 transition-colors ${active ? "text-primary font-bold" : "text-muted-foreground"}`} />
+                <span className={`text-[10px] font-medium leading-none ${active ? "text-primary font-bold" : "text-muted-foreground"}`}>
                   {tr(tabItem.key)}
                 </span>
               </button>

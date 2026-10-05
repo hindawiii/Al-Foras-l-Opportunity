@@ -40,6 +40,7 @@ export default {
         verified: "hsl(var(--verified))",
         review: "hsl(var(--review))",
         success: "hsl(var(--success))",
+        gold: { DEFAULT: "hsl(var(--gold))", foreground: "hsl(var(--gold-foreground))" },
       },
       borderRadius: {
         lg: "var(--radius)",

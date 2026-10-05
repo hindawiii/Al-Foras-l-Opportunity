@@ -7,7 +7,8 @@ import {
   ExternalLink, Award, Globe, BookOpen, Clock, Building, Copy
 } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { db } from "@/integrations/firebase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -143,18 +144,29 @@ export const ProfileTab = () => {
       setLoading(false);
       return;
     }
-    supabase.from("profiles").select("*").eq("id", user.id).maybeSingle()
-      .then(({ data }) => {
-        if (data) {
+    getDoc(doc(db, "users", user.id))
+      .then((snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
           const p: ProfileState = {
-            full_name: data.full_name ?? "", bio: data.bio ?? "",
-            education: data.education ?? "", location: data.location ?? "",
-            avatar_url: data.avatar_url ?? "",
-            phone: (data as any).phone ?? "",
-            skills: data.skills ?? [], interests: (data as any).interests ?? [],
+            full_name: data.full_name ?? user.fullName ?? "",
+            bio: data.bio ?? "",
+            education: data.education ?? "",
+            location: data.location ?? "",
+            avatar_url: data.avatar_url ?? user.avatarUrl ?? "",
+            phone: data.phone ?? "",
+            skills: data.skills ?? [],
+            interests: data.interests ?? [],
           };
-          setProfile(p); setDraft(p);
+          setProfile(p);
+          setDraft(p);
+        } else {
+          const p = guestStorage.get<ProfileState>("profile");
+          if (p) { setProfile(p); setDraft(p); }
         }
+        setLoading(false);
+      })
+      .catch(() => {
         setLoading(false);
       });
   }, [user, isGuest]);
@@ -295,30 +307,23 @@ export const ProfileTab = () => {
       return;
     }
 
-    const ext = file.name.split(".").pop();
-    const path = `${user.id}/${Date.now()}.${ext}`;
-    const { error: upErr } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
-    if (upErr) {
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const dataUrl = reader.result as string;
-        const next = { ...draft, avatar_url: dataUrl };
-        setDraft(next);
-        setProfile(next);
-        await supabase.from("profiles").update({ avatar_url: dataUrl }).eq("id", user.id);
-        setUploading(false);
-        toast.success(isRtl ? "تم حفظ الصورة" : "Avatar saved");
-      };
-      reader.readAsDataURL(file);
-      return;
-    }
-    const { data: pub } = supabase.storage.from("avatars").getPublicUrl(path);
-    const nextDraft = { ...draft, avatar_url: pub.publicUrl };
-    setDraft(nextDraft);
-    setProfile(nextDraft);
-    await supabase.from("profiles").update({ avatar_url: pub.publicUrl }).eq("id", user.id);
-    setUploading(false);
-    toast.success(isRtl ? "تم تحديث الصورة" : "Avatar updated");
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const dataUrl = reader.result as string;
+      const next = { ...draft, avatar_url: dataUrl };
+      setDraft(next);
+      setProfile(next);
+      if (!isGuest && user) {
+        try {
+          await setDoc(doc(db, "users", user.id), { avatar_url: dataUrl }, { merge: true });
+        } catch {}
+      } else {
+        guestStorage.set("profile", next);
+      }
+      setUploading(false);
+      toast.success(isRtl ? "تم تحديث الصورة بنجاح" : "Avatar updated");
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSave = async () => {
@@ -333,7 +338,7 @@ export const ProfileTab = () => {
     setSaving(true);
     await profileExtras.save(extrasDraft);
     setExtras(extrasDraft);
-    if (isGuest) {
+    if (isGuest || !user) {
       guestStorage.set("profile", nextDraft);
       setSaving(false);
       setProfile(nextDraft);
@@ -341,12 +346,19 @@ export const ProfileTab = () => {
       toast.success(t("saved2"));
       return;
     }
-    const { error } = await supabase.from("profiles").update(nextDraft).eq("id", user.id);
-    setSaving(false);
-    if (error) { toast.error(t("saveFailed")); return; }
-    setProfile(nextDraft);
-    setEditing(false);
-    toast.success(t("saved2"));
+    try {
+      await setDoc(doc(db, "users", user.id), {
+        ...nextDraft,
+        updated_at: new Date().toISOString(),
+      }, { merge: true });
+      setSaving(false);
+      setProfile(nextDraft);
+      setEditing(false);
+      toast.success(t("saved2"));
+    } catch {
+      setSaving(false);
+      toast.error(t("saveFailed"));
+    }
   };
 
   const addSkill = () => {

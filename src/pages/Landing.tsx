@@ -40,6 +40,7 @@ import { JOBS, Job } from "@/lib/jobsData";
 import { ARAB_COUNTRY_STATS } from "@/lib/arabUniversities";
 import { GLOBAL_COUNTRIES } from "@/lib/globalUniversities";
 import { dynamicStore } from "@/lib/dynamicStore";
+import { AIAdvisor } from "@/components/foras/AIAdvisor";
 
 // Render Arabic text with diacritics (tashkeel) highlighted in a lighter gold/white
 const TashkeelText = ({ children, className = "" }: { children: string; className?: string }) => {
@@ -360,7 +361,7 @@ const Landing = () => {
                 {isRtl ? "15+ دولة عالمية رائدة مانحة" : "15+ Top Global Donor Nations"}
               </h3>
             </div>
-            <span className="text-2xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 rounded-full">
+            <span className="text-2xs font-semibold text-primary bg-primary/10 border border-primary/30 px-2.5 py-0.5 rounded-full">
               {GLOBAL_COUNTRIES.length} {isRtl ? "دولة مانحة" : "Donor Nations"}
             </span>
           </div>
@@ -455,8 +456,8 @@ const Landing = () => {
       {/* Synchronized Live Scholarships Preview */}
       <section className="relative z-10 px-5 sm:px-10 py-12 max-w-5xl mx-auto">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-2xs font-bold mb-3">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/30 text-primary text-2xs font-bold mb-3">
+            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
             <span>{isRtl ? "محدثة تلقائياً مع الفرص الحية" : "Live Real-Time Sync"}</span>
           </div>
           <h2
@@ -583,7 +584,7 @@ const Landing = () => {
                         </span>
                       </div>
                     </div>
-                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold">
+                    <span className="px-2.5 py-0.5 rounded-full bg-gold/15 border border-gold/30 text-gold text-xs font-bold">
                       💰 {earning}
                     </span>
                   </div>
@@ -714,6 +715,9 @@ const Landing = () => {
           <p className="text-2xs text-muted-foreground">{t("landingFooter")}</p>
         </div>
       </footer>
+
+      {/* Floating AI Advisor accessible from landing page */}
+      <AIAdvisor />
     </div>
   );
 };

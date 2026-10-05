@@ -23,6 +23,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { nativeShare } from "@/lib/share";
 import { OpportunityAICopilot } from "@/components/foras/OpportunityAICopilot";
 import { SmartPayoutRoadmapBanner } from "@/components/foras/SmartPayoutRoadmapBanner";
+import { SmartCurrencyPayoutWidget } from "@/components/foras/SmartCurrencyPayoutWidget";
 
 export const JobsTab = () => {
   const { t, lang, dir } = useLanguage();
@@ -479,6 +480,9 @@ export const JobsTab = () => {
         <div className="space-y-4">
           {/* Smart Geo-Personalized Guidance Banner */}
           <SmartPayoutRoadmapBanner />
+
+          {/* Smart Live Currency & USDT Payout Widget */}
+          <SmartCurrencyPayoutWidget />
 
           {/* Payment Radiant Search Bar */}
           <div className="relative group">
