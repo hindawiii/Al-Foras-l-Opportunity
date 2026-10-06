@@ -1,5 +1,8 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import { opportunitiesDb } from "./server/opportunitiesDb";
@@ -110,6 +113,41 @@ function extractHtmlText(html: string): { title: string; description: string; te
 
 async function startServer() {
   const app = express();
+
+  // Trust Cloud Run reverse proxy (resolves client IP correctly from X-Forwarded-For)
+  app.set("trust proxy", 1);
+
+  // Security Headers (configured to allow AI Studio iframe preview while enforcing security)
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+      crossOriginEmbedderPolicy: false,
+    })
+  );
+
+  // General API Rate Limiter: 120 requests per minute per IP
+  const generalLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 120,
+    standardHeaders: true,
+    legacyHeaders: false,
+    validate: { xForwardedForHeader: false, forwardedHeader: false },
+    message: { error: "تم تجاوز الحد المسموح من الطلبات، يرجى المحاولة بعد دقيقة." },
+  });
+  app.use("/api/", generalLimiter);
+
+  // AI & Intensive Scraper Rate Limiter: 30 requests per minute per IP
+  const aiLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    validate: { xForwardedForHeader: false, forwardedHeader: false },
+    message: { error: "تم تجاوز حد استخدام الذكاء الاصطناعي، يرجى الانتظار قليلاً." },
+  });
+  app.use("/api/ai-advisor", aiLimiter);
+  app.use("/api/parse-url", aiLimiter);
+
   app.use(express.json({ limit: "5mb" }));
 
   // 1. Health check
@@ -136,6 +174,39 @@ async function startServer() {
       res.json(result);
     } catch (err: any) {
       res.status(500).json({ success: false, error: err?.message || "Sync failed" });
+    }
+  });
+
+  // Backup Management Endpoints
+  app.get("/api/backup/status", (_req, res) => {
+    try {
+      const backupDir = path.join(process.cwd(), "data", "backups");
+      const files = fs.existsSync(backupDir) ? fs.readdirSync(backupDir) : [];
+      res.json({
+        success: true,
+        totalBackups: files.length,
+        backups: files.sort().reverse(),
+        lastBackup: files[files.length - 1] || null,
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: "Failed to list backups" });
+    }
+  });
+
+  app.post("/api/backup/create", (_req, res) => {
+    try {
+      const db = opportunitiesDb.get();
+      const backupDir = path.join(process.cwd(), "data", "backups");
+      if (!fs.existsSync(backupDir)) {
+        fs.mkdirSync(backupDir, { recursive: true });
+      }
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const filename = `manual_backup_${timestamp}.json`;
+      const filePath = path.join(backupDir, filename);
+      fs.writeFileSync(filePath, JSON.stringify(db, null, 2), "utf-8");
+      res.json({ success: true, filename, timestamp });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: "Failed to create manual backup" });
     }
   });
 

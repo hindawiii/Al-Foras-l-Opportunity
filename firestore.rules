@@ -11,10 +11,23 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    // User profiles: Users can read/write their own profile
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.email == "alforas.one@gmail.com" ||
+        request.auth.token.email == "mohsentiben@gmail.com"
+      );
+    }
+
+    // Connection test doc
+    match /_health/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // User profiles: Users can read/write their own profile, admins can manage
     match /users/{userId} {
       allow read: if true;
-      allow write: if isOwner(userId) || (isAuthenticated() && request.auth.token.email == "alforas.one@gmail.com");
+      allow write: if isOwner(userId) || isAdmin();
     }
 
     // Scholarships: Everyone can read and sync, writes allowed for published opportunities

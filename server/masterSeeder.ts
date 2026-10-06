@@ -24,6 +24,28 @@ export async function runMasterCloudSeeding(): Promise<{
       ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
       : getFirestore(app);
 
+    // 0. Pre-check: If Firestore already has data, do not repeatedly overwrite on every boot
+    try {
+      const [schSnap, jobsSnap] = await Promise.all([
+        getDocs(collection(db, "scholarships")),
+        getDocs(collection(db, "jobs")),
+      ]);
+
+      if (schSnap.size >= 10 && jobsSnap.size >= 25) {
+        console.log(
+          `[Master Cloud Seeder] Firestore already healthy & populated (${schSnap.size} scholarships, ${jobsSnap.size} jobs). Skipping write.`
+        );
+        return {
+          success: true,
+          scholarshipsSeeded: schSnap.size,
+          jobsSeeded: jobsSnap.size,
+          message: "Firestore already healthy & populated",
+        };
+      }
+    } catch (checkErr) {
+      console.info("[Master Cloud Seeder] Note checking existing items:", checkErr);
+    }
+
     // 1. Load opportunities from data/opportunities_db.json
     const dbPath = path.join(process.cwd(), "data", "opportunities_db.json");
     let serverDb: any = { scholarships: [], jobs: [] };

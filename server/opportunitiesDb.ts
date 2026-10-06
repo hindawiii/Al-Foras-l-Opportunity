@@ -490,6 +490,17 @@ function writeDb(db: OpportunitiesDatabase): void {
     }
     db.lastUpdated = new Date().toISOString();
     fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2), "utf-8");
+
+    // Automated Daily Snapshot Backup
+    const backupDir = path.join(DATA_DIR, "backups");
+    if (!fs.existsSync(backupDir)) {
+      fs.mkdirSync(backupDir, { recursive: true });
+    }
+    const today = new Date().toISOString().split("T")[0];
+    const todayBackupFile = path.join(backupDir, `backup_${today}.json`);
+    if (!fs.existsSync(todayBackupFile)) {
+      fs.writeFileSync(todayBackupFile, JSON.stringify(db, null, 2), "utf-8");
+    }
   } catch (err) {
     console.error("Failed to write opportunities DB:", err);
   }
