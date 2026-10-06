@@ -5,6 +5,7 @@ import { GoogleGenAI } from "@google/genai";
 import { opportunitiesDb } from "./server/opportunitiesDb";
 import { runOpportunitiesAutomation } from "./server/automationEngine";
 import { buildAdvisorGroundingContext } from "./server/knowledgeRepository";
+import { runMasterCloudSeeding } from "./server/masterSeeder";
 
 const PORT = 3000;
 
@@ -126,6 +127,15 @@ async function startServer() {
       res.json(data);
     } catch (err: any) {
       res.status(500).json({ error: "Failed to read opportunities database" });
+    }
+  });
+
+  app.post("/api/opportunities/sync-cloud", async (_req, res) => {
+    try {
+      const result = await runMasterCloudSeeding();
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || "Sync failed" });
     }
   });
 
@@ -609,12 +619,15 @@ Always respond in ${lang === "ar" ? "Arabic" : "English"}.
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://0.0.0.0:${PORT}`);
 
-    // Auto-schedule background ingestion check on startup
+    // Auto-schedule background ingestion check and cloud sync on startup
     setTimeout(() => {
+      runMasterCloudSeeding().catch((e) => {
+        console.warn("Startup cloud sync note:", e?.message);
+      });
       runOpportunitiesAutomation(getGeminiClient()).catch((e) => {
         console.error("Initial background automation note:", e?.message);
       });
-    }, 4000);
+    }, 3000);
   });
 }
 

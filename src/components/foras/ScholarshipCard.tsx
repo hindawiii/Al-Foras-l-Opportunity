@@ -249,28 +249,32 @@ export const ScholarshipCard = ({ scholarship, onSwipe, onTap, active, index, ma
           </div>
 
           {/* Guaranteed Sticky Bottom Action Bar with X & Heart (dir="ltr" ensures physical Left=Dismiss ❌ and physical Right=Save ❤️ matching swipe physics) */}
-          <div dir="ltr" className="shrink-0 pt-3 pb-1 border-t border-border/60 bg-card/40 backdrop-blur-md flex items-center justify-center gap-6 z-20">
+          <div dir="ltr" className="shrink-0 pt-3 pb-2 border-t border-border/60 bg-card/60 backdrop-blur-md flex items-center justify-center gap-6 z-30">
             <button
               type="button"
+              onPointerDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
                 onSwipe("left");
               }}
               title={t("dismissed")}
               aria-label={t("dismissed")}
-              className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-card border-2 border-destructive/40 hover:bg-destructive/15 hover:border-destructive active:scale-95 flex items-center justify-center transition-all shadow-luxe cursor-pointer group"
+              className="w-14 h-14 sm:w-15 sm:h-15 rounded-full bg-card border-2 border-destructive/50 hover:bg-destructive/20 hover:border-destructive active:scale-90 flex items-center justify-center transition-all shadow-luxe cursor-pointer group"
             >
               <X className="w-6 h-6 text-destructive group-hover:scale-110 transition-transform" />
             </button>
             <button
               type="button"
+              onPointerDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
                 onSwipe("right");
               }}
               title={t("saved")}
               aria-label={t("saved")}
-              className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-gold-gradient hover:opacity-95 active:scale-95 flex items-center justify-center shadow-gold hover:scale-110 transition-all cursor-pointer group"
+              className="w-14 h-14 sm:w-15 sm:h-15 rounded-full bg-gold-gradient hover:opacity-95 active:scale-90 flex items-center justify-center shadow-gold hover:scale-105 transition-all cursor-pointer group"
             >
               <Heart className="w-6 h-6 text-primary-foreground fill-current drop-shadow-sm group-hover:scale-110 transition-transform" />
             </button>

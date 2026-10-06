@@ -63,22 +63,6 @@ export const SettingsSheet = ({ open, onOpenChange, onOpenAdmin }: Props) => {
 
   const [persona, setPersona] = useState<"student" | "professional">("student");
 
-  // Admin Role & Active Session Detection (Restricts Admin Portal visibility to authorized admins only)
-  const [hasAdminSession, setHasAdminSession] = useState(() => !!adminAuthStore.getCurrentSession());
-
-  useEffect(() => {
-    if (open) {
-      setHasAdminSession(!!adminAuthStore.getCurrentSession());
-    }
-  }, [open]);
-
-  // Determine if the current user is an authorized admin
-  const isAdmin =
-    user?.role === "admin" ||
-    user?.email === "alforas.one@gmail.com" ||
-    user?.email === "mohsentiben@gmail.com" ||
-    hasAdminSession;
-
   // Discrete secret trigger for administrators (5 quick taps on footer version tag)
   const secretTapCount = useRef(0);
   const secretTapTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -359,30 +343,6 @@ export const SettingsSheet = ({ open, onOpenChange, onOpenAdmin }: Props) => {
                   onClick={() => setView("privacy")}
                   trailing={<Chevron className="w-4 h-4 text-muted-foreground flex-shrink-0" />}
                 />
-
-                {/* Admin Portal (Strictly hidden from regular users - visible only to verified Admins) */}
-                {isAdmin && (
-                  <SettingRow
-                    icon={Crown}
-                    title={isRtl ? "لوحة تحكم الإدارة والتحديثات 👑" : "Admin & Management Portal 👑"}
-                    description={t("settingsAdminDesc")}
-                    alignClass={alignClass}
-                    onClick={() => {
-                      onOpenChange(false);
-                      if (onOpenAdmin) {
-                        onOpenAdmin();
-                      } else {
-                        nav("/admin");
-                      }
-                    }}
-                    highlighted
-                    trailing={
-                      <span className="text-[10px] font-bold text-primary bg-primary/20 border border-primary/40 px-2.5 py-1 rounded-full flex-shrink-0 shadow-sm">
-                        {isRtl ? "دخول آمن" : "Secure Portal"}
-                      </span>
-                    }
-                  />
-                )}
               </div>
             </div>
 

@@ -1,6 +1,281 @@
 {
   "scholarships": [
     {
+      "id": "s1",
+      "title": "منحة تشيفنينغ البريطانية الكاملة",
+      "titleEn": "Chevening UK Fully Funded Scholarship",
+      "org": "الحكومة البريطانية",
+      "country": "المملكة المتحدة",
+      "countryEn": "United Kingdom",
+      "flag": "🇬🇧",
+      "coverage": "full",
+      "amount": "تمويل كامل",
+      "level": "ماجستير",
+      "category": "global",
+      "deadline": "2026-11-01",
+      "url": "#",
+      "tags": [
+        "قيادة",
+        "ماجستير",
+        "أوروبا"
+      ],
+      "interests": [
+        "قيادة",
+        "إدارة",
+        "سياسات"
+      ],
+      "description": "منحة دراسية كاملة لقادة المستقبل تشمل الرسوم والإقامة والسفر.",
+      "descriptionEn": "Fully funded master's degree scholarship in the UK for future global leaders, covering tuition, accommodation, and flights.",
+      "is_featured": false,
+      "views_count": 120
+    },
+    {
+      "id": "s2",
+      "title": "منحة فولبرايت للدراسات العليا",
+      "titleEn": "Fulbright Foreign Student Program",
+      "org": "السفارة الأمريكية",
+      "country": "الولايات المتحدة",
+      "countryEn": "United States",
+      "flag": "🇺🇸",
+      "coverage": "full",
+      "amount": "$45,000",
+      "level": "ماجستير ودكتوراه",
+      "category": "global",
+      "deadline": "2026-09-15",
+      "url": "#",
+      "tags": [
+        "بحث",
+        "أمريكا",
+        "دكتوراه"
+      ],
+      "interests": [
+        "تكنولوجيا",
+        "هندسة",
+        "علوم"
+      ],
+      "description": "برنامج تبادل أكاديمي مرموق يدعم الدراسات العليا والبحث العلمي في أمريكا.",
+      "descriptionEn": "Prestigious US academic exchange scholarship supporting graduate studies and research at top American universities.",
+      "is_featured": false,
+      "views_count": 120
+    },
+    {
+      "id": "s3",
+      "title": "منحة DAAD الألمانية",
+      "titleEn": "DAAD Germany Study Scholarship",
+      "org": "الهيئة الألمانية للتبادل",
+      "country": "ألمانيا",
+      "countryEn": "Germany",
+      "flag": "🇩🇪",
+      "coverage": "full",
+      "amount": "€934/شهر",
+      "level": "ماجستير",
+      "category": "global",
+      "deadline": "2026-10-20",
+      "url": "#",
+      "tags": [
+        "ألمانيا",
+        "هندسة"
+      ],
+      "interests": [
+        "هندسة",
+        "تكنولوجيا"
+      ],
+      "description": "منح شهرية مع تأمين صحي ودعم لتعلم اللغة الألمانية.",
+      "descriptionEn": "Monthly stipend with full health insurance coverage and German language preparatory support.",
+      "is_featured": false,
+      "views_count": 120
+    },
+    {
+      "id": "s4",
+      "title": "منحة الملك عبدالله للتميز العلمي",
+      "titleEn": "KAUST Fellowship for Scientific Excellence",
+      "org": "جامعة كاوست",
+      "country": "المملكة العربية السعودية",
+      "countryEn": "Saudi Arabia",
+      "flag": "🇸🇦",
+      "coverage": "full",
+      "amount": "تمويل كامل + راتب",
+      "level": "ماجستير ودكتوراه",
+      "category": "arab",
+      "deadline": "2026-12-01",
+      "url": "#",
+      "tags": [
+        "السعودية",
+        "كاوست"
+      ],
+      "interests": [
+        "علوم",
+        "تكنولوجيا",
+        "بحث"
+      ],
+      "description": "تمويل كامل مع راتب شهري وسكن للدراسات العليا في كاوست.",
+      "descriptionEn": "Full tuition support, generous living stipend, private on-campus housing, and relocation allowance for graduate research.",
+      "is_featured": false,
+      "views_count": 120
+    },
+    {
+      "id": "s5",
+      "title": "برنامج إيراسموس موندوس",
+      "titleEn": "Erasmus Mundus Joint Master Degrees",
+      "org": "الاتحاد الأوروبي",
+      "country": "أوروبا",
+      "countryEn": "European Union",
+      "flag": "🇪🇺",
+      "coverage": "full",
+      "amount": "€1,400/شهر",
+      "level": "ماجستير مشترك",
+      "category": "global",
+      "deadline": "2026-01-10",
+      "url": "#",
+      "tags": [
+        "أوروبا",
+        "تبادل"
+      ],
+      "interests": [
+        "تبادل",
+        "أوروبا"
+      ],
+      "description": "برنامج ماجستير مشترك بين عدة جامعات أوروبية مع منحة شاملة.",
+      "descriptionEn": "Prestigious joint master's degree program across multiple top European universities with full financial support.",
+      "is_featured": false,
+      "views_count": 120
+    },
+    {
+      "id": "s6",
+      "title": "منحة جامعة طوكيو الدولية",
+      "titleEn": "MEXT Japan University of Tokyo Scholarship",
+      "org": "MEXT اليابان",
+      "country": "اليابان",
+      "countryEn": "Japan",
+      "flag": "🇯🇵",
+      "coverage": "full",
+      "amount": "¥147,000/شهر",
+      "level": "بكالوريوس وماجستير",
+      "category": "global",
+      "deadline": "2026-06-30",
+      "url": "#",
+      "tags": [
+        "اليابان",
+        "آسيا"
+      ],
+      "interests": [
+        "هندسة",
+        "علوم"
+      ],
+      "description": "منحة حكومية يابانية كاملة تشمل الرسوم وتذاكر السفر والراتب.",
+      "descriptionEn": "Full Japanese government scholarship covering full tuition, roundtrip airfare, and monthly living allowance.",
+      "is_featured": false,
+      "views_count": 120
+    },
+    {
+      "id": "s7",
+      "title": "منحة قطر للتنمية البشرية",
+      "titleEn": "Qatar Foundation Leadership Scholarship",
+      "org": "مؤسسة قطر",
+      "country": "قطر",
+      "countryEn": "Qatar",
+      "flag": "🇶🇦",
+      "coverage": "full",
+      "amount": "تمويل كامل",
+      "level": "ماجستير",
+      "category": "arab",
+      "deadline": "2026-08-15",
+      "url": "#",
+      "tags": [
+        "قطر",
+        "قيادة"
+      ],
+      "interests": [
+        "قيادة",
+        "إدارة"
+      ],
+      "description": "برنامج رائد لتنمية الكوادر القيادية في المنطقة العربية.",
+      "descriptionEn": "Flagship scholarship fostering executive leadership and public policy excellence in Education City.",
+      "is_featured": false,
+      "views_count": 120
+    },
+    {
+      "id": "s8",
+      "title": "منحة ETH زيورخ للهندسة",
+      "titleEn": "ETH Zurich Excellence Scholarship",
+      "org": "ETH Zürich",
+      "country": "سويسرا",
+      "countryEn": "Switzerland",
+      "flag": "🇨🇭",
+      "coverage": "full",
+      "amount": "CHF 11,000/سنة",
+      "level": "ماجستير",
+      "category": "global",
+      "deadline": "2026-12-15",
+      "url": "#",
+      "tags": [
+        "سويسرا",
+        "تميز"
+      ],
+      "interests": [
+        "هندسة",
+        "تكنولوجيا"
+      ],
+      "description": "منحة تميز للطلاب الدوليين المتفوقين في تخصصات الهندسة.",
+      "descriptionEn": "Excellence Scholarship & Opportunity Programme (ESOP) for top-tier master's candidates in engineering and computer science.",
+      "is_featured": false,
+      "views_count": 120
+    },
+    {
+      "id": "s9",
+      "title": "منحة جامعة الإمارات للماجستير",
+      "titleEn": "UAE University Graduate Fellowship",
+      "org": "جامعة الإمارات",
+      "country": "الإمارات",
+      "countryEn": "United Arab Emirates",
+      "flag": "🇦🇪",
+      "coverage": "full",
+      "amount": "تمويل كامل + سكن",
+      "level": "ماجستير",
+      "category": "arab",
+      "deadline": "2026-07-20",
+      "url": "#",
+      "tags": [
+        "الإمارات",
+        "ماجستير"
+      ],
+      "interests": [
+        "إدارة",
+        "هندسة"
+      ],
+      "description": "منحة شاملة تغطي الرسوم والسكن لطلاب الدراسات العليا في الإمارات.",
+      "descriptionEn": "Comprehensive fellowship covering full tuition waiver, monthly stipend, and student housing for graduate researchers.",
+      "is_featured": false,
+      "views_count": 120
+    },
+    {
+      "id": "s10",
+      "title": "منحة الأزهر الشريف للوافدين",
+      "titleEn": "Al-Azhar Islamic Mission Scholarship",
+      "org": "جامعة الأزهر",
+      "country": "مصر",
+      "countryEn": "Egypt",
+      "flag": "🇪🇬",
+      "coverage": "full",
+      "amount": "رسوم + إقامة",
+      "level": "بكالوريوس وماجستير",
+      "category": "arab",
+      "deadline": "2026-09-30",
+      "url": "#",
+      "tags": [
+        "مصر",
+        "الأزهر"
+      ],
+      "interests": [
+        "تعليم",
+        "بحث"
+      ],
+      "description": "منحة الأزهر الشريف للطلاب الوافدين لدراسة العلوم الشرعية واللغة العربية.",
+      "descriptionEn": "Full scholarship for international Muslim students studying Islamic theology, Arabic language, and sciences with free dormitory accommodation.",
+      "is_featured": false,
+      "views_count": 120
+    },
+    {
       "id": "sch_auto_1788601923735_oots",
       "title": "منحة فولبرايت للطلاب الأجانب في الولايات المتحدة (Fulbright Foreign Student Program)",
       "titleEn": "Fulbright Foreign Student Program USA",
@@ -376,6 +651,1013 @@
     }
   ],
   "jobs": [
+    {
+      "id": "upwork-001",
+      "title_ar": "مطور برمجيات وتطبيقات ومواقع",
+      "title_en": "Software & Web Developer",
+      "company": "Upwork",
+      "location": "عن بُعد (عالمي)",
+      "salary": "45",
+      "category": "programming",
+      "apply_url": "https://www.upwork.com",
+      "deadline": "2026-11-20",
+      "skills": [
+        "React",
+        "TypeScript",
+        "Python",
+        "Node.js",
+        "Flutter",
+        "Tailwind CSS"
+      ],
+      "benefits_ar": [
+        "أكبر حجم مشاريع في العالم",
+        "حماية كاملة للدفعات بنظام Escrow",
+        "إمكانية العمل بعقود طويلة الأجل"
+      ],
+      "description_ar": "أكبر منصة عمل حر في العالم تربط المبرمجين والمستقلين بالشركات ورواد الأعمال عبر 180 دولة.",
+      "description_en": "The world's largest freelancing marketplace connecting developers and experts with clients across 180 countries.",
+      "verified": true,
+      "eligibility": {
+        "type": "global_remote",
+        "badgeAr": "🌐 متاح للعمل عن بُعد",
+        "badgeEn": "🌐 Remote Eligible Worldwide",
+        "reasonAr": "فرصة عمل عن بُعد متاحة للتقديم الرقمي للمؤهلين بدون قيود جغرافية.",
+        "reasonEn": "Remote position open for qualified applicants worldwide.",
+        "proofSourceUrl": "https://www.upwork.com",
+        "proofSourceNameAr": "بوابة التقديم الرسمية",
+        "proofSourceNameEn": "Official Opportunity Portal",
+        "targetCountries": [
+          "GLOBAL"
+        ]
+      }
+    },
+    {
+      "id": "freelancer-001",
+      "title_ar": "منصة فريلانسر العالمية للمشاريع والمسابقات (Freelancer.com)",
+      "title_en": "Freelancer.com Global Marketplace & Contests",
+      "company": "Freelancer.com",
+      "location": "عن بُعد (عالمي)",
+      "salary": "150",
+      "category": "programming",
+      "apply_url": "https://www.freelancer.com",
+      "deadline": "2026-11-20",
+      "skills": [
+        "PHP & Laravel",
+        "Python & AI",
+        "Logo & Graphic Design",
+        "Mobile Apps",
+        "Data Processing",
+        "Content Writing"
+      ],
+      "benefits_ar": [
+        "أضخم عدد مشاريع ومسابقات بالدولار واليورو",
+        "نظام مسابقات مميز للمبتدئين لبناء سمعة سريعة",
+        "سحب مضمون عبر Payoneer"
+      ],
+      "description_ar": "واحدة من أقدم وأكبر منصات العمل الحر في العالم مع أكثر من 60 مليون مستخدم، وتتميز بنظام المسابقات العالمية المفتوحة في التصميم والبرمجة وحماية الدفعات بنظام Milestone.",
+      "description_en": "One of the world's most established freelancing platforms with 60M+ users, featuring global contests, milestone payments, and multi-currency billing.",
+      "verified": true,
+      "eligibility": {
+        "type": "global_remote",
+        "badgeAr": "🌐 متاح للعمل عن بُعد",
+        "badgeEn": "🌐 Remote Eligible Worldwide",
+        "reasonAr": "فرصة عمل عن بُعد متاحة للتقديم الرقمي للمؤهلين بدون قيود جغرافية.",
+        "reasonEn": "Remote position open for qualified applicants worldwide.",
+        "proofSourceUrl": "https://www.freelancer.com",
+        "proofSourceNameAr": "بوابة التقديم الرسمية",
+        "proofSourceNameEn": "Official Opportunity Portal",
+        "targetCountries": [
+          "GLOBAL"
+        ]
+      }
+    },
+    {
+      "id": "fiverr-001",
+      "title_ar": "سوق العمل الحر العالمي للخدمات الرقمية (Fiverr)",
+      "title_en": "Global Freelance Services Marketplace (Fiverr)",
+      "company": "Fiverr",
+      "location": "عن بُعد (عالمي)",
+      "salary": "120",
+      "category": "design",
+      "apply_url": "https://www.fiverr.com",
+      "deadline": "2026-11-20",
+      "skills": [
+        "UI/UX Design",
+        "Logo & Branding",
+        "WordPress & Shopify",
+        "Video Editing",
+        "Voice Over",
+        "Copywriting"
+      ],
+      "benefits_ar": [
+        "الزبائن يأتون إليك بدون الحاجة للبحث عن مشاريع",
+        "سحب فوري للأرباح عبر Payoneer",
+        "دفع بالدولار الأمريكي"
+      ],
+      "description_ar": "المنصة العالمية الأوسع شهرة لعرض خدماتك الرقمية (Gigs) وجذب المشترين من الولايات المتحدة وأوروبا دون الحاجة لتقديم عروض يومية.",
+      "description_en": "Global freelance leader where buyers purchase your packaged gigs in design, programming, translation, and media.",
+      "verified": true,
+      "eligibility": {
+        "type": "global_remote",
+        "badgeAr": "🌐 متاح للعمل عن بُعد",
+        "badgeEn": "🌐 Remote Eligible Worldwide",
+        "reasonAr": "فرصة عمل عن بُعد متاحة للتقديم الرقمي للمؤهلين بدون قيود جغرافية.",
+        "reasonEn": "Remote position open for qualified applicants worldwide.",
+        "proofSourceUrl": "https://www.fiverr.com",
+        "proofSourceNameAr": "بوابة التقديم الرسمية",
+        "proofSourceNameEn": "Official Opportunity Portal",
+        "targetCountries": [
+          "GLOBAL"
+        ]
+      }
+    },
+    {
+      "id": "mostaql-001",
+      "title_ar": "مشاريع عمل حر شاملة (برمجة، تصميم، كتابة، تسويق)",
+      "title_en": "Freelance Projects (Dev, Design, Writing, Marketing)",
+      "company": "Mostaql (مستقل - حسوب)",
+      "location": "عن بُعد (عالمي)",
+      "salary": "250",
+      "category": "programming",
+      "apply_url": "https://mostaql.com",
+      "deadline": "2026-11-20",
+      "skills": [
+        "تطوير الويب",
+        "التصميم الجرافيكي",
+        "الكتابة والترجمة",
+        "التسويق الإلكتروني",
+        "المونتاج"
+      ],
+      "benefits_ar": [
+        "تواصل كامل باللغة العربية",
+        "طلب عالي جداً من عملاء الخليج",
+        "دعم فني سريع وحماية تامة للحقوق"
+      ],
+      "description_ar": "أكبر شبكة عمل حر باللغة العربية تابعة لشركة حسوب، تتيح لك تقديم عروض على مشاريع أصحاب الأعمال والشركات في الخليج والعالم العربي.",
+      "description_en": "The premier Arabic freelancing platform by Hsoub, enabling talent to bid on projects across GCC and MENA regions.",
+      "verified": true,
+      "eligibility": {
+        "type": "global_remote",
+        "badgeAr": "🌐 متاح للعمل عن بُعد",
+        "badgeEn": "🌐 Remote Eligible Worldwide",
+        "reasonAr": "فرصة عمل عن بُعد متاحة للتقديم الرقمي للمؤهلين بدون قيود جغرافية.",
+        "reasonEn": "Remote position open for qualified applicants worldwide.",
+        "proofSourceUrl": "https://mostaql.com",
+        "proofSourceNameAr": "بوابة التقديم الرسمية",
+        "proofSourceNameEn": "Official Opportunity Portal",
+        "targetCountries": [
+          "GLOBAL"
+        ]
+      }
+    },
+    {
+      "id": "khamsat-001",
+      "title_ar": "سوق بيع وشراء الخدمات المصغرة (من 5$ إلى 500$)",
+      "title_en": "Microservices Marketplace ($5 to $500)",
+      "company": "Khamsat (خمسات - حسوب)",
+      "location": "عن بُعد (عالمي)",
+      "salary": "40",
+      "category": "entry",
+      "apply_url": "https://khamsat.com",
+      "deadline": "2026-11-20",
+      "skills": [
+        "تصميم أغلفة وشعارات",
+        "ترجمة وتدقيق لغوي",
+        "تفريغ صوتي وإدخال بيانات",
+        "تعليق صوتي",
+        "برمجة تعديلات بسيطة"
+      ],
+      "benefits_ar": [
+        "لا يتطلب خبرة معقدة للبدء",
+        "سهولة بيع نفس الخدمة لمئات المشترين",
+        "إقبال كبير ومستمر"
+      ],
+      "description_ar": "المنصة العربية الأولى لبيع الخدمات الرقمية الجاهزة (كتابة، تفريغ، تصميم لوجو، ترجمة، تعليق صوتي، إدخال بيانات).",
+      "description_en": "The premier Arabic marketplace for buying and selling digital micro-services (design, translation, voice-over, data entry).",
+      "verified": true,
+      "eligibility": {
+        "type": "global_remote",
+        "badgeAr": "🌐 متاح للعمل عن بُعد",
+        "badgeEn": "🌐 Remote Eligible Worldwide",
+        "reasonAr": "فرصة عمل عن بُعد متاحة للتقديم الرقمي للمؤهلين بدون قيود جغرافية.",
+        "reasonEn": "Remote position open for qualified applicants worldwide.",
+        "proofSourceUrl": "https://khamsat.com",
+        "proofSourceNameAr": "بوابة التقديم الرسمية",
+        "proofSourceNameEn": "Official Opportunity Portal",
+        "targetCountries": [
+          "GLOBAL"
+        ]
+      }
+    },
+    {
+      "id": "bahr-001",
+      "title_ar": "منصة بحر للعمل الحر المعتمدة في السعودية والخليج",
+      "title_en": "Bahr Freelance Platform (Saudi & GCC)",
+      "company": "Bahr (بحر - تسعة أعشار)",
+      "location": "عن بُعد (عالمي)",
+      "salary": "400",
+      "category": "programming",
+      "apply_url": "https://bahr.910ths.sa",
+      "deadline": "2026-11-20",
+      "skills": [
+        "تطوير الويب",
+        "التطبيقات",
+        "التصميم والهوية",
+        "الاستشارات المالية",
+        "إدارة المحتوى"
+      ],
+      "benefits_ar": [
+        "أجور وميزانيات عالية بالريال السعودي والدولار",
+        "عمولة منخفضة جداً",
+        "مشاريع مؤسسية موثوقة"
+      ],
+      "description_ar": "منصة عمل حر تابعة لبرنامج تسعة أعشار وصندوق تنمية الموارد البشرية السعودي (هدف)، تجمع نخبة المستقلين بالشركات والمؤسسات.",
+      "description_en": "Official freelance portal by 9/10ths and HRDF in Saudi Arabia, connecting talent with enterprises across the GCC.",
+      "verified": true,
+      "eligibility": {
+        "type": "global_remote",
+        "badgeAr": "🌐 متاح للعمل عن بُعد",
+        "badgeEn": "🌐 Remote Eligible Worldwide",
+        "reasonAr": "فرصة عمل عن بُعد متاحة للتقديم الرقمي للمؤهلين بدون قيود جغرافية.",
+        "reasonEn": "Remote position open for qualified applicants worldwide.",
+        "proofSourceUrl": "https://bahr.910ths.sa",
+        "proofSourceNameAr": "بوابة التقديم الرسمية",
+        "proofSourceNameEn": "Official Opportunity Portal",
+        "targetCountries": [
+          "GLOBAL"
+        ]
+      }
+    },
+    {
+      "id": "baeed-001",
+      "title_ar": "وظائف عمل عن بُعد برواتب شهرية كاملة (منصة بعيد - حسوب)",
+      "title_en": "Full-Time Remote Careers & Monthly Salaries (Baeed - Hsoub)",
+      "company": "Baeed (بعيد - حسوب)",
+      "location": "عن بُعد (عالمي)",
+      "salary": "1800",
+      "category": "programming",
+      "apply_url": "https://baeed.com",
+      "deadline": "2026-11-20",
+      "skills": [
+        "تطوير البرمجيات",
+        "إدارة المنتجات",
+        "التسويق بالمحتوى",
+        "خدمة العملاء والدعم الفني",
+        "المبيعات الرقمية"
+      ],
+      "benefits_ar": [
+        "وظائف دائمة ومستقرة برواتب شهرية بالدولار",
+        "بدون أي عمولة على الموظف (0%)",
+        "تواصل عربي سلس مع أرقى الشركات التقنية"
+      ],
+      "description_ar": "بوابة العمل عن بُعد الأولى في الوطن العربي من شركة حسوب، تعلن فيها مئات الشركات والمؤسسات التقنية عن وظائف بعقود رسمية ورواتب شهرية بالدولار للمحترفين في كافة الدول العربية.",
+      "description_en": "The leading Arab remote career platform by Hsoub, featuring full-time and contractual remote roles from tech firms with monthly USD salaries.",
+      "verified": true,
+      "eligibility": {
+        "type": "global_remote",
+        "badgeAr": "🌐 متاح للعمل عن بُعد",
+        "badgeEn": "🌐 Remote Eligible Worldwide",
+        "reasonAr": "فرصة عمل عن بُعد متاحة للتقديم الرقمي للمؤهلين بدون قيود جغرافية.",
+        "reasonEn": "Remote position open for qualified applicants worldwide.",
+        "proofSourceUrl": "https://baeed.com",
+        "proofSourceNameAr": "بوابة التقديم الرسمية",
+        "proofSourceNameEn": "Official Opportunity Portal",
+        "targetCountries": [
+          "GLOBAL"
+        ]
+      }
+    },
+    {
+      "id": "toptal-001",
+      "title_ar": "شبكة أفضل 3% من المطورين والمصممين في العالم (Toptal)",
+      "title_en": "Toptal Elite Network (Top 3% Global Freelancers)",
+      "company": "Toptal",
+      "location": "عن بُعد (عالمي)",
+      "salary": "95",
+      "category": "programming",
+      "apply_url": "https://www.toptal.com",
+      "deadline": "2026-11-20",
+      "skills": [
+        "Algorithms",
+        "System Design",
+        "Full Stack",
+        "DevOps",
+        "AI & Machine Learning"
+      ],
+      "benefits_ar": [
+        "أعلى أجور عمل حر في العالم (تصل لـ $10,000+ شهرياً)",
+        "بدون عمولة مقتطعة من أجر المستقل (0%)",
+        "مشاريع مع أرقى شركات العالم"
+      ],
+      "description_ar": "شبكة عالمية حصرية تقبل أفضل 3% فقط من الكفاءات بعد اجتياز مراحل الفحص الفني، وتوفر وظائف وعقوداً بأعلى الأجور في وادي السيليكون والعالم.",
+      "description_en": "Exclusive network matching the top 3% of global freelance talent with Silicon Valley leaders and Fortune 500s.",
+      "verified": true,
+      "eligibility": {
+        "type": "global_remote",
+        "badgeAr": "🌐 متاح للعمل عن بُعد",
+        "badgeEn": "🌐 Remote Eligible Worldwide",
+        "reasonAr": "فرصة عمل عن بُعد متاحة للتقديم الرقمي للمؤهلين بدون قيود جغرافية.",
+        "reasonEn": "Remote position open for qualified applicants worldwide.",
+        "proofSourceUrl": "https://www.toptal.com",
+        "proofSourceNameAr": "بوابة التقديم الرسمية",
+        "proofSourceNameEn": "Official Opportunity Portal",
+        "targetCountries": [
+          "GLOBAL"
+        ]
+      }
+    },
+    {
+      "id": "malt-001",
+      "title_ar": "منصة مالت الأوروبية للنخبة من المستقلين (Malt Europe)",
+      "title_en": "Malt European Freelance Elite Network",
+      "company": "Malt",
+      "location": "عن بُعد (عالمي)",
+      "salary": "75",
+      "category": "programming",
+      "apply_url": "https://www.malt.com",
+      "deadline": "2026-11-20",
+      "skills": [
+        "React",
+        "Vue.js",
+        "Java",
+        "Python",
+        "Cloud AWS/GCP",
+        "Product Design"
+      ],
+      "benefits_ar": [
+        "أجور ممتازة جداً باليورو (€)",
+        "مشاريع مؤسسية طويلة الأجل",
+        "دفعات مضمونة خلال 3 أيام"
+      ],
+      "description_ar": "أسرع منصات العمل الحر نمواً في فرنسا وألمانيا وإسبانيا وبريطانيا، تربط كبار المطورين والمصممين بشركات Fortune 500 في أوروبا.",
+      "description_en": "Europe's leading freelance marketplace connecting elite tech and design freelancers with EU enterprises.",
+      "verified": true,
+      "eligibility": {
+        "type": "global_remote",
+        "badgeAr": "🌐 متاح للعمل عن بُعد",
+        "badgeEn": "🌐 Remote Eligible Worldwide",
+        "reasonAr": "فرصة عمل عن بُعد متاحة للتقديم الرقمي للمؤهلين بدون قيود جغرافية.",
+        "reasonEn": "Remote position open for qualified applicants worldwide.",
+        "proofSourceUrl": "https://www.malt.com",
+        "proofSourceNameAr": "بوابة التقديم الرسمية",
+        "proofSourceNameEn": "Official Opportunity Portal",
+        "targetCountries": [
+          "GLOBAL"
+        ]
+      }
+    },
+    {
+      "id": "contra-021",
+      "title_ar": "شبكة كونترا العالمية للعمل الحر (0% عمولة وسحب فوري)",
+      "title_en": "Contra Commission-Free Global Freelance Network",
+      "company": "Contra Inc.",
+      "location": "عن بعد / Global Remote",
+      "salary": "$1,500 - $6,000 / شهر",
+      "category": "tech",
+      "apply_url": "https://contra.com",
+      "deadline": "مستمر",
+      "skills": [
+        "Frontend",
+        "Product Design",
+        "Marketing",
+        "Writing",
+        "NoCode"
+      ],
+      "benefits_ar": [
+        "0% اقتطاع من الأرباح",
+        "حماية العقود والدفع الفوري",
+        "تواصل مباشر مع الشركات العالمية"
+      ],
+      "description_ar": "أحدث شبكة عمل حر عالمية تتيح للمستقلين إبراز مشاريعهم والتعاقد مع الشركات الناشئة مع الاحتفاظ بـ 100% من أتعابهم دون أي عمولة وساطة.",
+      "description_en": "Modern freelance platform charging 0% commission on independent contracts with top international clients.",
+      "verified": true,
+      "eligibility": {
+        "type": "global_remote",
+        "badgeAr": "🌐 متاح للعمل عن بُعد",
+        "badgeEn": "🌐 Remote Eligible Worldwide",
+        "reasonAr": "فرصة عمل عن بُعد متاحة للتقديم الرقمي للمؤهلين بدون قيود جغرافية.",
+        "reasonEn": "Remote position open for qualified applicants worldwide.",
+        "proofSourceUrl": "https://contra.com",
+        "proofSourceNameAr": "بوابة التقديم الرسمية",
+        "proofSourceNameEn": "Official Opportunity Portal",
+        "targetCountries": [
+          "GLOBAL"
+        ]
+      },
+      "type": "remote_contract",
+      "country": "عالمي",
+      "flag": "⚡",
+      "company_url": "https://contra.com",
+      "featured": true,
+      "source": "curated_platform",
+      "createdAt": "2026-09-05T08:02:56.751Z",
+      "updatedAt": "2026-09-05T08:02:56.751Z"
+    },
+    {
+      "id": "ureed-001",
+      "title_ar": "منصة أريد لصناع المحتوى والمترجمين واللغويين",
+      "title_en": "Ureed Platform for Content & Translation",
+      "company": "Ureed (أريد)",
+      "location": "عن بُعد (عالمي)",
+      "salary": "180",
+      "category": "writing",
+      "apply_url": "https://ureed.com",
+      "deadline": "2026-11-20",
+      "skills": [
+        "الترجمة الطبية والتقنية",
+        "التدقيق اللغوي",
+        "كتابة مقالات SEO",
+        "التعريب وتوطين التطبيقات"
+      ],
+      "benefits_ar": [
+        "تركيز كامل على مهارات اللغة والكتابة",
+        "مشاريع مستمرة من شركات كبرى",
+        "أجور عادلة ومحمية"
+      ],
+      "description_ar": "أكبر منصة متخصصة في المحتوى والترجمة والتحرير اللغوي في الشرق الأوسط، تربط المترجمين والكتاب بأكبر الشركات الإقليمية.",
+      "description_en": "The largest specialized content, editorial, and certified translation platform in the MENA region.",
+      "verified": true,
+      "eligibility": {
+        "type": "global_remote",
+        "badgeAr": "🌐 متاح للعمل عن بُعد",
+        "badgeEn": "🌐 Remote Eligible Worldwide",
+        "reasonAr": "فرصة عمل عن بُعد متاحة للتقديم الرقمي للمؤهلين بدون قيود جغرافية.",
+        "reasonEn": "Remote position open for qualified applicants worldwide.",
+        "proofSourceUrl": "https://ureed.com",
+        "proofSourceNameAr": "بوابة التقديم الرسمية",
+        "proofSourceNameEn": "Official Opportunity Portal",
+        "targetCountries": [
+          "GLOBAL"
+        ]
+      }
+    },
+    {
+      "id": "truelancer-001",
+      "title_ar": "منصة ترولانسر للعمل الحر في آسيا والشرق الأوسط",
+      "title_en": "Truelancer Freelancing (Asia & Middle East)",
+      "company": "Truelancer",
+      "location": "عن بُعد (عالمي)",
+      "salary": "90",
+      "category": "content",
+      "apply_url": "https://www.truelancer.com",
+      "deadline": "2026-11-20",
+      "skills": [
+        "Data Entry",
+        "Virtual Assistant",
+        "Graphic Design",
+        "PHP & WordPress",
+        "Translation"
+      ],
+      "benefits_ar": [
+        "سهولة القبول والبدء الفوري",
+        "عمولة منخفضة",
+        "مشاريع متنوعة وبسيطة للمبتدئين"
+      ],
+      "description_ar": "منصة عالمية متنامية تضم مئات آلاف المشاريع في البرمجة، إدخال البيانات، كتابة المحتوى، وإدارة حسابات التواصل.",
+      "description_en": "Fast-growing global marketplace with projects in web development, data operations, SEO, and social management.",
+      "verified": true,
+      "eligibility": {
+        "type": "global_remote",
+        "badgeAr": "🌐 متاح للعمل عن بُعد",
+        "badgeEn": "🌐 Remote Eligible Worldwide",
+        "reasonAr": "فرصة عمل عن بُعد متاحة للتقديم الرقمي للمؤهلين بدون قيود جغرافية.",
+        "reasonEn": "Remote position open for qualified applicants worldwide.",
+        "proofSourceUrl": "https://www.truelancer.com",
+        "proofSourceNameAr": "بوابة التقديم الرسمية",
+        "proofSourceNameEn": "Official Opportunity Portal",
+        "targetCountries": [
+          "GLOBAL"
+        ]
+      }
+    },
+    {
+      "id": "soundeals-001",
+      "title_ar": "منصة سونديلز للتعليق الصوتي والإنتاج الصوتي العربي",
+      "title_en": "Soundeals Voice-Over & Audio Production",
+      "company": "Soundeals (سونديلز)",
+      "location": "عن بُعد (عالمي)",
+      "salary": "150",
+      "category": "content",
+      "apply_url": "https://soundeals.com",
+      "deadline": "2026-11-20",
+      "skills": [
+        "الفصحى الإخبارية والوثائقية",
+        "الإعلانات التجارية",
+        "الدوبلاج الكرتوني",
+        "الهندسة الصوتية والمكساج"
+      ],
+      "benefits_ar": [
+        "أجور ممتازة لكل دقيقة تسجيل",
+        "طلب ضخم ومستمر على الأصوات العربية والسودانية",
+        "حماية لحقوق الملكية الفكرية"
+      ],
+      "description_ar": "المنصة الرائدة في العالم العربي للتعليق الصوتي والدوبلاج والإنتاج الإذاعي، تجمع المعلقين الصوتيين بشركات الإعلانات والقنوات الفضائية والكتب المسموعة.",
+      "description_en": "The leading Arabic voice-over marketplace connecting vocal artists with advertising agencies, publishers, and studios.",
+      "verified": true,
+      "eligibility": {
+        "type": "global_remote",
+        "badgeAr": "🌐 متاح للعمل عن بُعد",
+        "badgeEn": "🌐 Remote Eligible Worldwide",
+        "reasonAr": "فرصة عمل عن بُعد متاحة للتقديم الرقمي للمؤهلين بدون قيود جغرافية.",
+        "reasonEn": "Remote position open for qualified applicants worldwide.",
+        "proofSourceUrl": "https://soundeals.com",
+        "proofSourceNameAr": "بوابة التقديم الرسمية",
+        "proofSourceNameEn": "Official Opportunity Portal",
+        "targetCountries": [
+          "GLOBAL"
+        ]
+      }
+    },
+    {
+      "id": "sabbar-001",
+      "title_ar": "منصة صبّار للوظائف المرنة والدوام الجزئي وعن بُعد",
+      "title_en": "Sabbar Flexible Shifts & Remote Jobs Portal",
+      "company": "Sabbar (صبّار)",
+      "location": "arab",
+      "salary": "850",
+      "category": "trades",
+      "apply_url": "https://sabbar.com",
+      "deadline": "2026-11-20",
+      "skills": [
+        "خدمة العملاء",
+        "المبيعات والدعم",
+        "إدخال البيانات",
+        "إدارة العمليات والتجزئة"
+      ],
+      "benefits_ar": [
+        "دفعات أسبوعية منتظمة",
+        "فرص حضورية وعن بعد",
+        "توثيق رسمي ومعتمد"
+      ],
+      "description_ar": "المنصة الأسرع نمواً في السعودية والشرق الأوسط للتوظيف السريع بالساعة أو بالدوام الجزئي والكامل، وتوفر وظائف عن بعد للكوادر العربية في خدمة العملاء والتسويق والدعم الفني.",
+      "description_en": "Top flexible staffing portal in KSA & MENA providing instant shifts, part-time and remote corporate opportunities.",
+      "verified": true,
+      "eligibility": {
+        "type": "global_remote",
+        "badgeAr": "🌐 متاح للعمل عن بُعد",
+        "badgeEn": "🌐 Remote Eligible Worldwide",
+        "reasonAr": "فرصة عمل عن بُعد متاحة للتقديم الرقمي للمؤهلين بدون قيود جغرافية.",
+        "reasonEn": "Remote position open for qualified applicants worldwide.",
+        "proofSourceUrl": "https://sabbar.com",
+        "proofSourceNameAr": "بوابة التقديم الرسمية",
+        "proofSourceNameEn": "Official Opportunity Portal",
+        "targetCountries": [
+          "GLOBAL"
+        ]
+      }
+    },
+    {
+      "id": "marn-001",
+      "title_ar": "منصة مَرن لحلول العمل المرن بالساعة في السعودية",
+      "title_en": "Marn Flexible Hourly Work Platform (Saudi Arabia)",
+      "company": "Marn (مَرن)",
+      "location": "arab",
+      "salary": "40",
+      "category": "trades",
+      "apply_url": "https://marn.io",
+      "deadline": "2026-11-20",
+      "skills": [
+        "إدارة الفعاليات",
+        "مبيعات التجزئة",
+        "الكاشير وخدمة العملاء",
+        "التسويق الميداني"
+      ],
+      "benefits_ar": [
+        "موثق في التأمينات الاجتماعية السعودية",
+        "أجر محدد بالساعة بدون عمولة",
+        "مرونة مطلقة في اختيار الأيام والساعات"
+      ],
+      "description_ar": "المنصة الأولى المعتمدة من وزارة الموارد البشرية لتوثيق عقود العمل المرن بنظام الساعات في المملكة العربية السعودية مع تسجيل الساعات في التأمينات الاجتماعية وحماية الحقوق.",
+      "description_en": "Saudi Arabia's premier MHRSD-accredited flexible work platform offering regulated hourly employment with registered social insurance.",
+      "verified": true,
+      "eligibility": {
+        "type": "global_remote",
+        "badgeAr": "🌐 متاح للعمل عن بُعد",
+        "badgeEn": "🌐 Remote Eligible Worldwide",
+        "reasonAr": "فرصة عمل عن بُعد متاحة للتقديم الرقمي للمؤهلين بدون قيود جغرافية.",
+        "reasonEn": "Remote position open for qualified applicants worldwide.",
+        "proofSourceUrl": "https://marn.io",
+        "proofSourceNameAr": "بوابة التقديم الرسمية",
+        "proofSourceNameEn": "Official Opportunity Portal",
+        "targetCountries": [
+          "GLOBAL"
+        ]
+      }
+    },
+    {
+      "id": "as3a-001",
+      "title_ar": "منصة أسعى للعمل الجزئي والموسمي والفعاليات",
+      "title_en": "AS3A Part-Time & Seasonal Opportunities Platform",
+      "company": "AS3A (أسعى)",
+      "location": "arab",
+      "salary": "650",
+      "category": "trades",
+      "apply_url": "https://as3a.com/Home",
+      "deadline": "2026-11-20",
+      "skills": [
+        "تنظيم الفعاليات",
+        "إرشاد الزوار",
+        "التسجيل والتذاكر",
+        "الإشراف والتشغيل"
+      ],
+      "benefits_ar": [
+        "فرص متجددة مع كل موسم ومؤتمر",
+        "أجور فورية ومجزية للمشاريع القصيرة",
+        "اكتساب خبرات تنظيمية كبرى"
+      ],
+      "description_ar": "منصة سعودية رائدة متخصصة في ربط الكفاءات الوطنية بالفرص الوظيفية المؤقتة والجزئية في الفعاليات والمواسم الترفيهية والمعارض والمؤتمرات الكبرى.",
+      "description_en": "Saudi platform connecting national talents with part-time, seasonal, and exhibition gigs across major national events and entertainment seasons.",
+      "verified": true,
+      "eligibility": {
+        "type": "global_remote",
+        "badgeAr": "🌐 متاح للعمل عن بُعد",
+        "badgeEn": "🌐 Remote Eligible Worldwide",
+        "reasonAr": "فرصة عمل عن بُعد متاحة للتقديم الرقمي للمؤهلين بدون قيود جغرافية.",
+        "reasonEn": "Remote position open for qualified applicants worldwide.",
+        "proofSourceUrl": "https://as3a.com/Home",
+        "proofSourceNameAr": "بوابة التقديم الرسمية",
+        "proofSourceNameEn": "Official Opportunity Portal",
+        "targetCountries": [
+          "GLOBAL"
+        ]
+      }
+    },
+    {
+      "id": "wardiyyat-001",
+      "title_ar": "منصة ورديات (Shiftat) لتغطية ورديات العمل بالساعة",
+      "title_en": "Wardiyyat / Shiftat Hourly Staffing Platform",
+      "company": "Wardiyyat (ورديات - شفتات)",
+      "location": "arab",
+      "salary": "35",
+      "category": "trades",
+      "apply_url": "https://shiftat.sa",
+      "deadline": "2026-11-20",
+      "skills": [
+        "باريستا وتحضير القهوة",
+        "خدمة طاولات ومطاعم",
+        "كاشير ومبيعات",
+        "جرد وتخزين"
+      ],
+      "benefits_ar": [
+        "استلام أجور الورديات خلال وقت وجيز",
+        "ورديات مرنة تبدأ من 3 ساعات فقط",
+        "متاحة في جميع أحياء ومدن المملكة"
+      ],
+      "description_ar": "تطبيق متخصص في تمكين الشباب السعودي من ملء وتغطية الورديات الشاغرة في قطاعات الأغذية والمشروبات والمقاهي والتجزئة بالساعات التي يختارونها.",
+      "description_en": "Staffing app connecting Saudi talents with vacant hourly shifts in F&B, cafes, and retail at their chosen times.",
+      "verified": true,
+      "eligibility": {
+        "type": "global_remote",
+        "badgeAr": "🌐 متاح للعمل عن بُعد",
+        "badgeEn": "🌐 Remote Eligible Worldwide",
+        "reasonAr": "فرصة عمل عن بُعد متاحة للتقديم الرقمي للمؤهلين بدون قيود جغرافية.",
+        "reasonEn": "Remote position open for qualified applicants worldwide.",
+        "proofSourceUrl": "https://shiftat.sa",
+        "proofSourceNameAr": "بوابة التقديم الرسمية",
+        "proofSourceNameEn": "Official Opportunity Portal",
+        "targetCountries": [
+          "GLOBAL"
+        ]
+      }
+    },
+    {
+      "id": "baeed-002",
+      "title_ar": "منصة بعيد للوظائف عن بُعد في كبرى الشركات (حسوب)",
+      "title_en": "Baeed Remote Jobs Marketplace (Hsoub)",
+      "company": "Baeed (بعيد - حسوب)",
+      "location": "عن بُعد (عالمي)",
+      "salary": "1800",
+      "category": "programming",
+      "apply_url": "https://baeed.com",
+      "deadline": "2026-11-20",
+      "skills": [
+        "هندسة البرمجيات",
+        "التسويق الرقمي وإدارة الحملات",
+        "كتابة المحتوى وSEO",
+        "إدارة المنتجات",
+        "خدمة العملاء"
+      ],
+      "benefits_ar": [
+        "رواتب شهرية ثابتة وعالية بالدولار",
+        "عقود رسمية واستقرار وظيفي كامل",
+        "مفتوحة لجميع الدول العربية دون تمييز"
+      ],
+      "description_ar": "المنصة العربية الأولى المتخصصة بالوظائف عن بعد بعقود رسمية ورواتب مجزية، تمكّنك من العمل من منزلك مع شركات في الخليج، أوروبا، والولايات المتحدة.",
+      "description_en": "The premier Arabic platform dedicated to verified remote career jobs in top tech companies, startups, and enterprises.",
+      "verified": true,
+      "eligibility": {
+        "type": "global_remote",
+        "badgeAr": "🌐 متاح للعمل عن بُعد",
+        "badgeEn": "🌐 Remote Eligible Worldwide",
+        "reasonAr": "فرصة عمل عن بُعد متاحة للتقديم الرقمي للمؤهلين بدون قيود جغرافية.",
+        "reasonEn": "Remote position open for qualified applicants worldwide.",
+        "proofSourceUrl": "https://baeed.com",
+        "proofSourceNameAr": "بوابة التقديم الرسمية",
+        "proofSourceNameEn": "Official Opportunity Portal",
+        "targetCountries": [
+          "GLOBAL"
+        ]
+      }
+    },
+    {
+      "id": "kafiil-001",
+      "title_ar": "منصة كفيل للخدمات المصغرة والمشاريع والمسابقات",
+      "title_en": "Kafiil Microservices, Projects & Contests",
+      "company": "Kafiil (كفيل)",
+      "location": "عن بُعد (عالمي)",
+      "salary": "60",
+      "category": "entry",
+      "apply_url": "https://kafiil.com",
+      "deadline": "2026-11-20",
+      "skills": [
+        "تصميم الجرافيك والشعارات",
+        "المسابقات والأفكار الابتكارية",
+        "كتابة وترجمة",
+        "إدخال بيانات وتفريغ صوتي",
+        "برمجة وتعديل قوالب"
+      ],
+      "benefits_ar": [
+        "قسم المسابقات يتيح الربح السريع بدون الحاجة لسابقة أعمال ضخمة",
+        "وسائل سحب مرنة ومتعددة تناسب الجميع",
+        "دعم فني سريع ومتفهم"
+      ],
+      "description_ar": "منصة عمل حر عربية متكاملة تجمع بين بيع الخدمات المصغرة وطرح المشاريع وقسم خاص للمسابقات (تصميم شعارات، تسميات، أفكار إعلانية) تتيح للمبتدئين ربح جوائز نقدية فورية.",
+      "description_en": "Comprehensive Arab freelance portal combining gig marketplace, project bidding, and lucrative design/naming contests.",
+      "verified": true,
+      "eligibility": {
+        "type": "global_remote",
+        "badgeAr": "🌐 متاح للعمل عن بُعد",
+        "badgeEn": "🌐 Remote Eligible Worldwide",
+        "reasonAr": "فرصة عمل عن بُعد متاحة للتقديم الرقمي للمؤهلين بدون قيود جغرافية.",
+        "reasonEn": "Remote position open for qualified applicants worldwide.",
+        "proofSourceUrl": "https://kafiil.com",
+        "proofSourceNameAr": "بوابة التقديم الرسمية",
+        "proofSourceNameEn": "Official Opportunity Portal",
+        "targetCountries": [
+          "GLOBAL"
+        ]
+      }
+    },
+    {
+      "id": "bayt-001",
+      "title_ar": "بوابة بيت.كوم (Bayt) للوظائف والشركات في الشرق الأوسط",
+      "title_en": "Bayt.com MENA Employment & Enterprise Network",
+      "company": "Bayt.com (بيت.كوم)",
+      "location": "عن بُعد (عالمي)",
+      "salary": "2500",
+      "category": "trades",
+      "apply_url": "https://www.bayt.com",
+      "deadline": "2026-11-20",
+      "skills": [
+        "إدارة المشاريع",
+        "المحاسبة والمالية",
+        "الهندسة المدنية والكهربائية",
+        "الطب والتمريض",
+        "تكنولوجيا المعلومات"
+      ],
+      "benefits_ar": [
+        "أضخم قاعدة وظائف حكومية وخاصة في الخليج",
+        "عقود استقدام وتأشيرات عمل موثقة",
+        "أمان مالي كامل وعقود خاضعة لقوانين العمل"
+      ],
+      "description_ar": "أكبر شبكة توظيف في الشرق الأوسط والخليج تضم أكثر من 40,000 شركة معلنة، وتوفر وظائف للمهندسين والأطباء والمبرمجين والإداريين مع فرص نقل الكفالة والاستقدام والعمل عن بعد.",
+      "description_en": "The Middle East's largest job portal connecting over 40,000 employers with professionals for domestic, remote, and relocation opportunities.",
+      "verified": true,
+      "eligibility": {
+        "type": "global_remote",
+        "badgeAr": "🌐 متاح للعمل عن بُعد",
+        "badgeEn": "🌐 Remote Eligible Worldwide",
+        "reasonAr": "فرصة عمل عن بُعد متاحة للتقديم الرقمي للمؤهلين بدون قيود جغرافية.",
+        "reasonEn": "Remote position open for qualified applicants worldwide.",
+        "proofSourceUrl": "https://www.bayt.com",
+        "proofSourceNameAr": "بوابة التقديم الرسمية",
+        "proofSourceNameEn": "Official Opportunity Portal",
+        "targetCountries": [
+          "GLOBAL"
+        ]
+      }
+    },
+    {
+      "id": "tanqeeb-001",
+      "title_ar": "محرك تنقيب الذكي للوظائف في جميع الدول العربية",
+      "title_en": "Tanqeeb Smart Job Search Engine for All Arab Countries",
+      "company": "Tanqeeb (تنقيب)",
+      "location": "عن بُعد (عالمي)",
+      "salary": "1200",
+      "category": "trades",
+      "apply_url": "https://tanqeeb.com",
+      "deadline": "2026-11-20",
+      "skills": [
+        "حسب التخصص والوظيفة المعروضة",
+        "المرونة والتواصل السريع"
+      ],
+      "benefits_ar": [
+        "تغطية شاملة وتحديث فوري على مدار الساعة",
+        "أقسام منفصلة لكل دولة عربية على حدة",
+        "تواصل مباشر مع الشركات دون حواجز"
+      ],
+      "description_ar": "أكبر محرك بحث وظائف يغطي كافة الدول العربية، يجمع الشواغر اليومية من كبرى الشركات والمؤسسات مع أقسام متخصصة لمصر، السعودية، الإمارات، قطر، الكويت، المغرب، الأردن، وغيرها.",
+      "description_en": "Leading pan-Arab job search engine aggregating daily openings across Egypt, Saudi Arabia, UAE, Qatar, Kuwait, Morocco, Jordan, and beyond.",
+      "verified": true,
+      "eligibility": {
+        "type": "global_remote",
+        "badgeAr": "🌐 متاح للعمل عن بُعد",
+        "badgeEn": "🌐 Remote Eligible Worldwide",
+        "reasonAr": "فرصة عمل عن بُعد متاحة للتقديم الرقمي للمؤهلين بدون قيود جغرافية.",
+        "reasonEn": "Remote position open for qualified applicants worldwide.",
+        "proofSourceUrl": "https://tanqeeb.com",
+        "proofSourceNameAr": "بوابة التقديم الرسمية",
+        "proofSourceNameEn": "Official Opportunity Portal",
+        "targetCountries": [
+          "GLOBAL"
+        ]
+      }
+    },
+    {
+      "id": "picalica-020",
+      "title_ar": "متجر بيكاليكا للمنتجات والتصاميم الرقمية (عائدات بالدولار)",
+      "title_en": "Picalica Digital Products & UI Marketplace",
+      "company": "Picalica (حسوب)",
+      "location": "عن بعد - العالم العربي والعالم",
+      "salary": "$50 - $2,500 / مبيعات متكررة",
+      "category": "design",
+      "apply_url": "https://picalica.com",
+      "deadline": "مستمر طوال العام",
+      "skills": [
+        "UI Kits",
+        "Figma",
+        "WordPress",
+        "Web Templates",
+        "Graphic Assets"
+      ],
+      "benefits_ar": [
+        "دخل سلبي مستمر",
+        "سحب دوري للأرباح بالدولار",
+        "منصة عربية موثوقة 100%"
+      ],
+      "description_ar": "منصة بيكاليكا التابعة لحسوب تتيح للمصممين والمطورين بيع قوالبهم وتصاميمهم الرقمية وجني دخل سلبي مستمر بالدولار.",
+      "description_en": "Leading Arabic digital assets marketplace by Hsoub for UI themes, code scripts, and creative goods.",
+      "verified": true,
+      "eligibility": {
+        "type": "global_remote",
+        "badgeAr": "🌐 متاح للعمل عن بُعد",
+        "badgeEn": "🌐 Remote Eligible Worldwide",
+        "reasonAr": "فرصة عمل عن بُعد متاحة للتقديم الرقمي للمؤهلين بدون قيود جغرافية.",
+        "reasonEn": "Remote position open for qualified applicants worldwide.",
+        "proofSourceUrl": "https://picalica.com",
+        "proofSourceNameAr": "بوابة التقديم الرسمية",
+        "proofSourceNameEn": "Official Opportunity Portal",
+        "targetCountries": [
+          "GLOBAL"
+        ]
+      },
+      "type": "remote_freelance",
+      "country": "الوطن العربي / دولي",
+      "flag": "🎨",
+      "company_url": "https://picalica.com",
+      "featured": true,
+      "source": "curated_platform",
+      "createdAt": "2026-09-05T08:02:56.751Z",
+      "updatedAt": "2026-09-05T08:02:56.751Z"
+    },
+    {
+      "id": "gengo-022",
+      "title_ar": "منصة جينجو العالمية للترجمة المباشرة (دفع بالكلمة)",
+      "title_en": "Gengo Global Translation Platform (Lionbridge)",
+      "company": "Gengo (Lionbridge)",
+      "location": "عن بعد / Global Remote",
+      "salary": "$0.06 - $0.12 / كلمة ($800 - $2,500 شهرياً)",
+      "category": "writing",
+      "apply_url": "https://gengo.com/translators/",
+      "deadline": "مفتوح دائماً",
+      "skills": [
+        "Translation",
+        "Arabic Localization",
+        "Proofreading",
+        "English C1"
+      ],
+      "benefits_ar": [
+        "مهام ترجمة جاهزة بدون مزايدات",
+        "سحب منتظم عبر PayPal وبايونيير",
+        "مرونة كاملة في ساعات العمل"
+      ],
+      "description_ar": "منصة تابعة لـ Lionbridge للترجمة السريعة: تجتاز اختباراً بسيطاً وتبدأ فوراً باستلام نصوص للترجمة من الإنجليزية للعربية أو العكس والدفع يتم بالكلمة.",
+      "description_en": "Premier cloud translation platform offering immediate translation tasks with reliable per-word USD payouts.",
+      "verified": true,
+      "eligibility": {
+        "type": "global_remote",
+        "badgeAr": "🌐 متاح للعمل عن بُعد",
+        "badgeEn": "🌐 Remote Eligible Worldwide",
+        "reasonAr": "فرصة عمل عن بُعد متاحة للتقديم الرقمي للمؤهلين بدون قيود جغرافية.",
+        "reasonEn": "Remote position open for qualified applicants worldwide.",
+        "proofSourceUrl": "https://gengo.com/translators/",
+        "proofSourceNameAr": "بوابة التقديم الرسمية",
+        "proofSourceNameEn": "Official Opportunity Portal",
+        "targetCountries": [
+          "GLOBAL"
+        ]
+      },
+      "type": "remote_freelance",
+      "country": "عالمي",
+      "flag": "✍️",
+      "company_url": "https://gengo.com",
+      "featured": true,
+      "source": "curated_platform",
+      "createdAt": "2026-09-05T08:02:56.751Z",
+      "updatedAt": "2026-09-05T08:02:56.751Z"
+    },
+    {
+      "id": "proz-023",
+      "title_ar": "شبكة بروز ProZ العالمية للمترجمين المحترفين (عقود كبرى الوكالات)",
+      "title_en": "ProZ.com World's Largest Translation Network",
+      "company": "ProZ.com",
+      "location": "عن بعد / Global Remote",
+      "salary": "$1,200 - $4,500 / عقود شهرية ومشاريع",
+      "category": "writing",
+      "apply_url": "https://www.proz.com",
+      "deadline": "مستمر",
+      "skills": [
+        "Legal Translation",
+        "Medical Translation",
+        "Technical Localization",
+        "CAT Tools"
+      ],
+      "benefits_ar": [
+        "أكبر قاعدة عملاء ووكالات ترجمة في العالم",
+        "0% عمولة وسيط على العقود المباشرة",
+        "أسعار عالمية مرتفعة"
+      ],
+      "description_ar": "أكبر وأعرق منصة ومجتمع للمترجمين في العالم، تضم أكثر من 1.3 مليون عضو ومئات الوكالات والمنظمات الدولية التي تطرح مشاريع مستمرة.",
+      "description_en": "The world's largest linguistics directory connecting translators directly with enterprise agencies and global publishers.",
+      "verified": true,
+      "eligibility": {
+        "type": "global_remote",
+        "badgeAr": "🌐 متاح للعمل عن بُعد",
+        "badgeEn": "🌐 Remote Eligible Worldwide",
+        "reasonAr": "فرصة عمل عن بُعد متاحة للتقديم الرقمي للمؤهلين بدون قيود جغرافية.",
+        "reasonEn": "Remote position open for qualified applicants worldwide.",
+        "proofSourceUrl": "https://www.proz.com",
+        "proofSourceNameAr": "بوابة التقديم الرسمية",
+        "proofSourceNameEn": "Official Opportunity Portal",
+        "targetCountries": [
+          "GLOBAL"
+        ]
+      },
+      "type": "remote_contract",
+      "country": "عالمي",
+      "flag": "🏛️",
+      "company_url": "https://www.proz.com",
+      "featured": true,
+      "source": "curated_platform",
+      "createdAt": "2026-09-05T08:02:56.751Z",
+      "updatedAt": "2026-09-05T08:02:56.751Z"
+    },
+    {
+      "id": "hubstaff-024",
+      "title_ar": "دليل هبستاف تالنت للوظائف والتعاقد عن بعد (0% عمولة)",
+      "title_en": "Hubstaff Talent 100% Free Remote Job Directory",
+      "company": "Hubstaff Talent",
+      "location": "عن بعد / Global Remote",
+      "salary": "$1,200 - $5,000 / راتب شهري بالدولار",
+      "category": "tech",
+      "apply_url": "https://talent.hubstaff.com",
+      "deadline": "مستمر طوال العام",
+      "skills": [
+        "Software Engineering",
+        "Customer Support",
+        "Digital Marketing",
+        "Virtual Assistant"
+      ],
+      "benefits_ar": [
+        "مجاني 100% مدى الحياة دون أي رسوم",
+        "رواتب شهرية مستقرة بالدولار",
+        "تواصل وتفاوض مباشر مع الشركات"
+      ],
+      "description_ar": "منصة عالمية مجانية 100% بدون أي رسوم أو اقتطاعات تربط المستقلين والمحترفين بشركات أمريكية وأوروبية تبحث عن موظفين عن بُعد برواتب شهرية.",
+      "description_en": "100% free platform matching remote talent with international tech startups for salaried full-time and part-time roles.",
+      "verified": true,
+      "eligibility": {
+        "type": "global_remote",
+        "badgeAr": "🌐 متاح للعمل عن بُعد",
+        "badgeEn": "🌐 Remote Eligible Worldwide",
+        "reasonAr": "فرصة عمل عن بُعد متاحة للتقديم الرقمي للمؤهلين بدون قيود جغرافية.",
+        "reasonEn": "Remote position open for qualified applicants worldwide.",
+        "proofSourceUrl": "https://talent.hubstaff.com",
+        "proofSourceNameAr": "بوابة التقديم الرسمية",
+        "proofSourceNameEn": "Official Opportunity Portal",
+        "targetCountries": [
+          "GLOBAL"
+        ]
+      },
+      "type": "remote_fulltime",
+      "country": "عالمي",
+      "flag": "💼",
+      "company_url": "https://talent.hubstaff.com",
+      "featured": true,
+      "source": "curated_platform",
+      "createdAt": "2026-09-05T08:02:56.751Z",
+      "updatedAt": "2026-09-05T08:02:56.751Z"
+    },
     {
       "id": "remotive_2091126_alhh",
       "title_ar": "AI Response Evaluator - iMerit Technology",
@@ -1108,173 +2390,6 @@
       "source": "Remotive International Feed",
       "createdAt": "2026-09-05T08:03:01.085Z",
       "updatedAt": "2026-09-05T08:03:01.085Z"
-    },
-    {
-      "id": "picalica-020",
-      "title_ar": "متجر بيكاليكا للمنتجات والتصاميم الرقمية (عائدات بالدولار)",
-      "title_en": "Picalica Digital Products & UI Marketplace",
-      "company": "Picalica (حسوب)",
-      "location": "عن بعد - العالم العربي والعالم",
-      "salary": "$50 - $2,500 / مبيعات متكررة",
-      "category": "design",
-      "type": "remote_freelance",
-      "country": "الوطن العربي / دولي",
-      "flag": "🎨",
-      "deadline": "مستمر طوال العام",
-      "apply_url": "https://picalica.com",
-      "company_url": "https://picalica.com",
-      "skills": [
-        "UI Kits",
-        "Figma",
-        "WordPress",
-        "Web Templates",
-        "Graphic Assets"
-      ],
-      "benefits_ar": [
-        "دخل سلبي مستمر",
-        "سحب دوري للأرباح بالدولار",
-        "منصة عربية موثوقة 100%"
-      ],
-      "description_ar": "منصة بيكاليكا التابعة لحسوب تتيح للمصممين والمطورين بيع قوالبهم وتصاميمهم الرقمية وجني دخل سلبي مستمر بالدولار.",
-      "description_en": "Leading Arabic digital assets marketplace by Hsoub for UI themes, code scripts, and creative goods.",
-      "verified": true,
-      "featured": true,
-      "source": "curated_platform",
-      "createdAt": "2026-09-05T08:02:56.751Z",
-      "updatedAt": "2026-09-05T08:02:56.751Z"
-    },
-    {
-      "id": "contra-021",
-      "title_ar": "شبكة كونترا العالمية للعمل الحر (0% عمولة وسحب فوري)",
-      "title_en": "Contra Commission-Free Global Freelance Network",
-      "company": "Contra Inc.",
-      "location": "عن بعد / Global Remote",
-      "salary": "$1,500 - $6,000 / شهر",
-      "category": "tech",
-      "type": "remote_contract",
-      "country": "عالمي",
-      "flag": "⚡",
-      "deadline": "مستمر",
-      "apply_url": "https://contra.com",
-      "company_url": "https://contra.com",
-      "skills": [
-        "Frontend",
-        "Product Design",
-        "Marketing",
-        "Writing",
-        "NoCode"
-      ],
-      "benefits_ar": [
-        "0% اقتطاع من الأرباح",
-        "حماية العقود والدفع الفوري",
-        "تواصل مباشر مع الشركات العالمية"
-      ],
-      "description_ar": "أحدث شبكة عمل حر عالمية تتيح للمستقلين إبراز مشاريعهم والتعاقد مع الشركات الناشئة مع الاحتفاظ بـ 100% من أتعابهم دون أي عمولة وساطة.",
-      "description_en": "Modern freelance platform charging 0% commission on independent contracts with top international clients.",
-      "verified": true,
-      "featured": true,
-      "source": "curated_platform",
-      "createdAt": "2026-09-05T08:02:56.751Z",
-      "updatedAt": "2026-09-05T08:02:56.751Z"
-    },
-    {
-      "id": "gengo-022",
-      "title_ar": "منصة جينجو العالمية للترجمة المباشرة (دفع بالكلمة)",
-      "title_en": "Gengo Global Translation Platform (Lionbridge)",
-      "company": "Gengo (Lionbridge)",
-      "location": "عن بعد / Global Remote",
-      "salary": "$0.06 - $0.12 / كلمة ($800 - $2,500 شهرياً)",
-      "category": "writing",
-      "type": "remote_freelance",
-      "country": "عالمي",
-      "flag": "✍️",
-      "deadline": "مفتوح دائماً",
-      "apply_url": "https://gengo.com/translators/",
-      "company_url": "https://gengo.com",
-      "skills": [
-        "Translation",
-        "Arabic Localization",
-        "Proofreading",
-        "English C1"
-      ],
-      "benefits_ar": [
-        "مهام ترجمة جاهزة بدون مزايدات",
-        "سحب منتظم عبر PayPal وبايونيير",
-        "مرونة كاملة في ساعات العمل"
-      ],
-      "description_ar": "منصة تابعة لـ Lionbridge للترجمة السريعة: تجتاز اختباراً بسيطاً وتبدأ فوراً باستلام نصوص للترجمة من الإنجليزية للعربية أو العكس والدفع يتم بالكلمة.",
-      "description_en": "Premier cloud translation platform offering immediate translation tasks with reliable per-word USD payouts.",
-      "verified": true,
-      "featured": true,
-      "source": "curated_platform",
-      "createdAt": "2026-09-05T08:02:56.751Z",
-      "updatedAt": "2026-09-05T08:02:56.751Z"
-    },
-    {
-      "id": "proz-023",
-      "title_ar": "شبكة بروز ProZ العالمية للمترجمين المحترفين (عقود كبرى الوكالات)",
-      "title_en": "ProZ.com World's Largest Translation Network",
-      "company": "ProZ.com",
-      "location": "عن بعد / Global Remote",
-      "salary": "$1,200 - $4,500 / عقود شهرية ومشاريع",
-      "category": "writing",
-      "type": "remote_contract",
-      "country": "عالمي",
-      "flag": "🏛️",
-      "deadline": "مستمر",
-      "apply_url": "https://www.proz.com",
-      "company_url": "https://www.proz.com",
-      "skills": [
-        "Legal Translation",
-        "Medical Translation",
-        "Technical Localization",
-        "CAT Tools"
-      ],
-      "benefits_ar": [
-        "أكبر قاعدة عملاء ووكالات ترجمة في العالم",
-        "0% عمولة وسيط على العقود المباشرة",
-        "أسعار عالمية مرتفعة"
-      ],
-      "description_ar": "أكبر وأعرق منصة ومجتمع للمترجمين في العالم، تضم أكثر من 1.3 مليون عضو ومئات الوكالات والمنظمات الدولية التي تطرح مشاريع مستمرة.",
-      "description_en": "The world's largest linguistics directory connecting translators directly with enterprise agencies and global publishers.",
-      "verified": true,
-      "featured": true,
-      "source": "curated_platform",
-      "createdAt": "2026-09-05T08:02:56.751Z",
-      "updatedAt": "2026-09-05T08:02:56.751Z"
-    },
-    {
-      "id": "hubstaff-024",
-      "title_ar": "دليل هبستاف تالنت للوظائف والتعاقد عن بعد (0% عمولة)",
-      "title_en": "Hubstaff Talent 100% Free Remote Job Directory",
-      "company": "Hubstaff Talent",
-      "location": "عن بعد / Global Remote",
-      "salary": "$1,200 - $5,000 / راتب شهري بالدولار",
-      "category": "tech",
-      "type": "remote_fulltime",
-      "country": "عالمي",
-      "flag": "💼",
-      "deadline": "مستمر طوال العام",
-      "apply_url": "https://talent.hubstaff.com",
-      "company_url": "https://talent.hubstaff.com",
-      "skills": [
-        "Software Engineering",
-        "Customer Support",
-        "Digital Marketing",
-        "Virtual Assistant"
-      ],
-      "benefits_ar": [
-        "مجاني 100% مدى الحياة دون أي رسوم",
-        "رواتب شهرية مستقرة بالدولار",
-        "تواصل وتفاوض مباشر مع الشركات"
-      ],
-      "description_ar": "منصة عالمية مجانية 100% بدون أي رسوم أو اقتطاعات تربط المستقلين والمحترفين بشركات أمريكية وأوروبية تبحث عن موظفين عن بُعد برواتب شهرية.",
-      "description_en": "100% free platform matching remote talent with international tech startups for salaried full-time and part-time roles.",
-      "verified": true,
-      "featured": true,
-      "source": "curated_platform",
-      "createdAt": "2026-09-05T08:02:56.751Z",
-      "updatedAt": "2026-09-05T08:02:56.751Z"
     }
   ],
   "archived": [
@@ -1302,13 +2417,38 @@
       "reason": "Test cleanup"
     }
   ],
-  "lastUpdated": "2026-10-04T12:24:54.187Z",
+  "lastUpdated": "2026-10-06T10:07:04.347Z",
   "automation": {
     "isRunning": false,
-    "lastRun": "2026-10-04T11:45:06.045Z",
+    "lastRun": "2026-10-06T10:07:04.074Z",
     "lastStatus": "completed",
     "totalIngested": 27,
     "logs": [
+      {
+        "timestamp": "2026-10-06T10:07:04.347Z",
+        "level": "success",
+        "message": "اكتمل الفحص بنجاح! نُشر فورا: 0 منح و 0 وظائف. محتجز للمراجعة: 0 فرص. عاجل/حرج: 0."
+      },
+      {
+        "timestamp": "2026-10-06T10:07:04.187Z",
+        "level": "info",
+        "message": "جاري فحص وتحديث المنح الدراسية الدولية والعربية المعتمدة..."
+      },
+      {
+        "timestamp": "2026-10-06T10:07:04.185Z",
+        "level": "info",
+        "message": "تم استلام 17 فرصة عمل من المصدر. جاري التدقيق والتقييم..."
+      },
+      {
+        "timestamp": "2026-10-06T10:07:04.077Z",
+        "level": "info",
+        "message": "جاري الاتصال بمصادر وظائف العمل عن بعد المعتمدة دولياً (Remotive)..."
+      },
+      {
+        "timestamp": "2026-10-06T10:07:04.076Z",
+        "level": "info",
+        "message": "بدء جولة الفحص الآلي الذكي (وضع النشر: النشر التلقائي الذكي مع التحقق من المعايير 100%)..."
+      },
       {
         "timestamp": "2026-10-04T11:45:06.167Z",
         "level": "success",
@@ -1755,6 +2895,16 @@
       "summary": "تقرير أوتوميشن الفرص: تم نشر 0 منح و 0 وظائف، ويوجد 0 فرصة في انتظار المراجعة. عدد الفرص الحرجة: 0.",
       "status": "sent",
       "itemsCount": 1,
+      "id": "notif_1791281224345_8wa2",
+      "timestamp": "2026-10-06T10:07:04.345Z"
+    },
+    {
+      "channel": "email",
+      "recipient": "المشرف العام (محسن) <mohsentiben@gmail.com>",
+      "title": "تقرير الفحص الدوري لمحرك الأوتوميشن",
+      "summary": "تقرير أوتوميشن الفرص: تم نشر 0 منح و 0 وظائف، ويوجد 0 فرصة في انتظار المراجعة. عدد الفرص الحرجة: 0.",
+      "status": "sent",
+      "itemsCount": 1,
       "id": "notif_1791114306164_9ja2",
       "timestamp": "2026-10-04T11:45:06.164Z"
     },
@@ -1838,5 +2988,6 @@
       "id": "notif_1788601923855_z2bg",
       "timestamp": "2026-09-05T09:52:03.855Z"
     }
-  ]
+  ],
+  "lastSeededAt": "2026-10-06T10:10:25.491Z"
 }

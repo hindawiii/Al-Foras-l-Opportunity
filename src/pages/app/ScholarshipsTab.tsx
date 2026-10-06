@@ -198,7 +198,7 @@ export const ScholarshipsTab = () => {
   const detailDesc = detail ? (ar ? detail.description : (detail.descriptionEn || detail.description)) : "";
 
   return (
-    <div className="relative flex flex-col w-full">
+    <div className="relative flex flex-col w-full pb-28 sm:pb-32">
       {/* Premium Luminous Gold Search Bar */}
       <div className="mb-3.5 px-1">
         <div className="relative group">
@@ -481,7 +481,7 @@ export const ScholarshipsTab = () => {
           )}
         </div>
       ) : (
-        <div className="relative flex-1 min-h-[560px]">
+        <div className="relative flex-1 min-h-[590px] sm:min-h-[630px] w-full max-w-lg mx-auto">
           {deck.length === 0 ? (
             <EmptyState t={t} onReload={() => { setSearchQuery(""); setSelectedTag(null); setDeck(orderedDeck); }} />
           ) : (
