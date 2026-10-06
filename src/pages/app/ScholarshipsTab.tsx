@@ -20,6 +20,36 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { applicationsStore } from "@/lib/applicationsStorage";
 import { OpportunityAICopilot } from "@/components/foras/OpportunityAICopilot";
 
+const DISMISSED_STORAGE_KEY = "foras_dismissed_scholarships";
+
+const getDismissedIds = (): string[] => {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = sessionStorage.getItem(DISMISSED_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
+const addDismissedId = (id: string) => {
+  if (typeof window === "undefined" || !id) return;
+  try {
+    const current = getDismissedIds();
+    if (!current.includes(id)) {
+      current.push(id);
+      sessionStorage.setItem(DISMISSED_STORAGE_KEY, JSON.stringify(current));
+    }
+  } catch {}
+};
+
+const clearDismissedIds = () => {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.removeItem(DISMISSED_STORAGE_KEY);
+  } catch {}
+};
+
 export const ScholarshipsTab = () => {
   const { info: geo } = useGeolocation(true);
   const { t, lang, dir } = useLanguage();
@@ -107,12 +137,17 @@ export const ScholarshipsTab = () => {
     return [...customOrPinned, ...matches, ...rest];
   }, [geo?.country, filter, searchQuery, selectedTag, liveScholarships]);
 
-  const [deck, setDeck] = useState<Scholarship[]>(orderedDeck);
+  const [deck, setDeck] = useState<Scholarship[]>(() => {
+    const dismissed = getDismissedIds();
+    return orderedDeck.filter(s => s && s.id && !dismissed.includes(s.id));
+  });
 
   // Synchronize deck state whenever orderedDeck updates (new opportunity added, filter switched, search applied)
   useEffect(() => {
-    setDeck(orderedDeck);
+    const dismissed = getDismissedIds();
+    setDeck(orderedDeck.filter(s => s && s.id && !dismissed.includes(s.id)));
   }, [orderedDeck]);
+
   const [detail, setDetail] = useState<Scholarship | null>(null);
   const [aiNotice, setAiNotice] = useState(false);
   const [profile, setProfile] = useState<{ location?: string; skills?: string[]; interests?: string[] }>({});
@@ -129,11 +164,6 @@ export const ScholarshipsTab = () => {
     }, 1200 + 5000);
     return () => { clearTimeout(showT); clearTimeout(hideT); };
   }, []);
-
-  // Re-sort the deck when search or filter changes
-  useEffect(() => {
-    setDeck(orderedDeck);
-  }, [orderedDeck]);
 
   // Deep-link: open detail when ?scholarship=ID is in URL
   useEffect(() => {
@@ -171,6 +201,7 @@ export const ScholarshipsTab = () => {
       applicationsStore.upsertFromScholarship(s, "saved");
       toast.success(t("saved"));
     } else if (dir === "left") {
+      addDismissedId(s.id);
       toast(t("dismissed"), { description: titleText });
     }
     setDeck(prev => prev.slice(1));
@@ -483,7 +514,16 @@ export const ScholarshipsTab = () => {
       ) : (
         <div className="relative flex-1 min-h-[590px] sm:min-h-[630px] w-full max-w-lg mx-auto">
           {deck.length === 0 ? (
-            <EmptyState t={t} onReload={() => { setSearchQuery(""); setSelectedTag(null); setDeck(orderedDeck); }} />
+            <EmptyState
+              t={t}
+              onReload={() => {
+                clearDismissedIds();
+                setSearchQuery("");
+                setSelectedTag(null);
+                setDeck(orderedDeck);
+                toast.success(ar ? "تمت إعادة استعراض جميع المنح من البداية!" : "Deck reset! Showing all scholarships.");
+              }}
+            />
           ) : (
             deck.slice(0, 3).map((s, i) => {
               if (!s) return null;
@@ -644,12 +684,21 @@ const Detail = ({ icon: Icon, label, value }: { icon: React.ElementType; label: 
 );
 
 const EmptyState = ({ t, onReload }: { t: (k: string) => string; onReload: () => void }) => (
-  <div className="h-full flex flex-col items-center justify-center text-center p-8">
-    <div className="w-24 h-24 rounded-3xl bg-card-gradient border-gold flex items-center justify-center mb-6">
-      <Award className="w-12 h-12 text-primary" strokeWidth={1.2} />
+  <div className="h-full min-h-[460px] flex flex-col items-center justify-center text-center p-6 sm:p-8 bg-card/60 rounded-3xl border border-primary/20 backdrop-blur-xl shadow-2xl my-4">
+    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-gold-gradient/15 border border-primary/40 flex items-center justify-center mb-5 shadow-gold">
+      <Award className="w-10 h-10 sm:w-12 sm:h-12 text-primary" strokeWidth={1.5} />
     </div>
-    <h3 className="font-display text-2xl text-gold-gradient mb-2">{t("noScholarshipsCategory")}</h3>
-    <p className="text-muted-foreground mb-6">{t("noMoreScholarshipsDesc")}</p>
-    <Button variant="luxe" onClick={onReload}>{t("reload")}</Button>
+    <h3 className="font-display text-xl sm:text-2xl text-gold-gradient mb-2">{t("noScholarshipsCategory")}</h3>
+    <p className="text-muted-foreground text-xs sm:text-sm max-w-sm mb-6 leading-relaxed">
+      {t("noMoreScholarshipsDesc")}
+    </p>
+    <Button
+      variant="luxe"
+      onClick={onReload}
+      className="gap-2 px-6 py-2.5 rounded-xl font-bold shadow-gold"
+    >
+      <RotateCcw className="w-4 h-4" />
+      <span>{t("reload")}</span>
+    </Button>
   </div>
 );
