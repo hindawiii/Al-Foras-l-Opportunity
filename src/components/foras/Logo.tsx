@@ -26,7 +26,7 @@ export const BrandMark = ({ size = 56 }: { size?: number }) => (
       src={logoFull}
       alt="الفُرَص — Al-Foras"
       style={{ height: size }}
-      className="w-auto object-contain drop-shadow-[0_0_22px_hsl(var(--primary)/0.4)] select-none mb-0 mr-0 ml-0 mt-0 py-0 pr-0 pt-0 px-0"
+      className="w-auto object-contain drop-shadow-[0_0_22px_hsl(var(--primary)/0.4)] select-none m-0 p-0"
       draggable={false}
     />
   </div>

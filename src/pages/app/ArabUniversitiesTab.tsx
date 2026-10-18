@@ -5,13 +5,14 @@ import {
   GraduationCap, ExternalLink, MapPin, Languages as LangIcon,
   Award, SlidersHorizontal, Building2, ChevronRight, Sparkles, Target, Filter,
   Wallet, Home, CalendarDays, FileText, ListChecks, Map as MapIcon, Scale, X,
-  Info, Users, Quote, CheckCircle2, ShieldCheck, Search, Flame, Compass,
+  Info, Users, Quote, CheckCircle2, ShieldCheck, Search, Flame, Compass, Bookmark,
 } from "lucide-react";
 import {
   ARAB_UNIVERSITIES, ARAB_COUNTRY_STATS, ARAB_FACULTIES,
   getUniDetails, getFacultyLabel, getCityLabel, type ArabUniversity,
-  type ArabUniType,
+  type ArabUniType, type ArabCountryStat,
 } from "@/lib/arabUniversities";
+import { universitiesDirectoryStore } from "@/lib/universitiesDirectoryStore";
 import { GlobalUniversitiesView } from "@/pages/app/GlobalUniversitiesView";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useSettings } from "@/contexts/SettingsContext";
@@ -19,6 +20,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LuxeAlumniPresenceCard } from "@/components/foras/LuxeAlumniPresenceCard";
+import { universitiesStore } from "@/lib/universitiesStorage";
+import { toast } from "sonner";
 
 const PCT_KEY = "foras-student-percentage";
 
@@ -53,6 +56,36 @@ export const ArabUniversitiesTab = () => {
   const [compare, setCompare] = useState<string[]>([]);
   const [compareOpen, setCompareOpen] = useState(false);
 
+  // Dynamic Cloud Firestore-synchronized Universities Catalog
+  const [allArabUnis, setAllArabUnis] = useState<ArabUniversity[]>(() =>
+    universitiesDirectoryStore.getArabUniversities()
+  );
+  const [arabCountryStats, setArabCountryStats] = useState<ArabCountryStat[]>(() =>
+    universitiesDirectoryStore.getCountryStats(allArabUnis)
+  );
+
+  useEffect(() => {
+    const handleUnisUpdated = () => {
+      const fresh = universitiesDirectoryStore.getArabUniversities();
+      setAllArabUnis(fresh);
+      setArabCountryStats(universitiesDirectoryStore.getCountryStats(fresh));
+    };
+    window.addEventListener("foras:universities-updated", handleUnisUpdated);
+    return () => window.removeEventListener("foras:universities-updated", handleUnisUpdated);
+  }, []);
+
+  // Cloud Firestore-synchronized saved universities state
+  const [savedUniIds, setSavedUniIds] = useState<string[]>(() => universitiesStore.savedIds());
+  const [onlySaved, setOnlySaved] = useState<boolean>(false);
+
+  useEffect(() => {
+    const handleSavedChange = () => {
+      setSavedUniIds(universitiesStore.savedIds());
+    };
+    window.addEventListener("foras:universities-saved-updated", handleSavedChange);
+    return () => window.removeEventListener("foras:universities-saved-updated", handleSavedChange);
+  }, []);
+
   // Parse incoming URL query params (e.g. from Landing page clicks)
   useEffect(() => {
     const subTabParam = searchParams.get("subTab");
@@ -68,7 +101,7 @@ export const ArabUniversitiesTab = () => {
     const uParam = searchParams.get("uni");
 
     if (cParam) {
-      const match = ARAB_COUNTRY_STATS.find(
+      const match = arabCountryStats.find(
         (c) =>
           c.country.toLowerCase() === cParam.toLowerCase() ||
           c.countryEn.toLowerCase() === cParam.toLowerCase() ||
@@ -82,7 +115,7 @@ export const ArabUniversitiesTab = () => {
     }
 
     if (uParam) {
-      const matchUni = ARAB_UNIVERSITIES.find(
+      const matchUni = allArabUnis.find(
         (u) => u.id === uParam || u.name === uParam || (u.nameEn && u.nameEn.toLowerCase() === uParam.toLowerCase())
       );
       if (matchUni) {
@@ -92,7 +125,7 @@ export const ArabUniversitiesTab = () => {
         }
       }
     }
-  }, [searchParams]);
+  }, [searchParams, arabCountryStats, allArabUnis]);
 
   const effectivePct = useMemo(() => {
     const n = parseFloat(pct);
@@ -105,27 +138,28 @@ export const ArabUniversitiesTab = () => {
     if (pct) localStorage.setItem(PCT_KEY, pct);
   }, [pct]);
 
-  const showCountries = !country;
+  const showCountries = !country && !onlySaved;
 
   const currentCountryStat = useMemo(() => {
     if (!country) return null;
-    return ARAB_COUNTRY_STATS.find((c) => c.country === country || c.countryEn === country) || null;
-  }, [country]);
+    return arabCountryStats.find((c) => c.country === country || c.countryEn === country) || null;
+  }, [country, arabCountryStats]);
 
   // Countries sorted with user's geolocation country first
   const countries = useMemo(() => {
     const mine = countryCode?.toUpperCase();
-    return [...ARAB_COUNTRY_STATS].sort((a, b) => {
+    return [...arabCountryStats].sort((a, b) => {
       const am = a.code === mine ? 0 : 1;
       const bm = b.code === mine ? 0 : 1;
       return am - bm || b.count - a.count;
     });
-  }, [countryCode]);
+  }, [countryCode, arabCountryStats]);
 
   const list = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
 
-    let items = ARAB_UNIVERSITIES.filter((u) => {
+    let items = allArabUnis.filter((u) => {
+      if (onlySaved && !savedUniIds.includes(u.id)) return false;
       if (country && u.country !== country) return false;
       if (faculty && !u.faculties.includes(faculty)) return false;
       if (typeFilter && u.type !== typeFilter) return false;
@@ -194,15 +228,15 @@ export const ArabUniversitiesTab = () => {
     }
 
     return items;
-  }, [country, faculty, typeFilter, scholarshipOnly, activeScholarshipOnly, alumniOnly, presenceOnly, eligibleOnly, effectivePct, searchQuery]);
+  }, [allArabUnis, country, faculty, typeFilter, scholarshipOnly, activeScholarshipOnly, alumniOnly, presenceOnly, eligibleOnly, effectivePct, searchQuery, onlySaved, savedUniIds]);
 
   const eligibleCount = useMemo(() => {
     if (effectivePct === undefined) return 0;
-    const pool = country ? ARAB_UNIVERSITIES.filter((u) => u.country === country) : ARAB_UNIVERSITIES;
+    const pool = country ? allArabUnis.filter((u) => u.country === country) : allArabUnis;
     return pool.filter((u) => effectivePct >= u.minPercentage).length;
-  }, [effectivePct, country]);
+  }, [allArabUnis, effectivePct, country]);
 
-  const totalInScope = country ? ARAB_UNIVERSITIES.filter((u) => u.country === country).length : ARAB_UNIVERSITIES.length;
+  const totalInScope = country ? allArabUnis.filter((u) => u.country === country).length : allArabUnis.length;
 
   const langLabel = (l: ArabUniversity["language"]) =>
     l === "ar" ? (ar ? "عربي" : "Arabic") : l === "en" ? (ar ? "إنجليزي" : "English") : (ar ? "عربي/إنجليزي" : "Arabic/English");
@@ -220,7 +254,7 @@ export const ArabUniversitiesTab = () => {
     );
   };
 
-  const compareUnis = ARAB_UNIVERSITIES.filter((u) => compare.includes(u.id));
+  const compareUnis = allArabUnis.filter((u) => compare.includes(u.id));
   const mapUrl = (u: ArabUniversity) =>
     `https://www.google.com/maps/search/${encodeURIComponent(`${u.nameEn || u.name} ${u.cityEn || u.city} ${u.countryEn}`)}`;
 
@@ -359,9 +393,21 @@ export const ArabUniversitiesTab = () => {
               <Building2 className="w-4 h-4 text-primary" />
               {t("arabUniCountriesTitle")}
             </p>
-            <span className="text-[11px] text-muted-foreground">
-              {countries.length} {isRtl ? "دولة" : "countries"}
-            </span>
+            <div className="flex items-center gap-2">
+              {savedUniIds.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setOnlySaved(true)}
+                  className="px-2.5 py-1 rounded-full bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20 text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm"
+                >
+                  <Bookmark className="w-3.5 h-3.5 fill-current" />
+                  <span>{isRtl ? `جامعاتي المحفوظة (${savedUniIds.length})` : `Saved Unis (${savedUniIds.length})`}</span>
+                </button>
+              )}
+              <span className="text-[11px] text-muted-foreground">
+                {countries.length} {isRtl ? "دولة" : "countries"}
+              </span>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
@@ -379,7 +425,7 @@ export const ArabUniversitiesTab = () => {
                   }`}
                 >
                   {mine && (
-                    <span className={`absolute top-2.5 ${isRtl ? "left-2.5" : "right-2.5"} text-[9px] px-2 py-0.5 rounded-full bg-primary/20 border border-primary/40 text-primary font-bold`}>
+                    <span className="absolute top-2.5 end-2.5 text-[9px] px-2 py-0.5 rounded-full bg-primary/20 border border-primary/40 text-primary font-bold">
                       {t("arabUniYourCountry")}
                     </span>
                   )}
@@ -499,19 +545,19 @@ export const ArabUniversitiesTab = () => {
           <div className="space-y-2.5 rounded-2xl border border-primary/20 bg-card/60 backdrop-blur-md p-3">
             {/* Search Input Bar */}
             <div className="relative">
-              <Search className={`absolute top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground ${isRtl ? "right-3" : "left-3"}`} />
+              <Search className="absolute top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground start-3" />
               <Input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={t("arabUniSearchPlaceholder")}
-                className={`bg-background/70 border-border text-xs h-9 ${isRtl ? "pr-9 pl-3" : "pl-9 pr-3"} ${alignClass}`}
+                className={`bg-background/70 border-border text-xs h-9 ps-9 pe-3 ${alignClass}`}
                 dir={dir}
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery("")}
-                  className={`absolute top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground ${isRtl ? "left-3" : "right-3"}`}
+                  className="absolute top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground end-3"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -613,6 +659,18 @@ export const ArabUniversitiesTab = () => {
                   <Award className="w-3 h-3" />
                   <span>{t("arabUniHasScholarships")}</span>
                 </button>
+
+                <button
+                  onClick={() => setOnlySaved((v) => !v)}
+                  className={`h-7 px-2.5 rounded-full text-[11px] font-bold border transition-all flex items-center gap-1 ${
+                    onlySaved
+                      ? "bg-primary text-primary-foreground border-primary shadow-gold"
+                      : "bg-background/50 border-border text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Bookmark className={`w-3 h-3 ${onlySaved ? "fill-current" : ""}`} />
+                  <span>{isRtl ? `المحفوظة (${savedUniIds.length})` : `Saved (${savedUniIds.length})`}</span>
+                </button>
               </div>
 
               {hasActiveFilters && (
@@ -679,9 +737,40 @@ export const ArabUniversitiesTab = () => {
                     </div>
 
                     <div className="flex flex-col items-end gap-1.5">
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full border font-bold ${typeBadgeClass[u.type]}`}>
-                        {typeLabel(u.type)}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full border font-bold ${typeBadgeClass[u.type]}`}>
+                          {typeLabel(u.type)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const isSaved = universitiesStore.toggle(u.id, {
+                              name: u.name,
+                              nameEn: u.nameEn,
+                              country: u.country,
+                              countryEn: u.countryEn,
+                              flag: u.flag,
+                              website: u.website,
+                              type: u.type,
+                            });
+                            setSavedUniIds(universitiesStore.savedIds());
+                            toast.success(
+                              isSaved
+                                ? (isRtl ? `تم حفظ "${u.name}" في جامعاتك المستهدفة` : `Saved "${u.nameEn || u.name}" to targets`)
+                                : (isRtl ? `تمت إزالة "${u.name}" من المحفوظات` : `Removed "${u.nameEn || u.name}" from saved`)
+                            );
+                          }}
+                          className={`p-1.5 rounded-xl border transition-all ${
+                            savedUniIds.includes(u.id)
+                              ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                              : "bg-background/80 border-primary/20 text-muted-foreground hover:text-foreground hover:border-primary/50"
+                          }`}
+                          title={savedUniIds.includes(u.id) ? (isRtl ? "محفوظة" : "Saved") : (isRtl ? "حفظ الجامعة" : "Save university")}
+                        >
+                          <Bookmark className={`w-3.5 h-3.5 ${savedUniIds.includes(u.id) ? "fill-current" : ""}`} />
+                        </button>
+                      </div>
                       {u.activeScholarship && (
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-bold flex items-center gap-1 shadow-sm">
                           <Sparkles className="w-2.5 h-2.5 text-emerald-400" />
@@ -756,12 +845,12 @@ export const ArabUniversitiesTab = () => {
                       }`}>
                         {u.minPercentage}%
                         {qualifies === true && (
-                          <span className={`${isRtl ? "mr-1.5" : "ml-1.5"} inline-flex items-center gap-0.5 text-[10px] text-emerald-400 font-bold`}>
+                          <span className="ms-1.5 inline-flex items-center gap-0.5 text-[10px] text-emerald-400 font-bold">
                             <Sparkles className="w-3 h-3" /> {isRtl ? "مؤهل للقبول ✓" : "Eligible ✓"}
                           </span>
                         )}
                         {qualifies === false && (
-                          <span className={`${isRtl ? "mr-1.5" : "ml-1.5"} inline-flex items-center text-[10px] text-muted-foreground`}>
+                          <span className="ms-1.5 inline-flex items-center text-[10px] text-muted-foreground">
                             {isRtl ? "أعلى من نسبتك" : "Above score"}
                           </span>
                         )}
@@ -784,7 +873,7 @@ export const ArabUniversitiesTab = () => {
 
                       <Button asChild size="sm" variant="luxe" className="h-8 rounded-xl text-[11px]">
                         <a href={u.website} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
-                          <ExternalLink className={`w-3 h-3 ${isRtl ? "ml-1" : "mr-1"}`} />
+                          <ExternalLink className="w-3 h-3 me-1" />
                           {isRtl ? "الموقع" : "Website"}
                         </a>
                       </Button>
@@ -921,18 +1010,49 @@ export const ArabUniversitiesTab = () => {
               <div className="flex flex-col h-full overflow-hidden">
                 {/* Sticky Safe Header with Clearance for Close Button */}
                 <div className="shrink-0 p-4 sm:p-5 border-b border-border/80 bg-card/95 backdrop-blur-md relative pe-16">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-2xl bg-gold-gradient flex items-center justify-center text-2xl shadow-gold shrink-0">
-                      {selected.flag}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="w-12 h-12 rounded-2xl bg-gold-gradient flex items-center justify-center text-2xl shadow-gold shrink-0">
+                        {selected.flag}
+                      </div>
+                      <div className={`min-w-0 flex-1 ${alignClass}`}>
+                        <SheetTitle className="text-lg font-bold font-display text-gold-gradient truncate">
+                          {ar ? selected.name : (selected.nameEn || selected.name)}
+                        </SheetTitle>
+                        <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                          {cityText} · {countryText}
+                        </p>
+                      </div>
                     </div>
-                    <div className={`min-w-0 flex-1 ${alignClass}`}>
-                      <SheetTitle className="text-lg font-bold font-display text-gold-gradient truncate">
-                        {ar ? selected.name : (selected.nameEn || selected.name)}
-                      </SheetTitle>
-                      <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                        {cityText} · {countryText}
-                      </p>
-                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const isSaved = universitiesStore.toggle(selected.id, {
+                          name: selected.name,
+                          nameEn: selected.nameEn,
+                          country: selected.country,
+                          countryEn: selected.countryEn,
+                          flag: selected.flag,
+                          website: selected.website,
+                          type: selected.type,
+                        });
+                        setSavedUniIds(universitiesStore.savedIds());
+                        toast.success(
+                          isSaved
+                            ? (isRtl ? `تم حفظ "${selected.name}" في جامعاتك المستهدفة` : `Saved "${selected.nameEn || selected.name}" to targets`)
+                            : (isRtl ? `تمت إزالة "${selected.name}" من المحفوظات` : `Removed "${selected.nameEn || selected.name}" from saved`)
+                        );
+                      }}
+                      className={`p-2.5 rounded-xl border transition-all shrink-0 ${
+                        savedUniIds.includes(selected.id)
+                          ? "bg-primary text-primary-foreground border-primary shadow-gold"
+                          : "bg-background/80 border-primary/30 text-muted-foreground hover:text-foreground hover:border-primary/60"
+                      }`}
+                      title={savedUniIds.includes(selected.id) ? (isRtl ? "محفوظة" : "Saved") : (isRtl ? "حفظ الجامعة" : "Save university")}
+                    >
+                      <Bookmark className={`w-4 h-4 ${savedUniIds.includes(selected.id) ? "fill-current" : ""}`} />
+                    </button>
                   </div>
                 </div>
 
@@ -1037,7 +1157,36 @@ export const ArabUniversitiesTab = () => {
                     </ol>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 pt-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const isSaved = universitiesStore.toggle(selected.id, {
+                          name: selected.name,
+                          nameEn: selected.nameEn,
+                          country: selected.country,
+                          countryEn: selected.countryEn,
+                          flag: selected.flag,
+                          website: selected.website,
+                          type: selected.type,
+                        });
+                        setSavedUniIds(universitiesStore.savedIds());
+                        toast.success(
+                          isSaved
+                            ? (isRtl ? `تم حفظ "${selected.name}" في جامعاتك المستهدفة` : `Saved "${selected.nameEn || selected.name}" to targets`)
+                            : (isRtl ? `تمت إزالة "${selected.name}" من المحفوظات` : `Removed "${selected.nameEn || selected.name}" from saved`)
+                        );
+                      }}
+                      className={`h-11 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all ${
+                        savedUniIds.includes(selected.id)
+                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                          : "border-primary/30 bg-background/60 text-foreground hover:bg-primary/10"
+                      }`}
+                    >
+                      <Bookmark className={`w-4 h-4 ${savedUniIds.includes(selected.id) ? "fill-current" : ""}`} />
+                      <span>{savedUniIds.includes(selected.id) ? (isRtl ? "محفوظة في المستهدفة ✓" : "Saved in Targets ✓") : (isRtl ? "حفظ في المستهدفة" : "Save to Targets")}</span>
+                    </button>
+
                     <a
                       href={mapUrl(selected)}
                       target="_blank"
@@ -1047,6 +1196,7 @@ export const ArabUniversitiesTab = () => {
                       <MapIcon className="w-4 h-4" />
                       {t("arabUniMap")}
                     </a>
+
                     <a
                       href={selected.website}
                       target="_blank"

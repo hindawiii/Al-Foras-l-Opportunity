@@ -1,15 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Bookmark, CheckCircle2, Trash2, FileText, ExternalLink, Trophy, XCircle,
   ClipboardList, StickyNote, Filter, Calendar, Sparkles, Undo2, CheckSquare,
-  Square, ShieldAlert, AlertCircle, ArrowLeft, ArrowRight
+  Square, ShieldAlert, AlertCircle, ArrowLeft, ArrowRight, Briefcase, Award,
+  DollarSign, Building2, GraduationCap, CloudCheck, CloudOff
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { applicationsStore, type AppRecord, type AppStatus } from "@/lib/applicationsStorage";
+import { jobsStore } from "@/lib/jobsStorage";
+import { universitiesStore } from "@/lib/universitiesStorage";
+import { JOBS } from "@/lib/jobsData";
+import { dynamicStore } from "@/lib/dynamicStore";
 import { SCHOLARSHIPS } from "@/lib/mockData";
 
 const STATUS_META: Record<AppStatus, { label: { ar: string; en: string }; classes: string; icon: any }> = {
@@ -23,19 +30,42 @@ const STATUS_ORDER: AppStatus[] = ["saved", "applied", "accepted", "rejected"];
 
 export const ApplicationsTab = () => {
   const { t, lang, dir } = useLanguage();
+  const { user, isGuest, isCloudSynced } = useAuth();
+  const nav = useNavigate();
   const ar = lang === "ar";
   const isRtl = dir === "rtl";
   const alignClass = isRtl ? "text-right" : "text-left";
 
+  const [, setSearchParams] = useSearchParams();
   const [items, setItems] = useState<AppRecord[]>([]);
   const [filter, setFilter] = useState<AppStatus | "all">("all");
   const [editingNote, setEditingNote] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [activeTabSection, setActiveTabSection] = useState<"scholarships" | "jobs" | "universities">("scholarships");
+  const [savedJobIds, setSavedJobIds] = useState<string[]>(() => jobsStore.savedIds());
+  const [savedUniIds, setSavedUniIds] = useState<string[]>(() => universitiesStore.savedIds());
 
   const load = () => setItems(applicationsStore.all());
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    const handleUpdate = () => load();
+    const handleJobsUpdated = () => {
+      setSavedJobIds(jobsStore.savedIds());
+    };
+    const handleUnisUpdated = () => {
+      setSavedUniIds(universitiesStore.savedIds());
+    };
+    window.addEventListener("foras:applications-updated", handleUpdate);
+    window.addEventListener("foras:jobs-saved-updated", handleJobsUpdated);
+    window.addEventListener("foras:universities-saved-updated", handleUnisUpdated);
+    return () => {
+      window.removeEventListener("foras:applications-updated", handleUpdate);
+      window.removeEventListener("foras:jobs-saved-updated", handleJobsUpdated);
+      window.removeEventListener("foras:universities-saved-updated", handleUnisUpdated);
+    };
+  }, []);
 
   const counts = useMemo(() => {
     const c: Record<AppStatus | "all", number> = { all: items.length, saved: 0, applied: 0, accepted: 0, rejected: 0 };
@@ -47,6 +77,64 @@ export const ApplicationsTab = () => {
     () => (filter === "all" ? items : items.filter((i) => i.status === filter)),
     [items, filter]
   );
+
+  const savedJobsList = useMemo(() => {
+    const customJobs = dynamicStore.getJobs();
+    return savedJobIds
+      .map((id) => {
+        const foundCustom = customJobs.find((j) => j.id === id);
+        if (foundCustom) {
+          return {
+            id: foundCustom.id,
+            title: ar ? foundCustom.title_ar : (foundCustom.title_en || foundCustom.title_ar),
+            company: foundCustom.company,
+            salary: foundCustom.salary || "$1,500/mo",
+            url: foundCustom.apply_url,
+            emoji: "💼",
+            type: ar ? "عمل حر عن بعد" : "Remote Freelance",
+          };
+        }
+        const foundStatic = JOBS.find((j) => j.id === id);
+        if (foundStatic) {
+          return {
+            id: foundStatic.id,
+            title: ar ? foundStatic.title : (foundStatic.titleEn || foundStatic.title),
+            company: foundStatic.company,
+            salary: `${foundStatic.salary.min} - ${foundStatic.salary.max} ${foundStatic.salary.currency}`,
+            url: foundStatic.contact?.website || "#",
+            emoji: foundStatic.emoji || "💼",
+            type: ar ? foundStatic.type : (foundStatic.typeEn || foundStatic.type),
+          };
+        }
+        return null;
+      })
+      .filter(Boolean) as {
+        id: string;
+        title: string;
+        company: string;
+        salary: string;
+        url: string;
+        emoji: string;
+        type: string;
+      }[];
+  }, [savedJobIds, ar]);
+
+  const savedUnisList = useMemo(() => {
+    const metaMap = universitiesStore.getMetadataMap();
+    return savedUniIds.map((id) => {
+      const meta = metaMap[id];
+      return {
+        id,
+        name: meta?.name || id,
+        nameEn: meta?.nameEn,
+        country: meta?.country || "",
+        countryEn: meta?.countryEn,
+        flag: meta?.flag || "🏛️",
+        website: meta?.website || "#",
+        type: meta?.type || "government",
+      };
+    });
+  }, [savedUniIds]);
 
   // Helper to resolve localized title, org and country
   const getLocalizedData = (r: AppRecord) => {
@@ -169,8 +257,49 @@ export const ApplicationsTab = () => {
 
   return (
     <div className="space-y-4 w-full pb-10">
-      {/* Header stats banner */}
-      <div className="rounded-3xl border border-primary/25 bg-gradient-to-br from-primary/10 via-transparent to-transparent p-4">
+      {/* 🌟 LUXE SEGMENTED TRACKER SWITCHER 🌟 */}
+      <div className="p-1.5 bg-card/90 backdrop-blur-xl border border-border/80 rounded-2xl shadow-luxe flex items-center justify-between gap-1.5">
+        <button
+          onClick={() => setActiveTabSection("scholarships")}
+          className={`flex-1 h-11 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 ${
+            activeTabSection === "scholarships"
+              ? "bg-primary text-primary-foreground shadow-sm font-extrabold"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+          }`}
+        >
+          <Award className="w-4 h-4" />
+          <span>{ar ? `المنح (${items.length})` : `Scholarships (${items.length})`}</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTabSection("jobs")}
+          className={`flex-1 h-11 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 ${
+            activeTabSection === "jobs"
+              ? "bg-primary text-primary-foreground shadow-sm font-extrabold"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+          }`}
+        >
+          <Briefcase className="w-4 h-4" />
+          <span>{ar ? `العمل الحر (${savedJobIds.length})` : `Freelance (${savedJobIds.length})`}</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTabSection("universities")}
+          className={`flex-1 h-11 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 ${
+            activeTabSection === "universities"
+              ? "bg-primary text-primary-foreground shadow-sm font-extrabold"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+          }`}
+        >
+          <Building2 className="w-4 h-4" />
+          <span>{ar ? `الجامعات (${savedUniIds.length})` : `Unis (${savedUniIds.length})`}</span>
+        </button>
+      </div>
+
+      {activeTabSection === "scholarships" ? (
+        <div className="space-y-4">
+          {/* Header stats banner */}
+          <div className="rounded-3xl border border-primary/25 bg-gradient-to-br from-primary/10 via-transparent to-transparent p-4">
         <div className="flex items-center justify-between gap-3 mb-3">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-2xl bg-gold-gradient flex items-center justify-center shadow-gold flex-shrink-0">
@@ -201,6 +330,33 @@ export const ApplicationsTab = () => {
               <CheckSquare className="w-3.5 h-3.5" />
               <span>{selectionMode ? (ar ? "إنهاء التحديد" : "Cancel Select") : (ar ? "تحديد متعدد" : "Select")}</span>
             </button>
+          )}
+        </div>
+
+        {/* Real-time Cloud Sync Status Banner */}
+        <div className="mb-3">
+          {!isGuest ? (
+            <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs">
+              <div className="flex items-center gap-2 font-bold">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                <span>{ar ? "متزامن سحابياً مع حسابك في Cloud Firestore" : "Live Synced with your Cloud Account"}</span>
+              </div>
+              <span className="text-[11px] opacity-80 font-mono hidden sm:inline">{user?.email || (ar ? "حساب معتمد" : "Verified Account")}</span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs flex-wrap">
+              <div className="flex items-center gap-1.5 font-medium">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span>{ar ? "وضع الحفظ المحلي (ضيف) — سجّل الدخول لحفظ طلباتك سحابياً ومزامنتها عبر أجهزتك" : "Guest Mode (Local) — Sign in to save and sync your applications across all devices"}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => nav("/auth")}
+                className="text-xs font-bold text-amber-400 underline hover:text-amber-200 cursor-pointer"
+              >
+                {ar ? "تسجيل الدخول / إنشاء حساب ↗" : "Sign In / Register ↗"}
+              </button>
+            </div>
           )}
         </div>
 
@@ -414,7 +570,7 @@ export const ApplicationsTab = () => {
                       />
                       <div className="flex gap-2">
                         <Button size="sm" variant="luxe" className="flex-1 text-xs" onClick={() => saveNote(r.id)}>
-                          <Sparkles className={`w-3.5 h-3.5 ${isRtl ? "ml-1" : "mr-1"}`} />
+                          <Sparkles className="w-3.5 h-3.5 me-1" />
                           {ar ? "حفظ الملاحظات" : "Save Notes"}
                         </Button>
                         <Button size="sm" variant="ghostGold" className="text-xs" onClick={() => setEditingNote(null)}>
@@ -444,7 +600,7 @@ export const ApplicationsTab = () => {
                         className="flex-1 text-xs h-9"
                         onClick={() => window.open(r.url, "_blank", "noopener,noreferrer")}
                       >
-                        <ExternalLink className={`w-3.5 h-3.5 ${isRtl ? "ml-1.5" : "mr-1.5"}`} />
+                        <ExternalLink className="w-3.5 h-3.5 me-1.5" />
                         {ar ? "الانتقال لرابط التقديم" : "Official Link"}
                       </Button>
                     )}
@@ -473,6 +629,200 @@ export const ApplicationsTab = () => {
               );
             })}
           </AnimatePresence>
+        </div>
+      )}
+        </div>
+      ) : (
+        /* ======================================================================= */
+        /* 💼 SAVED JOBS & FREELANCE PLATFORMS SECTION (متزامنة مع Firestore)     */
+        /* ======================================================================= */
+        <div className="space-y-4">
+          {savedJobsList.length === 0 ? (
+            <div className="text-center py-16 px-6 bg-card/40 rounded-3xl border border-dashed border-border p-6 space-y-3">
+              <div className="w-16 h-16 mx-auto rounded-3xl bg-primary/10 border border-primary/30 flex items-center justify-center shadow-gold">
+                <Briefcase className="w-8 h-8 text-primary" strokeWidth={1.5} />
+              </div>
+              <h3 className="font-display text-lg font-bold text-foreground">
+                {ar ? "لا توجد فرص عمل حر محفوظة بعد" : "No saved freelance platforms yet"}
+              </h3>
+              <p className="text-muted-foreground text-xs max-w-md mx-auto leading-relaxed">
+                {ar
+                  ? "تصفح قسم العمل الحر واحفظ المنصات وفرص العمل التي تهمك بالنقر على أيقونة الإشارة المرجعية (حفظ)، وستتزامن هنا سحابياً وتلقائياً عبر جميع أجهزتك."
+                  : "Explore the Freelance section and bookmark platforms to sync them across all your devices."}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {savedJobsList.map((job) => (
+                <motion.div
+                  key={job.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`rounded-2xl p-4 bg-card/75 backdrop-blur-md border border-border/80 hover:border-primary/50 transition-all shadow-sm flex flex-col justify-between ${alignClass}`}
+                >
+                  <div>
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center text-xl flex-shrink-0">
+                          {job.emoji}
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-sm text-foreground">{job.company}</h3>
+                          <p className="text-xs text-primary font-semibold">{job.type}</p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          jobsStore.toggle(job.id);
+                          setSavedJobIds(jobsStore.savedIds());
+                          toast.success(ar ? "تمت إزالة المنصة من المحفوظات" : "Platform removed from saved");
+                        }}
+                        className="p-1.5 rounded-lg border border-border bg-card/50 text-muted-foreground hover:text-rose-400 hover:border-rose-500/40 transition-colors"
+                        title={ar ? "إزالة من المحفوظات" : "Remove from saved"}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    <h4 className="font-bold text-sm text-foreground/90 leading-snug line-clamp-1 mb-1.5">
+                      {job.title}
+                    </h4>
+                  </div>
+
+                  <div className="pt-2.5 border-t border-border flex items-center justify-between text-xs mt-3">
+                    <div className="flex items-center gap-1 font-bold text-gold-gradient">
+                      <DollarSign className="w-3.5 h-3.5 text-primary" />
+                      <span>{job.salary}</span>
+                    </div>
+
+                    {job.url && job.url !== "#" && (
+                      <a
+                        href={job.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90 transition-all shadow-sm"
+                      >
+                        <span>{ar ? "زيارة المنصة" : "Visit Platform"}</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 🏛️ SAVED UNIVERSITIES TAB SECTION 🏛️ */}
+      {activeTabSection === "universities" && (
+        <div className="space-y-4">
+          <div className="rounded-3xl border border-primary/25 bg-gradient-to-br from-primary/10 via-transparent to-transparent p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-gold-gradient flex items-center justify-center shadow-gold flex-shrink-0">
+                <Building2 className="w-5 h-5 text-primary-foreground" strokeWidth={2.2} />
+              </div>
+              <div className={alignClass}>
+                <h2 className="font-display text-lg text-gold-gradient leading-tight">
+                  {ar ? "الجامعات المستهدفة ومتابعة القبول" : "Target Universities & Admissions"}
+                </h2>
+                <p className="text-[11px] text-muted-foreground">
+                  {ar
+                    ? "الجامعات العربية والعالمية المحفوظة والمتزامنة سحابياً مع حسابك في Firebase"
+                    : "Saved Arab & Global universities synced in real-time with Firebase"}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {savedUnisList.length === 0 ? (
+            <div className="rounded-3xl border border-dashed border-border/80 bg-card/40 p-8 sm:p-12 text-center space-y-3">
+              <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/25 text-primary flex items-center justify-center mx-auto text-2xl">
+                🏛️
+              </div>
+              <h3 className="font-bold text-base text-foreground">
+                {ar ? "لم تحفظ أي جامعات مستهدفة بعد" : "No Target Universities Saved Yet"}
+              </h3>
+              <p className="text-muted-foreground text-xs max-w-md mx-auto leading-relaxed">
+                {ar
+                  ? "تصفح دليل الجامعات العربية والعالمية واحفظ الجامعات التي تود استهدافها بالنقر على أيقونة الإشارة المرجعية (حفظ)، وستتزامن هنا سحابياً وتلقائياً عبر جميع أجهزتك."
+                  : "Explore Arab & Global universities and bookmark target institutions to track them here across all devices."}
+              </p>
+              <Button
+                variant="luxe"
+                size="sm"
+                onClick={() => setSearchParams({ tab: "arabUnis" })}
+                className="mt-2 text-xs font-bold"
+              >
+                <GraduationCap className="w-4 h-4" />
+                <span>{ar ? "استكشاف دليل الجامعات" : "Explore Universities Directory"}</span>
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {savedUnisList.map((uni) => (
+                <motion.div
+                  key={uni.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`rounded-2xl p-4 bg-card/75 backdrop-blur-md border border-border/80 hover:border-primary/50 transition-all shadow-sm flex flex-col justify-between ${alignClass}`}
+                >
+                  <div>
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center text-xl flex-shrink-0">
+                          {uni.flag}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-bold text-sm text-foreground truncate">
+                            {ar ? uni.name : (uni.nameEn || uni.name)}
+                          </h3>
+                          <p className="text-xs text-primary font-semibold">
+                            {ar ? uni.country : (uni.countryEn || uni.country)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          universitiesStore.toggle(uni.id);
+                          setSavedUniIds(universitiesStore.savedIds());
+                          toast.success(ar ? "تمت إزالة الجامعة من المستهدفة" : "University removed from targets");
+                        }}
+                        className="p-1.5 rounded-lg border border-border bg-card/50 text-muted-foreground hover:text-rose-400 hover:border-rose-500/40 transition-colors shrink-0"
+                        title={ar ? "إزالة من المستهدفة" : "Remove from targets"}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="pt-2.5 border-t border-border flex items-center justify-between text-xs mt-3">
+                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary font-medium">
+                      🏛️ {uni.type}
+                    </span>
+
+                    <div className="flex items-center gap-2">
+                      {uni.website && uni.website !== "#" && (
+                        <a
+                          href={uni.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90 transition-all shadow-sm"
+                        >
+                          <span>{ar ? "البوابة الرسمية" : "Official Portal"}</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

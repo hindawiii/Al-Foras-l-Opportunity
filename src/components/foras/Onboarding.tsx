@@ -79,7 +79,7 @@ export const Onboarding = ({ onDone }: { onDone: () => void }) => {
           className="w-full"
         >
           {last ? "ابدأ الآن" : "التالي"}
-          <ChevronLeft className="mr-2 h-5 w-5" />
+          <ChevronLeft className="ms-2 h-5 w-5" />
         </Button>
       </div>
     </div>

@@ -1,4 +1,6 @@
 import localforage from "localforage";
+import { doc, setDoc } from "firebase/firestore";
+import { db, auth } from "@/integrations/firebase/client";
 
 localforage.config({
   name: "al-foras",
@@ -75,6 +77,25 @@ export const profileExtras = {
     try { await localforage.setItem(KEY, withTs); } catch (e) { console.error("profileExtras.save", e); }
     // Also mirror to localStorage as backup
     try { localStorage.setItem(KEY, JSON.stringify(withTs)); } catch {}
+
+    // Cloud Firestore Sync when user is logged in
+    if (typeof window !== "undefined") {
+      const currentUid = auth?.currentUser?.uid;
+      if (currentUid) {
+        try {
+          setDoc(
+            doc(db, "users", currentUid),
+            {
+              profile_extras: withTs,
+              updated_at: withTs.updatedAt,
+            },
+            { merge: true }
+          ).catch((err) => console.info("Firestore profile_extras save notice:", err));
+        } catch (err) {
+          console.info("Firestore profile_extras write notice:", err);
+        }
+      }
+    }
   },
   async clear(): Promise<void> {
     try { await localforage.removeItem(KEY); } catch {}

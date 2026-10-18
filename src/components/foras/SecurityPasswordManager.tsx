@@ -250,14 +250,12 @@ export const SecurityPasswordManager: React.FC<SecurityPasswordManagerProps> = (
                 onChange={setOldPassword}
                 showPlain={showOldPass}
                 placeholder="★ ★ ★ ★ ★ ★"
-                className={`w-full py-2.5 px-3.5 rounded-xl bg-background border border-primary/30 text-white text-sm focus:border-primary outline-none transition-all ${
-                  isRtl ? "pl-10 pr-3.5" : "pr-10 pl-3.5"
-                }`}
+                className="w-full py-2.5 px-3.5 rounded-xl bg-background border border-primary/30 text-white text-sm focus:border-primary outline-none transition-all ps-3.5 pe-10"
               />
               <button
                 type="button"
                 onClick={() => setShowOldPass(!showOldPass)}
-                className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? "left-3" : "right-3"} text-gray-400 hover:text-white transition-colors cursor-pointer p-1`}
+                className="absolute top-1/2 -translate-y-1/2 end-3 text-gray-400 hover:text-white transition-colors cursor-pointer p-1"
               >
                 {showOldPass ? <EyeOff className="w-4 h-4 text-gray-300" /> : <Eye className="w-4 h-4 text-primary" />}
               </button>
@@ -275,14 +273,12 @@ export const SecurityPasswordManager: React.FC<SecurityPasswordManagerProps> = (
                 onChange={setNewPassword}
                 showPlain={showNewPass}
                 placeholder="★ ★ ★ ★ ★ ★"
-                className={`w-full py-2.5 px-3.5 rounded-xl bg-background border border-primary/30 text-white text-sm focus:border-primary outline-none transition-all ${
-                  isRtl ? "pl-10 pr-3.5" : "pr-10 pl-3.5"
-                }`}
+                className="w-full py-2.5 px-3.5 rounded-xl bg-background border border-primary/30 text-white text-sm focus:border-primary outline-none transition-all ps-3.5 pe-10"
               />
               <button
                 type="button"
                 onClick={() => setShowNewPass(!showNewPass)}
-                className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? "left-3" : "right-3"} text-gray-400 hover:text-white transition-colors cursor-pointer p-1`}
+                className="absolute top-1/2 -translate-y-1/2 end-3 text-gray-400 hover:text-white transition-colors cursor-pointer p-1"
               >
                 {showNewPass ? <EyeOff className="w-4 h-4 text-gray-300" /> : <Eye className="w-4 h-4 text-primary" />}
               </button>
@@ -313,14 +309,12 @@ export const SecurityPasswordManager: React.FC<SecurityPasswordManagerProps> = (
                 onChange={setConfirmPassword}
                 showPlain={showConfirmPass}
                 placeholder="★ ★ ★ ★ ★ ★"
-                className={`w-full py-2.5 px-3.5 rounded-xl bg-background border border-primary/30 text-white text-sm focus:border-primary outline-none transition-all ${
-                  isRtl ? "pl-10 pr-3.5" : "pr-10 pl-3.5"
-                }`}
+                className="w-full py-2.5 px-3.5 rounded-xl bg-background border border-primary/30 text-white text-sm focus:border-primary outline-none transition-all ps-3.5 pe-10"
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPass(!showConfirmPass)}
-                className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? "left-3" : "right-3"} text-gray-400 hover:text-white transition-colors cursor-pointer p-1`}
+                className="absolute top-1/2 -translate-y-1/2 end-3 text-gray-400 hover:text-white transition-colors cursor-pointer p-1"
               >
                 {showConfirmPass ? <EyeOff className="w-4 h-4 text-gray-300" /> : <Eye className="w-4 h-4 text-primary" />}
               </button>
@@ -351,7 +345,7 @@ export const SecurityPasswordManager: React.FC<SecurityPasswordManagerProps> = (
             disabled={!oldPassword || !newPassword || !confirmPassword || !criteria.matches}
             className="w-full font-bold shadow-gold cursor-pointer py-3"
           >
-            <ShieldCheck className="w-4 h-4 mr-2 ml-2" />
+            <ShieldCheck className="w-4 h-4 mx-2" />
             <span>{isRtl ? "المتابعة والتحقق عبر البريد الموحد" : "Verify via Email OTP"}</span>
           </Button>
         </div>
@@ -423,7 +417,7 @@ export const SecurityPasswordManager: React.FC<SecurityPasswordManagerProps> = (
               disabled={otpDigits.join("").length !== 6}
               className="w-full font-bold shadow-gold cursor-pointer py-3.5"
             >
-              <Check className="w-4 h-4 mr-2 ml-2" />
+              <Check className="w-4 h-4 mx-2" />
               <span>{isRtl ? "تأكيد الكود وتغيير كلمة المرور" : "Verify & Apply Password"}</span>
             </Button>
           </div>

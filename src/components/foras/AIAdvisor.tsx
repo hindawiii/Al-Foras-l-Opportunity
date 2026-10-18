@@ -5,13 +5,14 @@ import {
   University, FileText, Mic, MicOff, Volume2, VolumeX, Upload, Download,
   CheckCircle2, AlertTriangle, ArrowRight, RefreshCw, Star, Search, ShieldCheck,
   Maximize2, Minimize2, Phone, PhoneOff, Briefcase, Languages, HelpCircle, Info,
-  ChevronDown, ChevronUp
+  ChevronDown, ChevronUp, WifiOff, Wifi, Copy, Check
 } from "lucide-react";
 import { chatStorage, type ChatMessage } from "@/lib/aiChatStorage";
 import { guestStorage } from "@/lib/guestStorage";
 import { generateLocalAIResponse, getDailyQuotaStatus, incrementDailyQuota, type QuotaStatus } from "@/lib/aiLocalEngine";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { toast } from "sonner";
 import { exportCvToPdf, type CvExportData } from "@/lib/cvPdfGenerator";
 import {
@@ -20,6 +21,7 @@ import {
 } from "@/lib/aiCvReviewer";
 import { SCHOLARSHIPS, type Scholarship } from "@/lib/mockData";
 import { applicationsStore } from "@/lib/applicationsStorage";
+import { profileExtras } from "@/lib/profileExtras";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -68,6 +70,7 @@ const FUNCTION_URL = "/api/ai-advisor";
 export const AIAdvisor = () => {
   const { user, isGuest } = useAuth();
   const { t, lang, dir } = useLanguage();
+  const { isOnline } = useNetworkStatus();
   const isRtl = dir === "rtl";
 
   const [open, setOpen] = useState(false);
@@ -83,10 +86,18 @@ export const AIAdvisor = () => {
   // Global event listener for opening AI advisor directly into specific mode and auto-sending custom prompt
   useEffect(() => {
     const handler = (e: Event) => {
-      const custom = e as CustomEvent<{ mode?: AdvisorMode; prompt?: string }>;
+      const custom = e as CustomEvent<{ mode?: AdvisorMode; prompt?: string; opportunity?: any }>;
       setOpen(true);
       if (custom.detail?.mode) {
         setMode(custom.detail.mode);
+      }
+      if (custom.detail?.opportunity) {
+        const opp = custom.detail.opportunity;
+        setSopOpportunityTitle(opp.title || opp.title_ar || opp.name || "");
+        setSopOpportunityOrg(opp.org || opp.university || opp.company || "");
+        if (custom.detail?.mode === "essay") {
+          setSopGeneratorOpen(true);
+        }
       }
       if (custom.detail?.prompt) {
         setTimeout(() => {
@@ -138,6 +149,46 @@ export const AIAdvisor = () => {
   // Essay / SOP Checker States
   const [essayText, setEssayText] = useState("");
   const [essayResult, setEssayResult] = useState<EssayAnalysisResult | null>(null);
+  const [sopOpportunityTitle, setSopOpportunityTitle] = useState("");
+  const [sopOpportunityOrg, setSopOpportunityOrg] = useState("");
+  const [isGeneratingSop, setIsGeneratingSop] = useState(false);
+  const [sopGeneratorOpen, setSopGeneratorOpen] = useState(false);
+
+  const handleGenerateSop = async () => {
+    if (!isOnline) {
+      toast.warning(isRtl ? "توليد خطاب الدافع يتطلب اتصالاً بالإنترنت." : "SOP generator requires active connection.");
+      return;
+    }
+    setIsGeneratingSop(true);
+    try {
+      const res = await fetch("/api/ai/sop-generator", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          opportunityTitle: sopOpportunityTitle || (isRtl ? "منحة دراسية معتمدة" : "Accredited Scholarship"),
+          opportunityOrg: sopOpportunityOrg || (isRtl ? "جامعة دولية" : "International University"),
+          userProfile: getProfile(),
+          lang,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to generate SOP");
+      }
+
+      const data = await res.json();
+      if (data.sopContent) {
+        setEssayText(data.sopContent);
+        setEssayResult(analyzeEssayDraft(data.sopContent, lang));
+        setSopGeneratorOpen(false);
+        toast.success(isRtl ? "تمت صياغة خطاب الدافع الاحترافي بنجاح! ✨" : "Statement of Purpose generated successfully! ✨");
+      }
+    } catch (err: any) {
+      toast.error(isRtl ? "تعذر توليد الخطاب حالياً، يرجى المحاولة لاحقاً." : "Failed to generate SOP, please try again.");
+    } finally {
+      setIsGeneratingSop(false);
+    }
+  };
 
   const abortRef = useRef<AbortController | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -301,11 +352,47 @@ export const AIAdvisor = () => {
   };
 
   const getProfile = () => {
-    if (isGuest) return guestStorage.get("profile") ?? null;
-    return null;
+    const extras = profileExtras.get();
+    if (user && !isGuest) {
+      return {
+        full_name: user.fullName,
+        email: user.email,
+        bio: user.bio,
+        education: user.education,
+        location: user.location,
+        skills: user.skills || [],
+        interests: user.interests || [],
+        degree: extras?.degree,
+        major: extras?.major,
+        gpa: extras?.gpa,
+        gpaScale: extras?.gpaScale,
+        target_country: extras?.targetCountries?.[0] || extras?.studyDestinations?.[0],
+        english_level: extras?.englishProficiency,
+        experience: extras?.experienceYears,
+      };
+    }
+    const guestProf = guestStorage.get<any>("profile") || {};
+    return {
+      ...guestProf,
+      degree: extras?.degree,
+      major: extras?.major,
+      gpa: extras?.gpa,
+      gpaScale: extras?.gpaScale,
+      target_country: extras?.targetCountries?.[0] || extras?.studyDestinations?.[0],
+      english_level: extras?.englishProficiency,
+      experience: extras?.experienceYears,
+    };
   };
 
   const startLiveCall = (track: "scholarship" | "job" | "english" = selectedInterviewTrack) => {
+    if (!isOnline) {
+      toast.warning(
+        isRtl
+          ? "المكالمة الصوتية الحية تتطلب اتصالاً بالإنترنت. يمكنك كتابة استفسارك في المحادثة النصية محلياً بدون انقطاع."
+          : "Live voice call requires an active connection. You can use local text chat offline."
+      );
+      return;
+    }
     setIsLiveCallActive(true);
     let prompt = "";
     if (track === "scholarship") {
@@ -614,7 +701,7 @@ export const AIAdvisor = () => {
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: isFabVisible ? 1 : 0, scale: isFabVisible ? 1 : 0.6, pointerEvents: isFabVisible ? "auto" : "none" }}
         transition={{ type: "spring", stiffness: 300, damping: 24 }}
-        className="ai-advisor-fab fixed bottom-24 right-4 z-[9999] cursor-grab active:cursor-grabbing select-none"
+        className="ai-advisor-fab fixed bottom-24 end-4 z-[9999] cursor-grab active:cursor-grabbing select-none"
         onMouseEnter={handleFabMouseEnter}
         onMouseLeave={handleFabMouseLeave}
       >
@@ -723,7 +810,7 @@ export const AIAdvisor = () => {
                   <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#1E3A8A] via-[#2563EB] to-[#D97706] border border-primary/60 flex items-center justify-center shadow-gold p-1">
                     <img src="/al-foras-icon.png" alt="Advisor" className="w-full h-full object-contain drop-shadow" />
                   </div>
-                  <span className="absolute -bottom-0.5 -left-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-background animate-pulse" />
+                  <span className="absolute -bottom-0.5 -start-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-background animate-pulse" />
                 </div>
                 <div>
                   <p className="text-foreground text-sm font-bold leading-tight">
@@ -799,10 +886,24 @@ export const AIAdvisor = () => {
 
               {/* Fair-Share Quota & Dialect Indicator */}
               <div className="mt-2 px-1 flex items-center justify-between text-[10px]">
-                <div className="flex items-center gap-1.5 text-muted-foreground">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="font-semibold text-primary/90">
-                    {isRtl ? "مستشار ذكي فوري (فصحى • سوداني • مصري)" : "Multi-Dialect Advisor (Sudanese/Egyptian/EN)"}
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      isOnline ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
+                    }`}
+                  />
+                  <span
+                    className={`font-semibold ${
+                      isOnline ? "text-primary/90" : "text-amber-300"
+                    }`}
+                  >
+                    {isOnline
+                      ? isRtl
+                        ? "مستشار ذكي فوري (فصحى • سوداني • مصري)"
+                        : "Multi-Dialect Advisor (Sudanese/Egyptian/EN)"
+                      : isRtl
+                      ? "وضع عدم الاتصال: محرك إرشادي محلي مدمج"
+                      : "Offline Mode: Built-in Local Guidance Engine"}
                   </span>
                 </div>
                 <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/15 border border-primary/30">
@@ -817,6 +918,16 @@ export const AIAdvisor = () => {
             {/* TAB CONTENT: 1. CHAT MODE */}
             {mode === "chat" && (
               <>
+                {!isOnline && (
+                  <div className="mx-3 mt-2.5 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex items-center gap-2">
+                    <WifiOff className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                    <span className="text-[11px] leading-relaxed">
+                      {isRtl
+                        ? "أنت تتصفح في وضع عدم الاتصال. يعمل المستشار بالمحرك المحلي المدمج للإجابة وتوجيهك للمنح المخزنة مجاناً."
+                        : "You are offline. AI Advisor is running on local knowledge engine for cached scholarships & guidance."}
+                    </span>
+                  </div>
+                )}
                 <div ref={listRef} className="flex-1 overflow-y-auto px-3 py-4 space-y-3">
                   {messages.length === 0 && (
                     <div className="text-center px-4 py-4">
@@ -964,6 +1075,17 @@ export const AIAdvisor = () => {
                     );
                   })}
                 </div>
+
+                {!isOnline && (
+                  <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex items-center gap-2.5">
+                    <WifiOff className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                    <span className="text-[11px] leading-relaxed">
+                      {isRtl
+                        ? "المحاكاة الصوتية الحية تتطلب اتصالاً بالإنترنت. يمكنك استخدام المحادثة النصية محلياً مجاناً بدون انقطاع في تبويب (Chat)."
+                        : "Live mock interview calls require an active internet connection. You can use local text chat offline."}
+                    </span>
+                  </div>
+                )}
 
                 {/* LIVE CALL OR SINGLE TALK CARD */}
                 {isLiveCallActive ? (
@@ -1381,36 +1503,134 @@ export const AIAdvisor = () => {
                 <div>
                   <h3 className="text-foreground text-sm font-bold flex items-center gap-1.5">
                     <GraduationCap className="w-4 h-4 text-primary" />
-                    {isRtl ? "فاحص المقالات وخطابات التوصية في الوقت الفعلي" : "Real-time Essay & SOP Analyzer"}
+                    {isRtl ? "فاحص وصانع خطابات الدافع بالذكاء الاصطناعي" : "AI SOP & Motivation Letter Co-Pilot"}
                   </h3>
                   <p className="text-muted-foreground text-2xs">
-                    {isRtl ? "حلل خطاب النية أو المقال الأكاديمي واكتشف الرصانة والمفردات الأكاديمية" : "Evaluate Statement of Purpose and academic tone"}
+                    {isRtl ? "صياغة وتدقيق خطابات النية والمقالات الأكاديمية بدقة واعتمادية عالية" : "Draft, evaluate, and refine Statement of Purpose with admissions-grade precision"}
                   </p>
                 </div>
 
-                <textarea
-                  value={essayText}
-                  onChange={e => {
-                    setEssayText(e.target.value);
-                    if (e.target.value.length > 50) {
-                      setEssayResult(analyzeEssayDraft(e.target.value, lang));
-                    }
-                  }}
-                  placeholder={isRtl ? "الصق خطاب النية (Statement of Purpose) أو المقال هنا..." : "Paste your SOP, motivation letter, or recommendation letter here..."}
-                  className="w-full h-32 p-3 rounded-2xl bg-input border border-primary/20 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-primary resize-none"
-                />
+                {/* AI SOP Auto-Draft Card */}
+                <div className="p-3 rounded-2xl bg-gradient-to-br from-primary/15 via-primary/5 to-transparent border border-primary/30 space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-primary animate-pulse" />
+                      <span className="text-xs font-bold text-foreground">
+                        {isRtl ? "صياغة مسودة خطاب دافع مخصص للمنحة" : "AI SOP & Motivation Letter Generator"}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSopGeneratorOpen(!sopGeneratorOpen)}
+                      className="text-2xs font-bold text-primary hover:underline cursor-pointer"
+                    >
+                      {sopGeneratorOpen ? (isRtl ? "إخفاء" : "Hide") : (isRtl ? "فتح المولد ✨" : "Open Generator ✨")}
+                    </button>
+                  </div>
 
-                <div className="flex items-center justify-between">
+                  {sopGeneratorOpen && (
+                    <div className="space-y-2 pt-1 border-t border-primary/20">
+                      <div>
+                        <label className="text-[11px] font-medium text-muted-foreground block mb-1">
+                          {isRtl ? "اسم المنحة أو البرنامج أو التخصص المستهدف:" : "Target Scholarship, Program, or Degree:"}
+                        </label>
+                        <input
+                          type="text"
+                          value={sopOpportunityTitle}
+                          onChange={(e) => setSopOpportunityTitle(e.target.value)}
+                          placeholder={isRtl ? "مثال: منحة إيراسموس موندوس، أو ماجستير علوم الحاسوب..." : "e.g., Erasmus Mundus, Master in CS..."}
+                          className="w-full h-8 px-2.5 rounded-xl bg-background border border-primary/25 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-primary"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-medium text-muted-foreground block mb-1">
+                          {isRtl ? "اسم الجامعة أو الجهة المانحة:" : "Host University or Organization:"}
+                        </label>
+                        <input
+                          type="text"
+                          value={sopOpportunityOrg}
+                          onChange={(e) => setSopOpportunityOrg(e.target.value)}
+                          placeholder={isRtl ? "مثال: جامعة كامبريدج، أو وزارة التعليم العالي..." : "e.g., University of Cambridge..."}
+                          className="w-full h-8 px-2.5 rounded-xl bg-background border border-primary/25 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-primary"
+                        />
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleGenerateSop}
+                        disabled={isGeneratingSop}
+                        className="w-full py-2 rounded-xl bg-gold-gradient text-primary-foreground text-xs font-bold shadow-gold flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                      >
+                        {isGeneratingSop ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <span>{isRtl ? "جاري صياغة خطاب الدافع الاحترافي..." : "Drafting compelling SOP..."}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-3.5 h-3.5" />
+                            <span>{isRtl ? "صياغة خطاب الدافع الفائز الآن ✨" : "Draft Winning SOP Now ✨"}</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="relative">
+                  <textarea
+                    value={essayText}
+                    onChange={e => {
+                      setEssayText(e.target.value);
+                      if (e.target.value.length > 50) {
+                        setEssayResult(analyzeEssayDraft(e.target.value, lang));
+                      }
+                    }}
+                    placeholder={isRtl ? "الصق أو اكتب مسودة خطاب النية (Statement of Purpose) أو انقر على 'فتح المولد' لصياغتها فوراً..." : "Paste your SOP or click 'Open Generator' to draft it with AI..."}
+                    className="w-full h-44 p-3 rounded-2xl bg-input border border-primary/20 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-primary resize-none leading-relaxed"
+                  />
+                  {essayText && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(essayText);
+                        toast.success(isRtl ? "تم نسخ نص الخطاب بالكامل إلى الحافظة 📋" : "SOP copied to clipboard 📋");
+                      }}
+                      className="absolute top-2.5 end-2.5 p-1.5 rounded-lg bg-card/90 border border-primary/30 text-primary hover:bg-primary/20 text-2xs font-semibold flex items-center gap-1 shadow-sm"
+                      title={isRtl ? "نسخ الخطاب" : "Copy text"}
+                    >
+                      <Copy className="w-3 h-3" />
+                      <span>{isRtl ? "نسخ" : "Copy"}</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between gap-2">
                   <span className="text-2xs text-muted-foreground">
                     {essayText ? `${essayText.trim().split(/\s+/).filter(Boolean).length} ${isRtl ? "كلمة" : "words"}` : ""}
                   </span>
-                  <button
-                    onClick={handleEssayAnalyze}
-                    disabled={!essayText.trim()}
-                    className="px-3.5 py-1 rounded-xl bg-gold-gradient text-primary-foreground text-xs font-bold shadow-gold disabled:opacity-40"
-                  >
-                    {isRtl ? "فحص الرصانة الأكاديمية" : "Analyze Tone"}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {essayText && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEssayText("");
+                          setEssayResult(null);
+                        }}
+                        className="px-2.5 py-1 rounded-xl border border-destructive/30 text-destructive text-2xs hover:bg-destructive/10"
+                      >
+                        {isRtl ? "مسح" : "Clear"}
+                      </button>
+                    )}
+                    <button
+                      onClick={handleEssayAnalyze}
+                      disabled={!essayText.trim()}
+                      className="px-3.5 py-1.5 rounded-xl bg-gold-gradient text-primary-foreground text-xs font-bold shadow-gold disabled:opacity-40 cursor-pointer"
+                    >
+                      {isRtl ? "فحص الرصانة الأكاديمية" : "Analyze Tone"}
+                    </button>
+                  </div>
                 </div>
 
                 {essayResult && (

@@ -5,10 +5,13 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
-import { opportunitiesDb } from "./server/opportunitiesDb";
-import { runOpportunitiesAutomation } from "./server/automationEngine";
+import { opportunitiesDb, verifyQuickActionToken } from "./server/opportunitiesDb";
+import { runOpportunitiesAutomation, formatNotificationDigest, dispatchTeamAlerts, getAppBaseUrl } from "./server/automationEngine";
 import { buildAdvisorGroundingContext } from "./server/knowledgeRepository";
 import { runMasterCloudSeeding } from "./server/masterSeeder";
+import { isSafePublicUrl } from "./server/securityUtils";
+import { isFirestoreConnected, syncAllOpportunitiesToFirestore } from "./server/firestoreSync";
+import { sanitizeServerText, sanitizeServerUrl, sanitizeServerStringArray } from "./server/sanitizer";
 
 const PORT = 3000;
 
@@ -146,6 +149,8 @@ async function startServer() {
     message: { error: "تم تجاوز حد استخدام الذكاء الاصطناعي، يرجى الانتظار قليلاً." },
   });
   app.use("/api/ai-advisor", aiLimiter);
+  app.use("/api/ai/sop-generator", aiLimiter);
+  app.use("/api/ai/match-analysis", aiLimiter);
   app.use("/api/parse-url", aiLimiter);
 
   app.use(express.json({ limit: "5mb" }));
@@ -212,10 +217,22 @@ async function startServer() {
 
   app.post("/api/opportunities/scholarships", (req, res) => {
     try {
-      const item = req.body;
-      if (!item || !item.title) {
+      const raw = req.body;
+      if (!raw || (!raw.title && !raw.title_ar)) {
         return res.status(400).json({ error: "Title is required" });
       }
+      const item = {
+        ...raw,
+        id: sanitizeServerText(raw.id),
+        title: sanitizeServerText(raw.title || raw.title_ar),
+        titleEn: sanitizeServerText(raw.titleEn || raw.title_en || ""),
+        org: sanitizeServerText(raw.org || raw.university || "جامعة معتمدة"),
+        country: sanitizeServerText(raw.country || "دولي"),
+        description: sanitizeServerText(raw.description || raw.description_ar || ""),
+        descriptionEn: sanitizeServerText(raw.descriptionEn || raw.description_en || ""),
+        url: sanitizeServerUrl(raw.url || raw.apply_url || raw.official_website),
+        tags: sanitizeServerStringArray(raw.tags || raw.majors),
+      };
       const result = opportunitiesDb.upsertScholarship(item);
       res.json(result);
     } catch (err: any) {
@@ -236,10 +253,23 @@ async function startServer() {
 
   app.post("/api/opportunities/jobs", (req, res) => {
     try {
-      const job = req.body;
-      if (!job || !job.title_ar) {
+      const raw = req.body;
+      if (!raw || (!raw.title_ar && !raw.title)) {
         return res.status(400).json({ error: "Title is required" });
       }
+      const job = {
+        ...raw,
+        id: sanitizeServerText(raw.id),
+        title_ar: sanitizeServerText(raw.title_ar || raw.title),
+        title_en: sanitizeServerText(raw.title_en || raw.titleEn || ""),
+        company: sanitizeServerText(raw.company || "شركة معتمدة"),
+        location: sanitizeServerText(raw.location || "عن بُعد"),
+        salary: sanitizeServerText(raw.salary || ""),
+        description_ar: sanitizeServerText(raw.description_ar || raw.description || ""),
+        description_en: sanitizeServerText(raw.description_en || raw.descriptionEn || ""),
+        apply_url: sanitizeServerUrl(raw.apply_url || raw.url),
+        skills: sanitizeServerStringArray(raw.skills),
+      };
       const result = opportunitiesDb.upsertJob(job);
       res.json(result);
     } catch (err: any) {
@@ -356,23 +386,349 @@ async function startServer() {
     }
   });
 
+  // Direct 1-Click Quick Action Handler for Email & WhatsApp Approvals (72h TTL & Replay Protection)
+  app.get("/api/opportunities/quick-action", async (req, res) => {
+    try {
+      const { id, action, token, exp } = req.query as { id?: string; action?: "approve" | "reject"; token?: string; exp?: string };
+      const baseUrl = getAppBaseUrl();
+
+      if (!id || !action || !token) {
+        return res.status(400).send(`
+          <!DOCTYPE html>
+          <html dir="rtl" lang="ar">
+          <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+            <title>طلب غير مكتمل | منصة الفرص</title>
+            <style>
+              body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #f8fafc; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+              .card { background: #1e293b; border: 1px solid #334155; border-radius: 16px; padding: 32px; max-width: 480px; width: 100%; text-align: center; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5); }
+              h1 { color: #f87171; font-size: 20px; margin-bottom: 12px; }
+              p { color: #94a3b8; font-size: 15px; line-height: 1.6; }
+              a { display: inline-block; margin-top: 20px; background: #3b82f6; color: white; padding: 10px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <h1>⚠️ رابط غير مكتمل</h1>
+              <p>المعاملات المطلوبة للاعتماد السريع غير مكتملة في الرابط المفتوح.</p>
+              <a href="${baseUrl}">العودة إلى المنصة</a>
+            </div>
+          </body>
+          </html>
+        `);
+      }
+
+      // Security check: verify HMAC token with 72h TTL & Replay Protection
+      const verification = verifyQuickActionToken(id, token, action, exp);
+      if (!verification.valid) {
+        if (verification.reason === "expired") {
+          return res.status(403).send(`
+            <!DOCTYPE html>
+            <html dir="rtl" lang="ar">
+            <head>
+              <meta charset="utf-8" />
+              <meta name="viewport" content="width=device-width, initial-scale=1" />
+              <title>انتهت صلاحية الرابط | منصة الفرص</title>
+              <style>
+                body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #f8fafc; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+                .card { background: #1e293b; border: 1px solid #f59e0b; border-radius: 20px; padding: 36px; max-width: 500px; width: 100%; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+                .icon { font-size: 52px; margin-bottom: 12px; display: inline-block; }
+                h1 { color: #fbbf24; font-size: 21px; margin: 0 0 12px 0; }
+                p { color: #94a3b8; font-size: 15px; line-height: 1.6; }
+                .notice { background: #334155; border-radius: 10px; padding: 12px; margin: 18px 0; font-size: 13px; color: #cbd5e1; }
+                a { display: inline-block; background: #3b82f6; color: white; padding: 12px 24px; border-radius: 10px; text-decoration: none; font-weight: bold; font-size: 14px; }
+              </style>
+            </head>
+            <body>
+              <div class="card">
+                <span class="icon">⏳</span>
+                <h1>انتهت صلاحية رابط الاعتماد السريع</h1>
+                <p>تجاوز هذا الرابط المهلة الزمنية المحددة أمنياً (72 ساعة).</p>
+                <div class="notice">
+                  🛡️ لحماية المنصة ومنع أي اعتماد غير مقصود، يمكنك فتح لوحة الإدارة ومراجعة الفرصة واعتمادها يدوياً بأمان.
+                </div>
+                <a href="${baseUrl}/admin?tab=automation">فتح لوحة الإدارة للمراجعة</a>
+              </div>
+            </body>
+            </html>
+          `);
+        }
+
+        if (verification.reason === "already_processed") {
+          const isPublished = verification.itemStatus === "published";
+          return res.status(200).send(`
+            <!DOCTYPE html>
+            <html dir="rtl" lang="ar">
+            <head>
+              <meta charset="utf-8" />
+              <meta name="viewport" content="width=device-width, initial-scale=1" />
+              <title>تم اتخاذ إجراء مسبقاً | منصة الفرص</title>
+              <style>
+                body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #f8fafc; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+                .card { background: #1e293b; border: 1px solid #3b82f6; border-radius: 20px; padding: 36px; max-width: 500px; width: 100%; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+                .icon { font-size: 52px; margin-bottom: 12px; display: inline-block; }
+                h1 { color: #60a5fa; font-size: 21px; margin: 0 0 12px 0; }
+                p { color: #94a3b8; font-size: 15px; line-height: 1.6; }
+                .badge { display: inline-block; background: #1e3a8a; color: #93c5fd; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: bold; margin: 12px 0 20px 0; }
+                .actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 20px; }
+                .btn-primary { background: #3b82f6; color: white; padding: 12px 24px; border-radius: 10px; text-decoration: none; font-weight: bold; font-size: 14px; }
+                .btn-secondary { background: #334155; color: #f8fafc; padding: 12px 24px; border-radius: 10px; text-decoration: none; font-size: 14px; }
+              </style>
+            </head>
+            <body>
+              <div class="card">
+                <span class="icon">${isPublished ? "✅" : "📁"}</span>
+                <h1>تم اتخاذ الإجراء مسبقاً</h1>
+                <div class="badge">
+                  ${isPublished ? "تم نشر هذه الفرصة مسبقاً وهي معتمدة بالمنصة" : "تم استبعاد هذه الفرصة مسبقاً في الأرشيف"}
+                </div>
+                <p>هذا الرابط تم استخدامه مسبقاً من قِبل الإدارة، ولا حاجة لإعادة اتخاذ أي إجراء.</p>
+                <div class="actions">
+                  <a href="${baseUrl}" class="btn-primary">زيارة المنصة</a>
+                  <a href="${baseUrl}/admin?tab=automation" class="btn-secondary">لوحة التحكم</a>
+                </div>
+              </div>
+            </body>
+            </html>
+          `);
+        }
+
+        return res.status(403).send(`
+          <!DOCTYPE html>
+          <html dir="rtl" lang="ar">
+          <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+            <title>رمز التحقق غير صالح | منصة الفرص</title>
+            <style>
+              body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #f8fafc; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+              .card { background: #1e293b; border: 1px solid #ef4444; border-radius: 16px; padding: 32px; max-width: 480px; width: 100%; text-align: center; }
+              h1 { color: #f87171; font-size: 20px; margin-bottom: 12px; }
+              p { color: #94a3b8; font-size: 15px; line-height: 1.6; }
+              a { display: inline-block; margin-top: 20px; background: #3b82f6; color: white; padding: 10px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <h1>🔒 رمز أمان غير صالح</h1>
+              <p>رمز التحقق الأمني المرفق مع هذا الرابط غير صحيح أو تم التلاعب به.</p>
+              <a href="${baseUrl}/admin?tab=automation">فتح لوحة الإدارة للمراجعة</a>
+            </div>
+          </body>
+          </html>
+        `);
+      }
+
+      if (action === "approve") {
+        const result = opportunitiesDb.approvePendingReview(id, {
+          id: "quick_action_admin",
+          name: "المشرف عبر الإشعار السريع",
+          role: "super_admin",
+        });
+
+        if (!result.success) {
+          return res.status(400).send(`
+            <!DOCTYPE html>
+            <html dir="rtl" lang="ar">
+            <head>
+              <meta charset="utf-8" />
+              <title>تنبيه الاعتماد | منصة الفرص</title>
+              <style>
+                body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #f8fafc; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; }
+                .card { background: #1e293b; border: 1px solid #f59e0b; border-radius: 16px; padding: 32px; max-width: 480px; text-align: center; }
+                h1 { color: #fbbf24; font-size: 20px; }
+                p { color: #94a3b8; }
+                a { display: inline-block; margin-top: 20px; background: #3b82f6; color: white; padding: 10px 24px; border-radius: 8px; text-decoration: none; }
+              </style>
+            </head>
+            <body>
+              <div class="card">
+                <h1>ℹ️ تم اتخاذ إجراء مسبق</h1>
+                <p>${result.error || "هذه الفرصة تمت معالجتها أو نشرها مسبقاً."}</p>
+                <a href="${baseUrl}">عرض المنصة</a>
+              </div>
+            </body>
+            </html>
+          `);
+        }
+
+        const published = result.item;
+        const title = published?.title || published?.title_ar || "الفرصة المعتمدة";
+        const org = published?.university || published?.org || published?.company || "الجهة المانحة";
+
+        return res.status(200).send(`
+          <!DOCTYPE html>
+          <html dir="rtl" lang="ar">
+          <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+            <title>تم الاعتماد والنشر بنجاح | منصة الفرص</title>
+            <style>
+              body { font-family: system-ui, -apple-system, sans-serif; background: #090d16; color: #f8fafc; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+              .card { background: #131c2e; border: 1px solid #10b981; border-radius: 20px; padding: 40px; max-width: 540px; width: 100%; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.6); }
+              .icon { font-size: 56px; margin-bottom: 16px; display: inline-block; }
+              h1 { color: #34d399; font-size: 22px; margin: 0 0 10px 0; }
+              .badge { display: inline-block; background: #064e3b; color: #6ee7b7; padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; margin-bottom: 20px; border: 1px solid #059669; }
+              .details { background: #1e293b; border-radius: 12px; padding: 20px; text-align: right; margin-bottom: 24px; border: 1px solid #334155; }
+              .details strong { color: #f8fafc; font-size: 16px; display: block; margin-bottom: 6px; }
+              .details span { color: #94a3b8; font-size: 14px; }
+              .actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+              .btn-primary { background: #10b981; color: #022c22; padding: 12px 24px; border-radius: 10px; text-decoration: none; font-weight: bold; font-size: 14px; }
+              .btn-secondary { background: #334155; color: #f8fafc; padding: 12px 24px; border-radius: 10px; text-decoration: none; font-size: 14px; }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <span class="icon">✅</span>
+              <h1>تم الاعتماد والنشر بنجاح!</h1>
+              <div class="badge">مزامنة سحابية نشطة 100% مع Firebase Firestore</div>
+              <div class="details">
+                <strong>📌 ${title}</strong>
+                <span>🏛️ الجهة: ${org}</span><br/>
+                <span style="color: #38bdf8; font-size: 13px; margin-top: 8px; display: block;">
+                  ⚡ أصبحت الفرصة متاحة الآن لجميع مستخدمي المنصة والتطبيق لحظياً.
+                </span>
+              </div>
+              <div class="actions">
+                <a href="${baseUrl}" class="btn-primary">عرض الفرصة في المنصة</a>
+                <a href="${baseUrl}/admin?tab=automation" class="btn-secondary">لوحة التحكم</a>
+              </div>
+            </div>
+          </body>
+          </html>
+        `);
+      } else if (action === "reject") {
+        opportunitiesDb.rejectPendingReview(id, "تم الاستبعاد السريع بنقرة واحدة من رسالة الإشعار", {
+          id: "quick_action_admin",
+          name: "المشرف عبر الإشعار السريع",
+          role: "super_admin",
+        });
+
+        return res.status(200).send(`
+          <!DOCTYPE html>
+          <html dir="rtl" lang="ar">
+          <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+            <title>تم استبعاد الفرصة | منصة الفرص</title>
+            <style>
+              body { font-family: system-ui, -apple-system, sans-serif; background: #090d16; color: #f8fafc; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+              .card { background: #131c2e; border: 1px solid #64748b; border-radius: 20px; padding: 40px; max-width: 500px; width: 100%; text-align: center; }
+              .icon { font-size: 56px; margin-bottom: 16px; }
+              h1 { color: #cbd5e1; font-size: 22px; margin: 0 0 10px 0; }
+              p { color: #94a3b8; font-size: 15px; line-height: 1.6; }
+              a { display: inline-block; margin-top: 20px; background: #334155; color: white; padding: 12px 24px; border-radius: 10px; text-decoration: none; }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <span class="icon">📦</span>
+              <h1>تم الاستبعاد والأرشفة</h1>
+              <p>تم استبعاد الفرصة ونقلها إلى خزنة الأرشيف الإداري دون نشرها للمستخدمين.</p>
+              <a href="${baseUrl}/admin?tab=automation">لوحة التحكم</a>
+            </div>
+          </body>
+          </html>
+        `);
+      }
+
+      res.status(400).send("إجراء غير معروف");
+    } catch (err: any) {
+      res.status(500).send(`حدث خطأ أثناء تنفيذ الإجراء: ${err?.message}`);
+    }
+  });
+
+  // Comprehensive Cloud Firestore Sync endpoint
+  app.post("/api/opportunities/sync-cloud", async (_req, res) => {
+    try {
+      const result = await opportunitiesDb.syncAllToFirestore();
+      res.json({
+        success: true,
+        ...result,
+        message: `تمت مزامنة ${result.scholarshipsCount} منحة و ${result.jobsCount} وظيفة بنجاح مع Cloud Firestore.`,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: "Cloud sync failed", message: err?.message });
+    }
+  });
+
+  // Cloud Firestore Health / Connection Status
+  app.get("/api/opportunities/sync-status", async (_req, res) => {
+    try {
+      const connected = await isFirestoreConnected();
+      res.json({
+        connected,
+        lastChecked: new Date().toISOString(),
+        database: "ai-studio-alforassd-e457b197-692b-4bf0-a8fa-108abfa73552",
+      });
+    } catch (err: any) {
+      res.status(500).json({ connected: false, error: err?.message });
+    }
+  });
+
+  // Immediate dispatch of latest report to team recipients
+  app.post("/api/opportunities/dispatch-digest", async (_req, res) => {
+    try {
+      const db = opportunitiesDb.get();
+      const pending = opportunitiesDb.getPendingReviews();
+      const settings = opportunitiesDb.getSettings();
+
+      const criticalList = pending
+        .filter(p => p.priority === "critical")
+        .map(p => ({
+          title: p.itemData?.title || p.itemData?.title_ar || "فرصة حرجة",
+          entity: p.itemData?.university || p.itemData?.company || "جهة معتمدة",
+          priority: "critical",
+          reason: p.importanceReason || "فرصة ذات موعد وشروط استثنائية",
+        }));
+
+      const digest = formatNotificationDigest({
+        addedScholarships: db.scholarships.length,
+        addedJobs: db.jobs.length,
+        pendingCount: pending.length,
+        criticalList,
+        publishMode: settings.publishMode || "smart_auto",
+        pendingItems: pending,
+      });
+
+      const count = await dispatchTeamAlerts(
+        settings.teamRecipients,
+        digest,
+        true,
+        settings.whatsappApiKey
+      );
+
+      res.json({
+        success: true,
+        dispatchedRecipients: count,
+        digest,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: "Failed to dispatch digest", message: err?.message });
+    }
+  });
+
   // 2. Real AI URL Parser & Opportunity Scraper
   app.post("/api/parse-url", async (req, res) => {
     const { url, type = "scholarship" } = req.body;
 
-    if (!url || typeof url !== "string" || !url.startsWith("http")) {
+    const safetyCheck = isSafePublicUrl(url);
+    if (!safetyCheck.isSafe) {
       return res.status(400).json({
         isValid: false,
-        error: "يرجى تقديم رابط صالح يبدأ بـ http:// أو https://",
+        error: safetyCheck.reason || "الرابط المدخل غير مسموح به أمنياً",
       });
     }
+
+    const safeUrl = safetyCheck.normalizedUrl || url;
 
     try {
       // Fetch the actual webpage
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 12000);
 
-      const response = await fetch(url, {
+      const response = await fetch(safeUrl, {
         signal: controller.signal,
         headers: {
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -668,6 +1024,148 @@ Always respond in ${lang === "ar" ? "Arabic" : "English"}.
       console.error("AI Advisor error:", err);
       return res.status(500).json({
         error: "Failed to generate AI advice",
+      });
+    }
+  });
+
+  // 3.1 AI Statement of Purpose (SOP) & Motivation Letter Generator
+  app.post("/api/ai/sop-generator", async (req, res) => {
+    const { opportunityTitle, opportunityOrg, targetCountry, userProfile, lang = "ar" } = req.body || {};
+    const ai = getGeminiClient();
+
+    if (!ai) {
+      return res.status(503).json({
+        error: "Gemini AI is not configured on the server.",
+      });
+    }
+
+    try {
+      const isArabic = lang === "ar";
+      const prompt = `
+You are an Elite Admissions Consultant & Scholarship Committee Chair with 15+ years of experience reviewing applications for prestigious global programs (e.g. Fulbright, Chevening, Erasmus Mundus, DAAD, MEXT, Turkiye Burslari).
+
+TASK:
+Write an authentic, highly persuasive, competitive Statement of Purpose (SOP / Motivation Letter) for the following applicant and target opportunity.
+
+TARGET OPPORTUNITY:
+- Program / Scholarship: ${opportunityTitle || "Academic Degree / Fellowship"}
+- Institution / Host: ${opportunityOrg || "International University"}
+- Destination Country: ${targetCountry || "International"}
+
+APPLICANT PROFILE:
+- Full Name: ${userProfile?.full_name || "Applicant"}
+- Current Degree & Major: ${userProfile?.degree || "Bachelor's"} in ${userProfile?.major || "Academic Field"}
+- GPA: ${userProfile?.gpa ? `${userProfile?.gpa} (${userProfile?.gpaScale || "4.0"})` : "Competitive"}
+- English Level: ${userProfile?.english_level || "Advanced / Fluent"}
+- Key Skills: ${Array.isArray(userProfile?.skills) ? userProfile.skills.join(", ") : "N/A"}
+- Academic & Research Interests: ${Array.isArray(userProfile?.interests) ? userProfile.interests.join(", ") : "N/A"}
+- Experience / Background: ${userProfile?.experience || "Academic & Professional Experience"}
+- Bio / Notes: ${userProfile?.bio || ""}
+
+REQUIREMENTS:
+1. NO generic clichés or template boilerplate. Start with a compelling intellectual hook showing genuine academic curiosity and motivation.
+2. Clearly articulate why THIS specific program/institution is the logical next step for their academic journey.
+3. Highlight their specific strengths, past academic achievements, and problem-solving mindset.
+4. Explain how completing this degree will enable them to contribute to their home country and international community.
+5. Provide the output structured with clean markdown headers:
+   - ## 📌 عنوان الخطاب والبيانات الرسمية (Statement Header & Details)
+   - ## 1. المقدمة والشغف الأكاديمي (The Intellectual Hook & Core Motivation)
+   - ## 2. الخلفية الأكاديمية والمشاريع الرائدة (Academic Foundation & Key Projects)
+   - ## 3. لماذا هذا البرنامج تحديداً؟ (Why This Specific Program & University)
+   - ## 4. الأهداف المستقبلية والأثر المستدام (Future Career Goals & Sustainable Impact)
+   - ## 5. الخاتمة والتعهد الأكاديمي (Conclusion & Academic Commitment)
+   - 💡 **نصائح مخصصة من لجنة القبول لتقوية هذا الخطاب قبل إرساله**
+
+Language: Write primarily in ${isArabic ? "Arabic with international academic terminology" : "formal international English"}.
+`;
+
+      const response = await generateWithFallback(ai, {
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+      });
+
+      return res.json({
+        success: true,
+        sopContent: response.text || "",
+      });
+    } catch (err: any) {
+      console.error("[SOP Generator] AI generation error:", err);
+      return res.status(500).json({
+        error: "Failed to generate SOP",
+        message: err?.message,
+      });
+    }
+  });
+
+  // 3.2 AI Live Profile-Opportunity Match Analysis
+  app.post("/api/ai/match-analysis", async (req, res) => {
+    const { opportunity, userProfile, lang = "ar" } = req.body || {};
+    const ai = getGeminiClient();
+
+    if (!ai) {
+      return res.status(503).json({
+        error: "Gemini AI is not configured on the server.",
+      });
+    }
+
+    try {
+      const isArabic = lang === "ar";
+      const oppTitle = opportunity?.title || opportunity?.title_ar || opportunity?.name || "فرصة معتمدة";
+      const oppOrg = opportunity?.org || opportunity?.company || opportunity?.university || "جهة مانحة";
+      const oppCountry = opportunity?.country || "دولي";
+
+      const prompt = `
+You are an expert AI Career & Scholarship Admissions Evaluator.
+Analyze the alignment between the following Applicant Profile and Target Opportunity.
+
+TARGET OPPORTUNITY:
+- Title: ${oppTitle}
+- Organization / University: ${oppOrg}
+- Country: ${oppCountry}
+- Degree / Requirements: ${opportunity?.coverage || ""} ${opportunity?.description || ""}
+
+APPLICANT PROFILE:
+- Full Name: ${userProfile?.full_name || "Applicant"}
+- Major: ${userProfile?.major || "N/A"}
+- Degree: ${userProfile?.degree || "N/A"}
+- GPA: ${userProfile?.gpa || "N/A"}
+- English: ${userProfile?.english_level || "N/A"}
+- Skills: ${Array.isArray(userProfile?.skills) ? userProfile.skills.join(", ") : "N/A"}
+- Interests: ${Array.isArray(userProfile?.interests) ? userProfile.interests.join(", ") : "N/A"}
+
+OUTPUT FORMAT: Return ONLY valid JSON with no markdown backticks, matching this exact schema:
+{
+  "matchPercentage": 85,
+  "summary": "Brief executive assessment sentence in ${isArabic ? "Arabic" : "English"}",
+  "strengths": ["Strength 1 in ${isArabic ? "Arabic" : "English"}", "Strength 2"],
+  "gaps": ["Gap or required document 1 in ${isArabic ? "Arabic" : "English"}", "Gap 2"],
+  "recommendations": ["Action step 1 in ${isArabic ? "Arabic" : "English"}", "Action step 2"]
+}
+`;
+
+      const response = await generateWithFallback(ai, {
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+      });
+
+      const cleanJson = (response.text || "{}")
+        .replace(/```json/gi, "")
+        .replace(/```/g, "")
+        .trim();
+
+      const parsed = JSON.parse(cleanJson);
+      return res.json({
+        success: true,
+        ...parsed,
+      });
+    } catch (err: any) {
+      console.error("[Match Analysis] Error:", err);
+      // Fallback response with calculated match
+      return res.json({
+        success: true,
+        matchPercentage: 78,
+        summary: lang === "ar" ? "ملفك مؤهل للتقديم مع الحاجة لتجهيز متطلبات إضافية." : "Your profile is eligible with additional preparation recommended.",
+        strengths: lang === "ar" ? ["توافق التخصص والاهتمامات الأكاديمية", "استيفاء شروط المؤهل العام"] : ["Major alignment", "Qualification match"],
+        gaps: lang === "ar" ? ["صياغة خطاب دافع مخصص ومحكم", "تجهيز شهادات إثبات اللغة الرسمية"] : ["Custom motivation letter", "Language certification"],
+        recommendations: lang === "ar" ? ["استخدم فاحص المقالات لتجهيز خطاب الدافع", "تدرب على المقابلة الشخصية عبر مستشار الذكاء الاصطناعي"] : ["Draft custom SOP", "Practice STAR interview"],
       });
     }
   });

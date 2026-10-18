@@ -19,6 +19,13 @@ export interface AppUser {
   avatarUrl?: string | null;
   isGuest: boolean;
   role?: "user" | "admin";
+  bio?: string;
+  education?: string;
+  location?: string;
+  phone?: string;
+  skills?: string[];
+  interests?: string[];
+  updatedAt?: string;
 }
 
 interface AuthCtx {
@@ -26,9 +33,11 @@ interface AuthCtx {
   firebaseUser: FirebaseUser | null;
   loading: boolean;
   isGuest: boolean;
+  isCloudSynced: boolean;
   signInWithGoogle: () => Promise<{ success: boolean; error?: string }>;
   signInWithEmail: (email: string, pass: string) => Promise<{ success: boolean; error?: string }>;
   signUpWithEmail: (email: string, pass: string, name: string) => Promise<{ success: boolean; error?: string }>;
+  updateUserProfile: (data: Partial<AppUser> & Record<string, any>) => Promise<boolean>;
   signOut: () => Promise<void>;
 }
 
@@ -37,9 +46,11 @@ const Ctx = createContext<AuthCtx>({
   firebaseUser: null,
   loading: true,
   isGuest: true,
+  isCloudSynced: false,
   signInWithGoogle: async () => ({ success: false }),
   signInWithEmail: async () => ({ success: false }),
   signUpWithEmail: async () => ({ success: false }),
+  updateUserProfile: async () => false,
   signOut: async () => {},
 });
 
@@ -64,51 +75,173 @@ const buildGuestAppUser = (): AppUser => {
   };
 };
 
+/**
+ * Migrates local guest data into user's authenticated Cloud Firestore account
+ */
+async function migrateGuestDataToCloud(uid: string): Promise<void> {
+  if (typeof window === "undefined" || !uid) return;
+  try {
+    const { guestStorage } = await import("@/lib/guestStorage");
+    const { applicationsStore } = await import("@/lib/applicationsStorage");
+    const { jobsStore } = await import("@/lib/jobsStorage");
+    const { universitiesStore } = await import("@/lib/universitiesStorage");
+
+    // 1. Migrate applications
+    const apps = applicationsStore.all();
+    if (apps.length > 0) {
+      await Promise.all(
+        apps.map((app) =>
+          setDoc(doc(db, "users", uid, "applications", app.id), app, { merge: true }).catch(() => {})
+        )
+      );
+    }
+
+    // 2. Migrate saved jobs
+    const jobs = jobsStore.savedIds();
+    if (jobs.length > 0) {
+      await Promise.all(
+        jobs.map((jobId) =>
+          setDoc(
+            doc(db, "users", uid, "saved_jobs", jobId),
+            { id: jobId, savedAt: new Date().toISOString() },
+            { merge: true }
+          ).catch(() => {})
+        )
+      );
+    }
+
+    // 3. Migrate saved universities
+    const unis = universitiesStore.savedIds();
+    const metaMap = universitiesStore.getMetadataMap();
+    if (unis.length > 0) {
+      await Promise.all(
+        unis.map((uniId) => {
+          const meta = metaMap[uniId] || {};
+          return setDoc(
+            doc(db, "users", uid, "saved_universities", uniId),
+            { id: uniId, ...meta, savedAt: meta.savedAt || new Date().toISOString() },
+            { merge: true }
+          ).catch(() => {});
+        })
+      );
+    }
+
+    // 4. Migrate local guest profile & extras if present
+    const localProfile = guestStorage.get<any>("profile", null);
+    const localExtras = guestStorage.get<any>("foras_profile_extras_v1", null);
+    if (localProfile || localExtras) {
+      await setDoc(
+        doc(db, "users", uid),
+        {
+          ...(localProfile || {}),
+          profile_extras: localExtras || {},
+          migrated_from_guest: true,
+          updated_at: new Date().toISOString(),
+        },
+        { merge: true }
+      ).catch(() => {});
+    }
+  } catch (err) {
+    console.warn("Guest data migration notice:", err);
+  }
+}
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isCloudSynced, setIsCloudSynced] = useState(false);
 
   useEffect(() => {
     // Test initial connection silently on boot
     testFirebaseConnection().catch(() => {});
 
-    // Listen to Firebase auth state
-    const unsubscribe = onAuthStateChanged(auth, async (fUser) => {
-      setFirebaseUser(fUser);
-      if (fUser) {
-        // Authenticated user
-        let userDocData: any = null;
-        try {
-          const snap = await getDoc(doc(db, "users", fUser.uid));
-          if (snap.exists()) {
-            userDocData = snap.data();
-          }
-        } catch {
-          // offline fallback
-        }
+    let profileDocUnsub: (() => void) | null = null;
 
-        const appUser: AppUser = {
-          id: fUser.uid,
-          email: fUser.email,
-          fullName: userDocData?.full_name || fUser.displayName || fUser.email?.split("@")[0] || "مستخدم",
-          avatarUrl: userDocData?.avatar_url || fUser.photoURL || null,
-          isGuest: false,
-          role:
-            (fUser.email === "alforas.one@gmail.com" || fUser.email === "mohsentiben@gmail.com")
-              ? "admin"
-              : (userDocData?.role || "user"),
-        };
-        setUser(appUser);
+    // Listen to Firebase auth state
+    const unsubscribeAuth = onAuthStateChanged(auth, async (fUser) => {
+      setFirebaseUser(fUser);
+
+      // Clean up previous profile doc listener
+      if (profileDocUnsub) {
+        profileDocUnsub();
+        profileDocUnsub = null;
+      }
+
+      if (fUser) {
+        // Authenticated user: Setup real-time listener for their profile doc
+        const { onSnapshot } = await import("firebase/firestore");
+
+        profileDocUnsub = onSnapshot(
+          doc(db, "users", fUser.uid),
+          (snap) => {
+            const userDocData = snap.data();
+            const isAdminEmail =
+              fUser.email === "alforas.one@gmail.com" || fUser.email === "mohsentiben@gmail.com";
+
+            const appUser: AppUser = {
+              id: fUser.uid,
+              email: fUser.email,
+              fullName: userDocData?.full_name || userDocData?.fullName || fUser.displayName || fUser.email?.split("@")[0] || "مستخدم",
+              avatarUrl: userDocData?.avatar_url || userDocData?.avatarUrl || fUser.photoURL || null,
+              isGuest: false,
+              role: isAdminEmail ? "admin" : (userDocData?.role || "user"),
+              bio: userDocData?.bio || "",
+              education: userDocData?.education || "",
+              location: userDocData?.location || "",
+              phone: userDocData?.phone || "",
+              skills: userDocData?.skills || [],
+              interests: userDocData?.interests || [],
+              updatedAt: userDocData?.updated_at || userDocData?.updatedAt,
+            };
+
+            setUser(appUser);
+            setIsCloudSynced(true);
+            setLoading(false);
+
+            if (userDocData?.profile_extras) {
+              import("@/lib/profileExtras").then(({ profileExtras }) => {
+                profileExtras.save(userDocData.profile_extras).catch(() => {});
+              });
+            }
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new CustomEvent("foras:profile-updated", { detail: { userDocData } }));
+            }
+          },
+          (err) => {
+            console.info("Firestore profile listener note:", err);
+            // Fallback user state if listener errors
+            setUser({
+              id: fUser.uid,
+              email: fUser.email,
+              fullName: fUser.displayName || fUser.email?.split("@")[0] || "مستخدم",
+              avatarUrl: fUser.photoURL || null,
+              isGuest: false,
+              role:
+                (fUser.email === "alforas.one@gmail.com" || fUser.email === "mohsentiben@gmail.com")
+                  ? "admin"
+                  : "user",
+            });
+            setIsCloudSynced(false);
+            setLoading(false);
+          }
+        );
+
+        // Perform guest migration asynchronously
+        migrateGuestDataToCloud(fUser.uid);
       } else {
         // Guest mode fallback
         const guest = buildGuestAppUser();
         setUser(guest);
+        setIsCloudSynced(false);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribeAuth();
+      if (profileDocUnsub) profileDocUnsub();
+    };
   }, []);
 
   const signInWithGoogle = async () => {
@@ -174,6 +307,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const updateUserProfile = async (data: Partial<AppUser> & Record<string, any>): Promise<boolean> => {
+    if (!firebaseUser) return false;
+    try {
+      const payload = {
+        ...data,
+        updated_at: new Date().toISOString(),
+      };
+      await setDoc(doc(db, "users", firebaseUser.uid), payload, { merge: true });
+      return true;
+    } catch (err) {
+      console.warn("Failed to update user profile in Firestore:", err);
+      return false;
+    }
+  };
+
   const signOut = async () => {
     try {
       await firebaseSignOut(auth);
@@ -192,9 +340,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         firebaseUser,
         loading,
         isGuest: !firebaseUser,
+        isCloudSynced,
         signInWithGoogle,
         signInWithEmail,
         signUpWithEmail,
+        updateUserProfile,
         signOut,
       }}
     >

@@ -103,6 +103,36 @@ export const useLiveNotifications = () => {
     return () => window.removeEventListener("foras:data-updated", onDataUpdated as EventListener);
   }, [lang]);
 
+  // Real-time Cloud Broadcast Notification Listener
+  useEffect(() => {
+    const onCloudNotification = (e: Event) => {
+      const notif = (e as CustomEvent).detail?.notif;
+      if (!notif) return;
+
+      const title = lang === "ar" ? notif.title : notif.titleEn || notif.title;
+      const body = lang === "ar" ? notif.body : notif.bodyEn || notif.body;
+
+      toast.info(title, {
+        description: body,
+        action: notif.actionTab
+          ? {
+              label: lang === "ar" ? "عرض" : "View",
+              onClick: () => {
+                window.dispatchEvent(
+                  new CustomEvent("foras:navigate", {
+                    detail: { tab: notif.actionTab },
+                  })
+                );
+              },
+            }
+          : undefined,
+      });
+    };
+
+    window.addEventListener("foras:new-cloud-notification", onCloudNotification as EventListener);
+    return () => window.removeEventListener("foras:new-cloud-notification", onCloudNotification as EventListener);
+  }, [lang]);
+
   // Real Application Deadline Reminder: Checks user's actual saved applications
   useEffect(() => {
     if (checkedDeadlines.current) return;

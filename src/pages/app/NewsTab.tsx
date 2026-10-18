@@ -7,6 +7,7 @@ import { useNewsFeed, FeedItem, formatNewsTime } from "@/hooks/useNewsFeed";
 import { findCountryByCode } from "@/lib/countries";
 import { InAppBrowser } from "@/components/foras/InAppBrowser";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const catsDef = [
   { id: "all"    as const, key: "catAll",    icon: Newspaper },
@@ -87,20 +88,36 @@ export const NewsTab = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {filtered.slice(0, 60).map((item, i) => (
-          <NewsCard
-            key={item.id}
-            item={item}
-            index={i}
-            textOnly={textOnly}
-            onOpen={() => open(item)}
-            isRtl={isRtl}
-            openLabel={t("openSource")}
-            lang={lang}
-          />
-        ))}
-      </div>
+      {loading && filtered.length === 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="bg-card-gradient border border-border rounded-2xl overflow-hidden p-4 space-y-3">
+              <Skeleton className="aspect-[16/10] w-full rounded-xl" />
+              <div className="flex gap-2">
+                <Skeleton className="h-4 w-20 rounded-md" />
+                <Skeleton className="h-4 w-16 rounded-md" />
+              </div>
+              <Skeleton className="h-5 w-full rounded-md" />
+              <Skeleton className="h-4 w-3/4 rounded-md" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {filtered.slice(0, 60).map((item, i) => (
+            <NewsCard
+              key={item.id}
+              item={item}
+              index={i}
+              textOnly={textOnly}
+              onOpen={() => open(item)}
+              isRtl={isRtl}
+              openLabel={t("openSource")}
+              lang={lang}
+            />
+          ))}
+        </div>
+      )}
 
       <InAppBrowser url={browserUrl} title={browserTitle} onClose={() => setBrowserUrl(null)} />
     </div>

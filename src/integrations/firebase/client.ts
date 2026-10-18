@@ -1,7 +1,14 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, setLogLevel } from "firebase/firestore";
 import firebaseConfig from "../../../firebase-applet-config.json";
+
+// Set Firestore log level to error to quiet routine stream reconnection notices
+try {
+  setLogLevel("error");
+} catch {
+  // Silent fallback
+}
 
 // Initialize Firebase App
 export const firebaseApp = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);

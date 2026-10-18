@@ -6,7 +6,7 @@ import {
   BookOpen, HelpCircle, ChevronDown, ChevronUp, MapPin, Building2,
   TrendingUp, Wallet, Check, AlertCircle, Share2, Layers, RefreshCw,
   ShieldCheck, Info, FileText, CreditCard, Smartphone, Zap, ArrowUpRight,
-  Download, QrCode, Shield, CheckCircle, Copy
+  Download, QrCode, Shield, CheckCircle, Copy, WifiOff, Bookmark
 } from "lucide-react";
 import { JOBS, JOB_CATEGORIES, REGIONS_LIST, Job, JobCategory, JobRegion } from "@/lib/jobsData";
 import {
@@ -16,6 +16,9 @@ import {
   PaymentCategory
 } from "@/lib/paymentMethodsData";
 import { dynamicStore } from "@/lib/dynamicStore";
+import { jobsStore } from "@/lib/jobsStorage";
+import { toast } from "sonner";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -24,9 +27,11 @@ import { nativeShare } from "@/lib/share";
 import { OpportunityAICopilot } from "@/components/foras/OpportunityAICopilot";
 import { SmartPayoutRoadmapBanner } from "@/components/foras/SmartPayoutRoadmapBanner";
 import { SmartCurrencyPayoutWidget } from "@/components/foras/SmartCurrencyPayoutWidget";
+import { OpportunitySkeleton } from "@/components/foras/OpportunitySkeleton";
 
 export const JobsTab = () => {
   const { t, lang, dir } = useLanguage();
+  const { isOnline, isGlobalOfflineEnabled, isUserOfflineEnabled } = useNetworkStatus();
   const ar = lang === "ar";
   const isRtl = dir === "rtl";
   const alignClass = isRtl ? "text-right" : "text-left";
@@ -41,6 +46,17 @@ export const JobsTab = () => {
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [eligibilityModalJob, setEligibilityModalJob] = useState<Job | null>(null);
   const [activeTab, setActiveTab] = useState<"overview" | "guide" | "stories" | "payment">("overview");
+  const [savedJobIds, setSavedJobIds] = useState<string[]>(() => jobsStore.savedIds());
+  const [onlySaved, setOnlySaved] = useState(false);
+
+  // Reactive listener for Cloud Firestore saved jobs updates
+  useEffect(() => {
+    const handleSavedUpdated = () => {
+      setSavedJobIds(jobsStore.savedIds());
+    };
+    window.addEventListener("foras:jobs-saved-updated", handleSavedUpdated);
+    return () => window.removeEventListener("foras:jobs-saved-updated", handleSavedUpdated);
+  }, []);
 
   // Payments section filters and state
   const [selectedPaymentCat, setSelectedPaymentCat] = useState<PaymentCategory>("all");
@@ -179,6 +195,9 @@ export const JobsTab = () => {
   const filteredJobs = useMemo(() => {
     return liveJobs.filter((job) => {
       if (!job) return false;
+      if (onlySaved && !savedJobIds.includes(job.id)) {
+        return false;
+      }
       if (selectedCategory !== "all" && job.category !== selectedCategory) {
         return false;
       }
@@ -198,7 +217,7 @@ export const JobsTab = () => {
       }
       return true;
     });
-  }, [selectedCategory, selectedRegion, searchQuery, liveJobs]);
+  }, [selectedCategory, selectedRegion, searchQuery, liveJobs, onlySaved, savedJobIds]);
 
   // Filtered payment methods list
   const filteredPaymentMethods = useMemo(() => {
@@ -335,6 +354,19 @@ export const JobsTab = () => {
 
           {/* Category Pills Filter */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+            {/* Quick Saved Filter Pill */}
+            <button
+              onClick={() => setOnlySaved(!onlySaved)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all border flex items-center gap-1.5 ${
+                onlySaved
+                  ? "bg-primary text-primary-foreground border-primary/50 shadow-gold scale-[1.02]"
+                  : "bg-card/70 border-border/80 text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-card"
+              }`}
+            >
+              <Bookmark className={`w-3.5 h-3.5 ${onlySaved ? "fill-current" : ""}`} />
+              <span>{ar ? `المحفوظة (${savedJobIds.length})` : `Saved (${savedJobIds.length})`}</span>
+            </button>
+
             {JOB_CATEGORIES.map((cat) => {
               const active = selectedCategory === cat.id;
               return (
@@ -356,17 +388,45 @@ export const JobsTab = () => {
 
           {/* Platform Count Header */}
           <div className="flex items-center justify-between px-1 text-xs text-muted-foreground font-semibold">
-            <span className="flex items-center gap-1">
-              <Sparkles className="w-3.5 h-3.5 text-primary" />
-              {ar ? `تم العثور على ${filteredJobs.length} منصة وفرصة عمل حر` : `Found ${filteredJobs.length} freelance platforms`}
+            <span className="flex items-center gap-1.5 flex-wrap">
+              <Sparkles className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+              <span>{ar ? `تم العثور على ${filteredJobs.length} منصة وفرصة عمل حر` : `Found ${filteredJobs.length} freelance platforms`}</span>
+              {!isOnline && (
+                <span
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                    !isGlobalOfflineEnabled
+                      ? "bg-rose-500/15 text-rose-300 border-rose-500/30"
+                      : !isUserOfflineEnabled
+                      ? "bg-slate-700/50 text-slate-300 border-slate-600"
+                      : "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                  }`}
+                >
+                  <WifiOff className="w-2.5 h-2.5" />
+                  <span>
+                    {!isGlobalOfflineEnabled
+                      ? ar
+                        ? "معطل إدارياً"
+                        : "Admin Locked"
+                      : !isUserOfflineEnabled
+                      ? ar
+                        ? "الأوفلاين موقوف"
+                        : "Offline Paused"
+                      : ar
+                      ? "مخزنة دون اتصال"
+                      : "Cached Offline"}
+                  </span>
+                </span>
+              )}
             </span>
-            <span className="text-[11px] text-primary/80 font-normal">
+            <span className="text-[11px] text-primary/80 font-normal hidden sm:inline">
               {ar ? "مرتبة وفق الأولوية الدقيقة (القمة العالمية ثم الريادة العربية)" : "Ranked by Global Giants & Arab Leaders"}
             </span>
           </div>
 
           {/* Platforms Grid */}
-          {filteredJobs.length === 0 ? (
+          {liveJobs.length === 0 ? (
+            <OpportunitySkeleton count={4} viewMode="card" />
+          ) : filteredJobs.length === 0 ? (
             <div className="py-12 text-center rounded-2xl border border-dashed border-border bg-card/40 p-8 space-y-3">
               <Briefcase className="w-10 h-10 text-muted-foreground/60 mx-auto" />
               <h4 className="font-bold text-foreground text-sm">
@@ -420,11 +480,38 @@ export const JobsTab = () => {
                           <p className="text-xs text-primary font-semibold">{type}</p>
                         </div>
                       </div>
-                      {region && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-muted/60 text-muted-foreground border border-border">
-                          {region}
-                        </span>
-                      )}
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {region && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-muted/60 text-muted-foreground border border-border">
+                            {region}
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const isNowSaved = jobsStore.toggle(job.id);
+                            setSavedJobIds(jobsStore.savedIds());
+                            toast.success(
+                              isNowSaved
+                                ? (ar ? "تم حفظ المنصة في المفضلة ومزامنتها سحابياً" : "Platform saved & synced to cloud")
+                                : (ar ? "تمت إزالة المنصة من المحفوظات" : "Platform removed from saved")
+                            );
+                          }}
+                          className={`p-1.5 rounded-lg border transition-all ${
+                            savedJobIds.includes(job.id)
+                              ? "bg-primary/15 border-primary/40 text-primary"
+                              : "bg-card/50 border-border text-muted-foreground hover:text-foreground hover:border-primary/30"
+                          }`}
+                          title={ar ? "حفظ ومزامنة سحابية" : "Save & Sync"}
+                        >
+                          <Bookmark
+                            className={`w-3.5 h-3.5 ${
+                              savedJobIds.includes(job.id) ? "fill-primary text-primary" : ""
+                            }`}
+                          />
+                        </button>
+                      </div>
                     </div>
 
                     <h4 className="font-bold text-sm text-foreground/90 leading-snug line-clamp-1 mb-1.5">
@@ -710,15 +797,39 @@ export const JobsTab = () => {
                     </div>
                   </div>
 
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => shareJob(selectedJob)}
-                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                    title={ar ? "مشاركة" : "Share"}
-                  >
-                    <Share2 className="w-4 h-4" />
-                  </Button>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        const isNowSaved = jobsStore.toggle(selectedJob.id);
+                        setSavedJobIds(jobsStore.savedIds());
+                        toast.success(
+                          isNowSaved
+                            ? (ar ? "تم حفظ المنصة في المفضلة ومزامنتها سحابياً" : "Platform saved & synced to cloud")
+                            : (ar ? "تمت إزالة المنصة من المحفوظات" : "Platform removed from saved")
+                        );
+                      }}
+                      className={`h-8 w-8 transition-colors ${
+                        savedJobIds.includes(selectedJob.id)
+                          ? "text-primary bg-primary/10"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                      title={ar ? "حفظ ومزامنة سحابية" : "Save & Cloud Sync"}
+                    >
+                      <Bookmark className={`w-4 h-4 ${savedJobIds.includes(selectedJob.id) ? "fill-primary" : ""}`} />
+                    </Button>
+
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => shareJob(selectedJob)}
+                      className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                      title={ar ? "مشاركة" : "Share"}
+                    >
+                      <Share2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               </SheetHeader>
 

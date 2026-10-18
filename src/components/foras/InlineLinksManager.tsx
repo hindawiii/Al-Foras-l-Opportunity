@@ -340,14 +340,14 @@ export const InlineLinksManager: React.FC<InlineLinksManagerProps> = ({
                                 ? activeEditingPlatformMeta.placeholderAr
                                 : activeEditingPlatformMeta.placeholderEn
                             }
-                            className="bg-background border-primary/40 focus:border-primary text-xs sm:text-sm font-mono h-11 px-3 pr-8 shadow-inner"
+                            className="bg-background border-primary/40 focus:border-primary text-xs sm:text-sm font-mono h-11 ps-3 pe-8 shadow-inner"
                             dir="ltr"
                           />
                           {editInputVal && (
                             <button
                               type="button"
                               onClick={() => setEditInputVal("")}
-                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs p-1"
+                              className="absolute end-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs p-1"
                               title={ar ? "مسح النص" : "Clear"}
                             >
                               ✕
@@ -365,7 +365,7 @@ export const InlineLinksManager: React.FC<InlineLinksManagerProps> = ({
                             className="h-11 px-3.5 text-xs border-border/80 hover:border-primary text-foreground flex-shrink-0"
                             title={ar ? "لصق من الحافظة" : "Paste from clipboard"}
                           >
-                            <Copy className="w-4 h-4 mr-1 text-primary" />
+                            <Copy className="w-4 h-4 me-1 text-primary" />
                             <span>{ar ? "لصق" : "Paste"}</span>
                           </Button>
 
@@ -376,7 +376,7 @@ export const InlineLinksManager: React.FC<InlineLinksManagerProps> = ({
                             onClick={handleCancelInPlaceEdit}
                             className="h-11 px-3.5 text-xs text-muted-foreground hover:text-foreground border border-border/60 hover:bg-muted/30 flex-shrink-0"
                           >
-                            <X className="w-4 h-4 mr-1" />
+                            <X className="w-4 h-4 me-1" />
                             <span>{ar ? "إلغاء" : "Cancel"}</span>
                           </Button>
 
@@ -387,7 +387,7 @@ export const InlineLinksManager: React.FC<InlineLinksManagerProps> = ({
                             onClick={() => handleSaveInPlace(link.id)}
                             className="h-11 px-5 text-xs font-bold shadow-gold flex-shrink-0"
                           >
-                            <Save className="w-4 h-4 mr-1.5" />
+                            <Save className="w-4 h-4 me-1.5" />
                             <span>{ar ? "حفظ التعديل" : "Save Link"}</span>
                           </Button>
                         </div>

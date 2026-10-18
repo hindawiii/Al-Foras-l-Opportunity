@@ -1,6 +1,15 @@
 import fs from "fs";
 import path from "path";
+import crypto from "crypto";
 import { GoogleGenAI } from "@google/genai";
+import {
+  syncScholarshipToFirestore,
+  syncJobToFirestore,
+  removeScholarshipFromFirestore,
+  removeJobFromFirestore,
+  archiveOpportunityInFirestore,
+  syncAllOpportunitiesToFirestore,
+} from "./firestoreSync";
 
 export interface ServerScholarship {
   id: string;
@@ -380,11 +389,21 @@ const DEFAULT_SETTINGS: AutomationSettings = {
   whatsappApiKey: "",
   teamRecipients: [
     {
-      id: "team_super_admin",
+      id: "team_super_admin_mohsen",
       name: "المشرف العام (محسن)",
       email: "mohsentiben@gmail.com",
-      whatsappPhone: "",
+      whatsappPhone: "+249900713251",
       role: "super_admin",
+      notifyOn: "all",
+      active: true,
+      addedAt: new Date().toISOString(),
+    },
+    {
+      id: "team_admin_alforas",
+      name: "إدارة المنصة الرسمية (Alforas)",
+      email: "alforas.one@gmail.com",
+      whatsappPhone: "+249900713251",
+      role: "admin",
       notifyOn: "all",
       active: true,
       addedAt: new Date().toISOString(),
@@ -421,11 +440,24 @@ function ensureDbExists(): OpportunitiesDatabase {
           ],
         },
       };
-      fs.writeFileSync(DB_FILE, JSON.stringify(initialDb, null, 2), "utf-8");
+      writeDbAtomically(initialDb);
       return initialDb;
     }
-    const raw = fs.readFileSync(DB_FILE, "utf-8");
-    const parsed: OpportunitiesDatabase = JSON.parse(raw);
+
+    let parsed: OpportunitiesDatabase;
+    try {
+      const raw = fs.readFileSync(DB_FILE, "utf-8");
+      parsed = JSON.parse(raw);
+    } catch (parseErr) {
+      console.error("[opportunitiesDb] Corruption detected in DB_FILE, attempting backup restoration:", parseErr);
+      const recovered = tryRecoverFromBackup();
+      if (recovered) {
+        parsed = recovered;
+        writeDbAtomically(parsed);
+      } else {
+        throw parseErr;
+      }
+    }
 
     // Merge seed data if empty & ensure fields exist
     let mutated = false;
@@ -449,9 +481,25 @@ function ensureDbExists(): OpportunitiesDatabase {
         parsed.settings.publishMode = "smart_auto";
         mutated = true;
       }
-      if (!Array.isArray(parsed.settings.teamRecipients)) {
+      if (!Array.isArray(parsed.settings.teamRecipients) || parsed.settings.teamRecipients.length < 2) {
         parsed.settings.teamRecipients = DEFAULT_SETTINGS.teamRecipients;
         mutated = true;
+      } else {
+        // Ensure both mohsentiben@gmail.com and alforas.one@gmail.com with +249900713251 are present
+        const hasMohsen = parsed.settings.teamRecipients.some(r => r.email === "mohsentiben@gmail.com");
+        const hasAlforas = parsed.settings.teamRecipients.some(r => r.email === "alforas.one@gmail.com");
+        if (!hasMohsen || !hasAlforas) {
+          parsed.settings.teamRecipients = DEFAULT_SETTINGS.teamRecipients;
+          mutated = true;
+        } else {
+          // Ensure phone is set to +249900713251
+          parsed.settings.teamRecipients.forEach(r => {
+            if (!r.whatsappPhone || r.whatsappPhone.length < 5) {
+              r.whatsappPhone = "+249900713251";
+              mutated = true;
+            }
+          });
+        }
       }
     }
     if (!Array.isArray(parsed.notifications)) {
@@ -459,7 +507,7 @@ function ensureDbExists(): OpportunitiesDatabase {
       mutated = true;
     }
     if (mutated) {
-      fs.writeFileSync(DB_FILE, JSON.stringify(parsed, null, 2), "utf-8");
+      writeDbAtomically(parsed);
     }
     return parsed;
   } catch (err) {
@@ -483,28 +531,92 @@ function ensureDbExists(): OpportunitiesDatabase {
   }
 }
 
-function writeDb(db: OpportunitiesDatabase): void {
+/**
+ * Self-healing mechanism: Attempt to recover database from latest valid backup
+ */
+function tryRecoverFromBackup(): OpportunitiesDatabase | null {
+  try {
+    const backupDir = path.join(DATA_DIR, "backups");
+    if (!fs.existsSync(backupDir)) return null;
+    const backups = fs
+      .readdirSync(backupDir)
+      .filter(f => f.startsWith("backup_") && f.endsWith(".json"))
+      .sort()
+      .reverse();
+    for (const bFile of backups) {
+      try {
+        const content = fs.readFileSync(path.join(backupDir, bFile), "utf-8");
+        const parsed = JSON.parse(content);
+        if (parsed && Array.isArray(parsed.scholarships)) {
+          console.log(`[opportunitiesDb] Successfully recovered from backup file: ${bFile}`);
+          return parsed;
+        }
+      } catch {
+        // try next backup
+      }
+    }
+  } catch (e) {
+    console.error("[opportunitiesDb] Recovery from backup failed:", e);
+  }
+  return null;
+}
+
+/**
+ * POSIX Atomic file write: writes to unique temp file first, then atomically renames to DB_FILE.
+ * Eliminates race conditions, partial reads, and corruption during concurrent writes.
+ */
+function writeDbAtomically(db: OpportunitiesDatabase): void {
   try {
     if (!fs.existsSync(DATA_DIR)) {
       fs.mkdirSync(DATA_DIR, { recursive: true });
     }
     db.lastUpdated = new Date().toISOString();
-    fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2), "utf-8");
+    const serialized = JSON.stringify(db, null, 2);
 
-    // Automated Daily Snapshot Backup
-    const backupDir = path.join(DATA_DIR, "backups");
-    if (!fs.existsSync(backupDir)) {
-      fs.mkdirSync(backupDir, { recursive: true });
+    // 1. Atomic write using temporary file and POSIX rename
+    const tempFile = path.join(DATA_DIR, `.db_tmp_${Date.now()}_${Math.random().toString(36).slice(2)}.tmp`);
+    fs.writeFileSync(tempFile, serialized, "utf-8");
+    fs.renameSync(tempFile, DB_FILE);
+
+    // 2. Automated Daily Snapshot Backup (Safe isolated try/catch so backup errors never fail the main write)
+    try {
+      const backupDir = path.join(DATA_DIR, "backups");
+      if (!fs.existsSync(backupDir)) {
+        fs.mkdirSync(backupDir, { recursive: true });
+      }
+      const today = new Date().toISOString().split("T")[0];
+      const todayBackupFile = path.join(backupDir, `backup_${today}.json`);
+      if (!fs.existsSync(todayBackupFile)) {
+        fs.writeFileSync(todayBackupFile, serialized, "utf-8");
+      }
+    } catch (bErr) {
+      console.warn("[opportunitiesDb] Non-fatal daily backup snapshot warning:", bErr);
     }
-    const today = new Date().toISOString().split("T")[0];
-    const todayBackupFile = path.join(backupDir, `backup_${today}.json`);
-    if (!fs.existsSync(todayBackupFile)) {
-      fs.writeFileSync(todayBackupFile, JSON.stringify(db, null, 2), "utf-8");
+
+    // 3. Clean up any stale temporary files if left from abnormal process termination
+    try {
+      const entries = fs.readdirSync(DATA_DIR);
+      const now = Date.now();
+      for (const entry of entries) {
+        if (entry.startsWith(".db_tmp_") && entry.endsWith(".tmp")) {
+          const filePath = path.join(DATA_DIR, entry);
+          const stat = fs.statSync(filePath);
+          if (now - stat.mtimeMs > 60000) {
+            fs.unlinkSync(filePath);
+          }
+        }
+      }
+    } catch {
+      // ignore cleanup errors
     }
   } catch (err) {
-    console.error("Failed to write opportunities DB:", err);
+    console.error("Failed to atomically write opportunities DB:", err);
+    throw err;
   }
 }
+
+// Internal alias for backwards compatibility
+const writeDb = writeDbAtomically;
 
 export const opportunitiesDb = {
   get(): OpportunitiesDatabase {
@@ -540,6 +652,12 @@ export const opportunitiesDb = {
     db.archived = db.archived.filter(a => a.id !== normalized.id);
 
     writeDb(db);
+
+    // Asynchronously push directly to Cloud Firestore for real-time synchronization across all users
+    syncScholarshipToFirestore(normalized).catch(err => {
+      console.warn("[opportunitiesDb] Async scholarship sync to Firestore warning:", err);
+    });
+
     return { success: true, item: normalized, isNew };
   },
 
@@ -549,17 +667,24 @@ export const opportunitiesDb = {
     const existing = db.scholarships.find(s => s.id === id);
     if (!existing) return false;
 
-    db.scholarships = db.scholarships.filter(s => s.id !== id);
-    db.archived.unshift({
+    const archiveEntry = {
       id,
-      type: "scholarship",
+      type: "scholarship" as const,
       itemData: existing,
       deletedAt: new Date().toISOString(),
       deletedBy: user || { id: "admin", name: "إدارة النظام", role: "super_admin" },
       reason: reason || "حذف من لوحة الإدارة",
-    });
+    };
+
+    db.scholarships = db.scholarships.filter(s => s.id !== id);
+    db.archived.unshift(archiveEntry);
 
     writeDb(db);
+
+    // Sync removal and archiving with Firestore
+    removeScholarshipFromFirestore(id).catch(err => console.warn(err));
+    archiveOpportunityInFirestore(archiveEntry).catch(err => console.warn(err));
+
     return true;
   },
 
@@ -592,6 +717,12 @@ export const opportunitiesDb = {
     db.archived = db.archived.filter(a => a.id !== normalized.id);
 
     writeDb(db);
+
+    // Asynchronously push directly to Cloud Firestore for real-time synchronization across all users
+    syncJobToFirestore(normalized).catch(err => {
+      console.warn("[opportunitiesDb] Async job sync to Firestore warning:", err);
+    });
+
     return { success: true, item: normalized, isNew };
   },
 
@@ -601,17 +732,24 @@ export const opportunitiesDb = {
     const existing = db.jobs.find(j => j.id === id);
     if (!existing) return false;
 
-    db.jobs = db.jobs.filter(j => j.id !== id);
-    db.archived.unshift({
+    const archiveEntry = {
       id,
-      type: "job",
+      type: "job" as const,
       itemData: existing,
       deletedAt: new Date().toISOString(),
       deletedBy: user || { id: "admin", name: "إدارة النظام", role: "super_admin" },
       reason: reason || "حذف من لوحة الإدارة",
-    });
+    };
+
+    db.jobs = db.jobs.filter(j => j.id !== id);
+    db.archived.unshift(archiveEntry);
 
     writeDb(db);
+
+    // Sync removal and archiving with Firestore
+    removeJobFromFirestore(id).catch(err => console.warn(err));
+    archiveOpportunityInFirestore(archiveEntry).catch(err => console.warn(err));
+
     return true;
   },
 
@@ -717,23 +855,59 @@ export const opportunitiesDb = {
 
     const pendingItem = db.pendingReviews[idx];
     let publishedItem: any = null;
+    const now = new Date().toISOString();
 
     if (pendingItem.type === "scholarship") {
-      const res = this.upsertScholarship({
+      const normalized: ServerScholarship = {
         ...pendingItem.itemData,
+        id: pendingItem.itemData?.id || `sch_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        createdAt: pendingItem.itemData?.createdAt || now,
+        updatedAt: now,
+        is_featured: pendingItem.itemData?.is_featured ?? false,
         source: pendingItem.itemData?.source ? `${pendingItem.itemData.source} (تمت المراجعة والاعتماد)` : "معتمد من الإدارة",
+      };
+      const sIdx = db.scholarships.findIndex(
+        s => s.id === normalized.id || (s.url && normalized.url && s.url.trim().toLowerCase() === normalized.url.trim().toLowerCase())
+      );
+      if (sIdx >= 0) {
+        db.scholarships[sIdx] = { ...db.scholarships[sIdx], ...normalized, updatedAt: now };
+      } else {
+        db.scholarships.unshift(normalized);
+      }
+      db.archived = db.archived.filter(a => a.id !== normalized.id);
+      publishedItem = normalized;
+
+      // Async Firestore sync
+      syncScholarshipToFirestore(normalized).catch(err => {
+        console.warn("[opportunitiesDb] Async scholarship sync to Firestore warning:", err);
       });
-      publishedItem = res.item;
     } else {
-      const res = this.upsertJob({
+      const normalized: ServerJob = {
         ...pendingItem.itemData,
+        id: pendingItem.itemData?.id || `job_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        createdAt: pendingItem.itemData?.createdAt || now,
+        updatedAt: now,
         verified: true,
         source: pendingItem.itemData?.source ? `${pendingItem.itemData.source} (تمت المراجعة والاعتماد)` : "معتمد من الإدارة",
+      };
+      const jIdx = db.jobs.findIndex(
+        j => j.id === normalized.id || (j.apply_url && normalized.apply_url && j.apply_url.trim().toLowerCase() === normalized.apply_url.trim().toLowerCase())
+      );
+      if (jIdx >= 0) {
+        db.jobs[jIdx] = { ...db.jobs[jIdx], ...normalized, updatedAt: now };
+      } else {
+        db.jobs.unshift(normalized);
+      }
+      db.archived = db.archived.filter(a => a.id !== normalized.id);
+      publishedItem = normalized;
+
+      // Async Firestore sync
+      syncJobToFirestore(normalized).catch(err => {
+        console.warn("[opportunitiesDb] Async job sync to Firestore warning:", err);
       });
-      publishedItem = res.item;
     }
 
-    // Remove from pending reviews
+    // Atomic remove from pending reviews in one transaction pass
     db.pendingReviews.splice(idx, 1);
     writeDb(db);
 
@@ -798,4 +972,103 @@ export const opportunitiesDb = {
     const db = ensureDbExists();
     return db.notifications || [];
   },
+
+  // Full Firestore Sync of all opportunities
+  async syncAllToFirestore(): Promise<{ scholarshipsCount: number; jobsCount: number; error?: string }> {
+    const db = ensureDbExists();
+    return await syncAllOpportunitiesToFirestore(db.scholarships, db.jobs);
+  },
 };
+
+export interface QuickActionResult {
+  valid: boolean;
+  reason?: "expired" | "invalid_signature" | "already_processed" | "not_found";
+  itemStatus?: "pending" | "published" | "archived";
+}
+
+// Security token generation and validation for Quick Actions via Email / WhatsApp (with 72h TTL & Replay Protection)
+export function generateQuickActionToken(
+  pendingId: string,
+  action: "approve" | "reject" = "approve",
+  ttlHours: number = 72
+): { token: string; exp: number } {
+  const secret = process.env.QUICK_ACTION_SECRET || "foras_secure_quick_action_salt_2026";
+  const exp = Math.floor(Date.now() / 1000) + ttlHours * 3600;
+  const token = crypto
+    .createHmac("sha256", secret)
+    .update(`qa_${pendingId}_${action}_${exp}`)
+    .digest("hex")
+    .slice(0, 24);
+  return { token, exp };
+}
+
+export function verifyQuickActionToken(
+  pendingId: string,
+  token: string,
+  action: "approve" | "reject" = "approve",
+  exp?: number | string
+): QuickActionResult {
+  if (!pendingId || !token) {
+    return { valid: false, reason: "invalid_signature" };
+  }
+
+  const secret = process.env.QUICK_ACTION_SECRET || "foras_secure_quick_action_salt_2026";
+
+  // 1. Time-to-Live (TTL) & action-bound HMAC signature verification
+  if (exp !== undefined && exp !== null && String(exp).trim() !== "") {
+    const expNum = Number(exp);
+    const nowSec = Math.floor(Date.now() / 1000);
+    if (isNaN(expNum) || nowSec > expNum) {
+      return { valid: false, reason: "expired" };
+    }
+
+    try {
+      const expected = crypto
+        .createHmac("sha256", secret)
+        .update(`qa_${pendingId}_${action}_${expNum}`)
+        .digest("hex")
+        .slice(0, 24);
+
+      if (token.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(token))) {
+        return { valid: false, reason: "invalid_signature" };
+      }
+    } catch {
+      return { valid: false, reason: "invalid_signature" };
+    }
+  } else {
+    // Backwards compatibility with legacy non-expiring tokens
+    try {
+      const legacyExpected = crypto
+        .createHmac("sha256", secret)
+        .update(`qa_${pendingId}`)
+        .digest("hex")
+        .slice(0, 24);
+
+      if (token.length !== legacyExpected.length || !crypto.timingSafeEqual(Buffer.from(legacyExpected), Buffer.from(token))) {
+        return { valid: false, reason: "invalid_signature" };
+      }
+    } catch {
+      return { valid: false, reason: "invalid_signature" };
+    }
+  }
+
+  // 2. Replay-Protection / Single-Use Check
+  // Check whether the pending opportunity still exists or has already been approved / rejected
+  const db = opportunitiesDb.get();
+  const isPending = (db.pendingReviews || []).some(p => p.id === pendingId);
+  if (!isPending) {
+    const isPublished =
+      (db.scholarships || []).some(s => s.id === pendingId) ||
+      (db.jobs || []).some(j => j.id === pendingId);
+    if (isPublished) {
+      return { valid: false, reason: "already_processed", itemStatus: "published" };
+    }
+    const isArchived = (db.archived || []).some(a => a.id === pendingId);
+    if (isArchived) {
+      return { valid: false, reason: "already_processed", itemStatus: "archived" };
+    }
+    return { valid: false, reason: "not_found" };
+  }
+
+  return { valid: true, itemStatus: "pending" };
+}

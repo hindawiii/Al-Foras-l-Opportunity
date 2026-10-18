@@ -200,7 +200,7 @@ export const SmartPayoutRoadmapBanner: React.FC = () => {
     <>
       <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-primary/15 via-card/90 to-emerald-500/15 border-2 border-primary/30 shadow-luxe relative overflow-hidden">
         {/* Subtle decorative background shine */}
-        <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-2xl pointer-events-none -mr-10 -mt-10" />
+        <div className="absolute top-0 end-0 w-32 h-32 bg-primary/10 rounded-full blur-2xl pointer-events-none -me-10 -mt-10" />
 
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative z-10">
           <div className="flex items-start gap-3.5">
@@ -279,7 +279,7 @@ export const SmartPayoutRoadmapBanner: React.FC = () => {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid grid-cols-2 sm:grid-cols-2 gap-2 overflow-y-auto py-3 pr-1 max-h-[55vh]">
+          <div className="grid grid-cols-2 sm:grid-cols-2 gap-2 overflow-y-auto py-3 pe-1 max-h-[55vh]">
             {COUNTRIES.map((c) => {
               const isSelected = activeCode === c.code;
               return (
@@ -374,7 +374,7 @@ export const SmartPayoutRoadmapBanner: React.FC = () => {
               }}
               className="w-full sm:w-auto text-xs font-semibold"
             >
-              <Globe className="w-3.5 h-3.5 mr-1.5 ml-1.5" />
+              <Globe className="w-3.5 h-3.5 mx-1.5" />
               <span>{ar ? "سأختار دولتي يدوياً" : "Pick Manually"}</span>
             </Button>
 
@@ -387,12 +387,12 @@ export const SmartPayoutRoadmapBanner: React.FC = () => {
             >
               {gpsLoading ? (
                 <>
-                  <RefreshCw className="w-3.5 h-3.5 mr-1.5 ml-1.5 animate-spin" />
+                  <RefreshCw className="w-3.5 h-3.5 mx-1.5 animate-spin" />
                   <span>{ar ? "جارٍ المزامنة..." : "Syncing..."}</span>
                 </>
               ) : (
                 <>
-                  <Navigation className="w-3.5 h-3.5 mr-1.5 ml-1.5" />
+                  <Navigation className="w-3.5 h-3.5 mx-1.5" />
                   <span>{ar ? "موافقة وتحديد موقعي" : "Allow & Sync Location"}</span>
                 </>
               )}

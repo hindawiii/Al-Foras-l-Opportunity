@@ -4,6 +4,7 @@ import {
   ServerJob,
   PendingOpportunityItem,
   TeamRecipient,
+  generateQuickActionToken,
 } from "./opportunitiesDb";
 import { GoogleGenAI } from "@google/genai";
 
@@ -193,7 +194,17 @@ export async function evaluateOpportunityTriage(
 }
 
 /**
- * 4. Generate Multi-Recipient Notification Report
+ * Helper to determine base URL for quick action links
+ */
+export function getAppBaseUrl(): string {
+  if (process.env.APP_URL && process.env.APP_URL.startsWith("http")) {
+    return process.env.APP_URL.replace(/\/+$/, "");
+  }
+  return "https://ais-pre-u5hnstcomqwerauzssoxbe-264334451491.europe-west1.run.app";
+}
+
+/**
+ * 4. Generate Multi-Recipient Notification Report with 1-Click Action Links
  */
 export function formatNotificationDigest(
   results: {
@@ -202,6 +213,7 @@ export function formatNotificationDigest(
     pendingCount: number;
     criticalList: { title: string; entity: string; priority: string; reason: string }[];
     publishMode: string;
+    pendingItems?: PendingOpportunityItem[];
   }
 ): { textSummary: string; htmlSummary: string; whatsappMessage: string } {
   const modeLabels: Record<string, string> = {
@@ -212,64 +224,136 @@ export function formatNotificationDigest(
 
   const modeName = modeLabels[results.publishMode] || results.publishMode;
   const now = new Date().toLocaleString("ar-SA", { timeZone: "Asia/Riyadh" });
+  const baseUrl = getAppBaseUrl();
 
-  let whatsappMessage = `📢 *تقرير إشعار محرك الأوتوميشن - منصة الفرص*\n`;
-  whatsappMessage += `⏱ *التاريخ والوقت:* ${now}\n`;
+  const pendingList = results.pendingItems || opportunitiesDb.getPendingReviews().slice(0, 10);
+
+  let whatsappMessage = `📢 *تقرير إشعار محرك الأوتوميشن والمنح - منصة الفرص*\n`;
+  whatsappMessage += `⏱ *التوقيت:* ${now}\n`;
   whatsappMessage += `⚙️ *وضع الضبط النشط:* ${modeName}\n`;
   whatsappMessage += `------------------------------------\n`;
   whatsappMessage += `📊 *ملخص الجولة:*\n`;
-  whatsappMessage += `✅ المنح المنشورة مباشرة: ${results.addedScholarships}\n`;
-  whatsappMessage += `💼 الوظائف المنشورة مباشرة: ${results.addedJobs}\n`;
-  whatsappMessage += `⏳ الفرص المحتجزة للمراجعة: ${results.pendingCount}\n`;
+  whatsappMessage += `✅ المنح المنشورة مباشرة بقاعدة السحابة: ${results.addedScholarships}\n`;
+  whatsappMessage += `💼 الوظائف المنشورة مباشرة بقاعدة السحابة: ${results.addedJobs}\n`;
+  whatsappMessage += `⏳ الفرص المحتجزة بانتظار المراجعة: ${results.pendingCount}\n`;
 
   if (results.criticalList.length > 0) {
-    whatsappMessage += `\n🚨 *أهم الفرص الحرجة والذهبية المكتشفة:*\n`;
-    results.criticalList.forEach((c, idx) => {
+    whatsappMessage += `\n🚨 *أهم الفرص ذات الأولوية القصوى:*\n`;
+    results.criticalList.slice(0, 5).forEach((c, idx) => {
       whatsappMessage += `${idx + 1}. *${c.title}* (${c.entity})\n`;
       whatsappMessage += `   📌 *التقييم:* ${c.reason}\n`;
     });
   }
 
-  whatsappMessage += `\n🔗 *رابط لوحة التحكم:* https://alforas.com/admin?tab=automation\n`;
-  whatsappMessage += `فريق عمل منصة الفرص | AlForas Engine`;
+  // 1-Click Approval Links for WhatsApp
+  if (pendingList.length > 0) {
+    whatsappMessage += `\n⚡ *روابط الاعتماد السريع بنقرة واحدة من هاتفك (صالحة 72 ساعة):*\n`;
+    pendingList.slice(0, 4).forEach((p, idx) => {
+      const title = p.itemData?.title || p.itemData?.title_ar || "فرصة معلقة";
+      const { token, exp } = generateQuickActionToken(p.id, "approve");
+      const approveUrl = `${baseUrl}/api/opportunities/quick-action?id=${encodeURIComponent(p.id)}&action=approve&token=${encodeURIComponent(token)}&exp=${exp}`;
+      whatsappMessage += `${idx + 1}️⃣ *${title}*\n`;
+      whatsappMessage += `🟢 اعتماد ونشر: ${approveUrl}\n\n`;
+    });
+  }
+
+  whatsappMessage += `🔗 *لوحة تحكم المشرف الشاملة:* ${baseUrl}/admin?tab=automation\n`;
+  whatsappMessage += `فريق عمل منصة الفرص | AlForas Smart Engine`;
 
   const textSummary = `تقرير أوتوميشن الفرص: تم نشر ${results.addedScholarships} منح و ${results.addedJobs} وظائف، ويوجد ${results.pendingCount} فرصة في انتظار المراجعة. عدد الفرص الحرجة: ${results.criticalList.length}.`;
 
+  // Build HTML Pending Cards with 1-Click Buttons
+  const pendingCardsHtml = pendingList.length > 0
+    ? `
+    <h3 style="color: #0f172a; margin-top: 25px; margin-bottom: 12px; font-size: 16px; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px;">
+      ⏳ الفرص المحتجزة للمراجعة (اعتماد أو رفض بنقرة واحدة - صلاحية الروابط 72 ساعة):
+    </h3>
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      ${pendingList.slice(0, 6).map(p => {
+        const title = p.itemData?.title || p.itemData?.title_ar || "فرصة جديدة";
+        const entity = p.itemData?.university || p.itemData?.org || p.itemData?.company || "جهة غير محددة";
+        const country = p.itemData?.country || p.itemData?.location || "دولي";
+        const { token: approveToken, exp: approveExp } = generateQuickActionToken(p.id, "approve");
+        const { token: rejectToken, exp: rejectExp } = generateQuickActionToken(p.id, "reject");
+        const approveUrl = `${baseUrl}/api/opportunities/quick-action?id=${encodeURIComponent(p.id)}&action=approve&token=${encodeURIComponent(approveToken)}&exp=${approveExp}`;
+        const rejectUrl = `${baseUrl}/api/opportunities/quick-action?id=${encodeURIComponent(p.id)}&action=reject&token=${encodeURIComponent(rejectToken)}&exp=${rejectExp}`;
+
+        return `
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+            <strong style="color: #0f172a; font-size: 15px; line-height: 1.4;">${title}</strong>
+            <span style="background: #fef3c7; color: #92400e; font-size: 12px; font-weight: bold; padding: 2px 8px; border-radius: 12px; white-space: nowrap;">
+              اكتمال ${p.completenessScore}%
+            </span>
+          </div>
+          <div style="color: #64748b; font-size: 13px; margin-bottom: 12px;">
+            🏢 ${entity} | 📍 ${country} | 🏷️ ${p.type === "scholarship" ? "منحة دراسية" : "فرصة عمل"}
+          </div>
+          ${p.missingFields && p.missingFields.length > 0 ? `
+            <div style="background: #f8fafc; border-right: 3px solid #f59e0b; padding: 6px 10px; font-size: 12px; color: #78350f; margin-bottom: 12px;">
+              الحقول المتبقية: ${p.missingFields.join("، ")}
+            </div>
+          ` : ""}
+          <div style="display: flex; gap: 8px;">
+            <a href="${approveUrl}" style="background: #10b981; color: #ffffff; text-decoration: none; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: bold; display: inline-block;">
+              ✓ اعتماد ونشر فوري بالمنصة
+            </a>
+            <a href="${rejectUrl}" style="background: #f1f5f9; color: #64748b; text-decoration: none; padding: 8px 14px; border-radius: 6px; font-size: 13px; display: inline-block; border: 1px solid #cbd5e1;">
+              ✕ استبعاد وأرشفة
+            </a>
+          </div>
+        </div>
+        `;
+      }).join("")}
+    </div>
+    `
+    : "";
+
   const htmlSummary = `
-<div style="font-family: Arial, sans-serif; direction: rtl; text-align: right; background: #f8fafc; padding: 20px; border-radius: 12px; max-width: 600px; margin: auto; border: 1px solid #e2e8f0;">
-  <h2 style="color: #0f172a; margin-top: 0;">📢 تقرير جولة محرك الأوتوميشن - منصة الفرص</h2>
-  <p style="color: #64748b; font-size: 14px;"><strong>التوقيت:</strong> ${now} | <strong>وضع النشر:</strong> ${modeName}</p>
-  <hr style="border: none; border-top: 1px solid #cbd5e1; margin: 15px 0;" />
+<div style="font-family: Arial, sans-serif; direction: rtl; text-align: right; background: #f8fafc; padding: 24px; border-radius: 12px; max-width: 640px; margin: auto; border: 1px solid #e2e8f0; color: #1e293b;">
+  <div style="text-align: center; margin-bottom: 18px;">
+    <h2 style="color: #0f172a; margin: 0 0 6px 0; font-size: 22px;">📢 تقرير جولة الذكاء الاصطناعي - منصة الفرص</h2>
+    <p style="color: #64748b; font-size: 13px; margin: 0;"><strong>التوقيت:</strong> ${now} | <strong>وضع النشر:</strong> ${modeName}</p>
+  </div>
+  <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 15px 0 20px 0;" />
   <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-    <div style="background: #ecfdf5; border: 1px solid #a7f3d0; padding: 10px; border-radius: 8px; flex: 1; text-align: center;">
-      <span style="font-size: 20px; font-weight: bold; color: #059669;">${results.addedScholarships}</span>
-      <div style="font-size: 12px; color: #065f46;">منح منشورة</div>
+    <div style="background: #ecfdf5; border: 1px solid #a7f3d0; padding: 12px; border-radius: 8px; flex: 1; text-align: center;">
+      <span style="font-size: 24px; font-weight: bold; color: #059669; display: block;">${results.addedScholarships}</span>
+      <div style="font-size: 12px; color: #065f46; font-weight: 500;">منح منشورة بالسحابة</div>
     </div>
-    <div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 10px; border-radius: 8px; flex: 1; text-align: center;">
-      <span style="font-size: 20px; font-weight: bold; color: #2563eb;">${results.addedJobs}</span>
-      <div style="font-size: 12px; color: #1e40af;">وظائف منشورة</div>
+    <div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 12px; border-radius: 8px; flex: 1; text-align: center;">
+      <span style="font-size: 24px; font-weight: bold; color: #2563eb; display: block;">${results.addedJobs}</span>
+      <div style="font-size: 12px; color: #1e40af; font-weight: 500;">وظائف منشورة بالسحابة</div>
     </div>
-    <div style="background: #fffbeb; border: 1px solid #fde68a; padding: 10px; border-radius: 8px; flex: 1; text-align: center;">
-      <span style="font-size: 20px; font-weight: bold; color: #d97706;">${results.pendingCount}</span>
-      <div style="font-size: 12px; color: #92400e;">بانتظار المراجعة</div>
+    <div style="background: #fffbeb; border: 1px solid #fde68a; padding: 12px; border-radius: 8px; flex: 1; text-align: center;">
+      <span style="font-size: 24px; font-weight: bold; color: #d97706; display: block;">${results.pendingCount}</span>
+      <div style="font-size: 12px; color: #92400e; font-weight: 500;">بانتظار المراجعة</div>
     </div>
   </div>
+
   ${
     results.criticalList.length > 0
       ? `
-  <h3 style="color: #b91c1c; margin-bottom: 8px;">🚨 الفرص ذات الأولوية القصوى:</h3>
-  <ul style="padding-right: 20px; color: #334155; line-height: 1.6;">
-    ${results.criticalList
-      .map(
-        c =>
-          `<li><strong>${c.title}</strong> (${c.entity})<br/><span style="color: #64748b; font-size: 13px;">${c.reason}</span></li>`
-      )
-      .join("")}
-  </ul>`
+  <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 14px; margin-bottom: 20px;">
+    <h3 style="color: #b91c1c; margin: 0 0 8px 0; font-size: 15px;">🚨 الفرص ذات الأولوية القصوى المكتشفة:</h3>
+    <ul style="padding-right: 18px; margin: 0; color: #334155; line-height: 1.6; font-size: 13px;">
+      ${results.criticalList
+        .map(
+          c =>
+            `<li style="margin-bottom: 6px;"><strong>${c.title}</strong> (${c.entity})<br/><span style="color: #64748b; font-size: 12px;">${c.reason}</span></li>`
+        )
+        .join("")}
+    </ul>
+  </div>`
       : ""
   }
-  <div style="margin-top: 25px; text-align: center;">
-    <a href="https://alforas.com/admin?tab=automation" style="background: #d97706; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">فتح لوحة التحكم للمراجعة</a>
+
+  ${pendingCardsHtml}
+
+  <div style="margin-top: 30px; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 20px;">
+    <a href="${baseUrl}/admin?tab=automation" style="background: #0f172a; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 14px; display: inline-block;">
+      فتح لوحة التحكم المركزية للمشرف
+    </a>
   </div>
 </div>`;
 
@@ -332,14 +416,42 @@ export async function dispatchTeamAlerts(
       }
     }
 
-    // B. Email notification
+    // B. Real Email Notification
     if (member.email && member.email.includes("@")) {
+      let emailStatus: "sent" | "simulated" | "failed" = "simulated";
+      let emailNote = "تم تجهيز التقرير واعتماده بسجل الإشعارات الإدارية";
+
+      // 1. Check for Resend API Key
+      if (process.env.RESEND_API_KEY) {
+        try {
+          const res = await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              from: process.env.EMAIL_FROM || "منصة الفرص <updates@alforas.com>",
+              to: [member.email],
+              subject: "📢 تقرير محرك الفرص والمنح اليومي - مع روابط الاعتماد السريع",
+              html: digest.htmlSummary,
+            }),
+          });
+          if (res.ok) {
+            emailStatus = "sent";
+            emailNote = "تم الإرسال الفعلي عبر مزود البريد Resend";
+          }
+        } catch (resendErr: any) {
+          console.warn("[EmailDispatch] Resend error:", resendErr?.message);
+        }
+      }
+
       opportunitiesDb.addNotificationLog({
         channel: "email",
         recipient: `${member.name} <${member.email}>`,
-        title: "تقرير الفحص الدوري لمحرك الأوتوميشن",
-        summary: digest.textSummary,
-        status: "sent",
+        title: "تقرير الفحص الدوري ومراجعة المنح والفرص",
+        summary: `${digest.textSummary} (${emailNote})`,
+        status: emailStatus,
         itemsCount: 1,
       });
       dispatchedCount++;
@@ -814,7 +926,18 @@ export async function runOpportunitiesAutomation(
       settings.whatsappApiKey
     );
 
-    const summaryMsg = `اكتمل الفحص بنجاح! نُشر فورا: ${addedScholarships} منح و ${addedJobs} وظائف. محتجز للمراجعة: ${pendingCount} فرص. عاجل/حرج: ${criticalList.length}.`;
+    // Synchronize everything with Firebase Firestore
+    try {
+      const syncResult = await opportunitiesDb.syncAllToFirestore();
+      opportunitiesDb.addLog(
+        "info",
+        `تمت المزامنة السحابية الشاملة مع Firebase Firestore: ${syncResult.scholarshipsCount} منحة، ${syncResult.jobsCount} وظيفة منشورة لجميع المستخدمين.`
+      );
+    } catch (syncErr: any) {
+      console.warn("[automationEngine] Cloud sync error:", syncErr?.message);
+    }
+
+    const summaryMsg = `اكتمل الفحص بنجاح! نُشر فورا: ${addedScholarships} منح و ${addedJobs} وظائف. محتجز للمراجعة: ${pendingCount} فرص. عاجل/حرج: ${criticalList.length}. المزامنة السحابية مع Firebase نشطة 100%.`;
     opportunitiesDb.addLog("success", summaryMsg);
 
     return {

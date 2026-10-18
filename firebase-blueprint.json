@@ -61,12 +61,122 @@
         "created_at": { "type": "string" }
       },
       "required": ["id", "title_ar", "company"]
+    },
+    "ArchivedOpportunity": {
+      "title": "ArchivedOpportunity",
+      "description": "Archived or soft-deleted opportunity stored in the cloud archive vault",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["scholarship", "job"] },
+        "deletedAt": { "type": "string" },
+        "reason": { "type": "string" }
+      },
+      "required": ["id", "type", "deletedAt"]
+    },
+    "AuditLogEntry": {
+      "title": "AuditLogEntry",
+      "description": "Security and administrative audit trail log entry",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "action": { "type": "string" },
+        "details": { "type": "string" },
+        "severity": { "type": "string", "enum": ["info", "warning", "critical"] }
+      },
+      "required": ["id", "timestamp", "action"]
+    },
+    "UserApplication": {
+      "title": "UserApplication",
+      "description": "User saved and submitted scholarship or job application record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "status": { "type": "string", "enum": ["saved", "applied", "accepted", "rejected"] },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "status"]
+    },
+    "SavedItem": {
+      "title": "SavedItem",
+      "description": "User bookmark for job or university",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "savedAt": { "type": "string" }
+      },
+      "required": ["id"]
+    },
+    "AppSetting": {
+      "title": "AppSetting",
+      "description": "System feature flags and global settings",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "value": { "type": "string" }
+      },
+      "required": ["id"]
+    },
+    "University": {
+      "title": "University",
+      "description": "Accredited university institution in Arab or global directory",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "nameEn": { "type": "string" },
+        "country": { "type": "string" },
+        "countryEn": { "type": "string" },
+        "flag": { "type": "string" },
+        "city": { "type": "string" },
+        "type": { "type": "string", "enum": ["government", "private", "technical"] },
+        "website": { "type": "string" },
+        "minPercentage": { "type": "number" },
+        "language": { "type": "string", "enum": ["ar", "en", "mixed"] },
+        "scholarships": { "type": "boolean" },
+        "highlights": { "type": "string" },
+        "highlightsEn": { "type": "string" }
+      },
+      "required": ["id", "name", "country", "website"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "Real-time broadcast or targeted notification for opportunities and alerts",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "type": "string", "enum": ["deadline", "match", "status", "news", "broadcast"] },
+        "title": { "type": "string" },
+        "titleEn": { "type": "string" },
+        "body": { "type": "string" },
+        "bodyEn": { "type": "string" },
+        "ts": { "type": "number" },
+        "actionTab": { "type": "string" },
+        "url": { "type": "string" }
+      },
+      "required": ["id", "title", "body", "ts"]
     }
   },
   "firestore": {
     "/users/{userId}": {
       "schema": { "$ref": "#/entities/UserProfile" },
       "description": "User profiles"
+    },
+    "/users/{userId}/applications/{applicationId}": {
+      "schema": { "$ref": "#/entities/UserApplication" },
+      "description": "User tracked applications and bookmarks"
+    },
+    "/users/{userId}/saved_jobs/{jobId}": {
+      "schema": { "$ref": "#/entities/SavedItem" },
+      "description": "User bookmarked jobs"
+    },
+    "/users/{userId}/saved_universities/{uniId}": {
+      "schema": { "$ref": "#/entities/SavedItem" },
+      "description": "User bookmarked universities"
     },
     "/scholarships/{scholarshipId}": {
       "schema": { "$ref": "#/entities/Scholarship" },
@@ -75,6 +185,30 @@
     "/jobs/{jobId}": {
       "schema": { "$ref": "#/entities/Job" },
       "description": "Freelance and remote job opportunities"
+    },
+    "/universities/{uniId}": {
+      "schema": { "$ref": "#/entities/University" },
+      "description": "Accredited university directory"
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/Notification" },
+      "description": "Real-time broadcast system notifications"
+    },
+    "/archived_opportunities/{archiveId}": {
+      "schema": { "$ref": "#/entities/ArchivedOpportunity" },
+      "description": "Cloud archive vault for soft-deleted opportunities"
+    },
+    "/audit_logs/{logId}": {
+      "schema": { "$ref": "#/entities/AuditLogEntry" },
+      "description": "Administrative security audit trail records"
+    },
+    "/admins/{adminId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Administrative team members and roles"
+    },
+    "/app_settings/{settingId}": {
+      "schema": { "$ref": "#/entities/AppSetting" },
+      "description": "Global application configuration and feature flags"
     }
   }
 }

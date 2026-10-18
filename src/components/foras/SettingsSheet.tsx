@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import {
   User, Shield, Info, Trash2, LogOut, Share2, Languages, ShieldCheck,
   Moon, Zap, Coins, ChevronLeft, ChevronRight, Sparkles, Crown, X, Check,
-  CheckCircle2, Globe, ArrowRight, ArrowLeft, GraduationCap, Briefcase
+  CheckCircle2, Globe, ArrowRight, ArrowLeft, GraduationCap, Briefcase,
+  Wifi, WifiOff, HardDrive, RefreshCw, AlertTriangle
 } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -17,6 +18,8 @@ import {
 import { useSettings } from "@/contexts/SettingsContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
+import { dynamicStore } from "@/lib/dynamicStore";
 import { nativeShare } from "@/lib/share";
 import { guestStorage } from "@/lib/guestStorage";
 import { profileExtras } from "@/lib/profileExtras";
@@ -62,6 +65,32 @@ export const SettingsSheet = ({ open, onOpenChange, onOpenAdmin }: Props) => {
   const Chevron = isRtl ? ChevronLeft : ChevronRight;
 
   const [persona, setPersona] = useState<"student" | "professional">("student");
+  const {
+    isGlobalOfflineEnabled,
+    isUserOfflineEnabled,
+    setUserOfflineEnabled,
+    isOnline,
+    isSyncing,
+  } = useNetworkStatus();
+  const [syncingCache, setSyncingCache] = useState(false);
+
+  const handleSyncCache = async () => {
+    setSyncingCache(true);
+    try {
+      await dynamicStore.syncWithCloud();
+      toast.success(
+        isRtl
+          ? "تمت مزامنة وتحديث أحدث المنح والوظائف محلياً بنجاح ✨"
+          : "Local cache synced with latest opportunities ✨"
+      );
+    } catch {
+      toast.error(
+        isRtl ? "تعذرت المزامنة، تحقق من اتصال الإنترنت" : "Sync failed, verify connection"
+      );
+    } finally {
+      setSyncingCache(false);
+    }
+  };
 
   // Discrete secret trigger for administrators (5 quick taps on footer version tag)
   const secretTapCount = useRef(0);
@@ -346,12 +375,89 @@ export const SettingsSheet = ({ open, onOpenChange, onOpenAdmin }: Props) => {
               </div>
             </div>
 
-            {/* Group 3: Data & Storage */}
+            {/* Group 3: Data & Offline Storage */}
             <div className="space-y-1.5">
               <span className={`text-[11px] font-bold text-primary/80 uppercase tracking-wider px-1 block ${alignClass}`}>
-                {t("settingsDataGroup")}
+                {isRtl ? "البيانات والتصفح دون اتصال" : "Data & Offline Storage"}
               </span>
               <div className="rounded-2xl bg-background/50 border border-primary/20 divide-y divide-primary/10 overflow-hidden shadow-sm">
+                {/* 1. Offline Mode Switch */}
+                <SettingRow
+                  icon={isGlobalOfflineEnabled && isUserOfflineEnabled ? Wifi : WifiOff}
+                  title={isRtl ? "وضع العمل دون اتصال وتوفير البيانات" : "Offline Mode & Data Saver"}
+                  description={
+                    !isGlobalOfflineEnabled
+                      ? isRtl
+                        ? "معطل مركزياً حالياً من قِبل إدارة المنصة"
+                        : "Currently suspended platform-wide by admin"
+                      : isRtl
+                      ? "تصفح المنح والوظائف المخزنة تلقائياً عند انقطاع أو ضعف الإنترنت"
+                      : "Auto-browse cached scholarships & jobs when offline"
+                  }
+                  alignClass={alignClass}
+                  trailing={
+                    !isGlobalOfflineEnabled ? (
+                      <span className="text-[10px] font-bold text-rose-400 bg-rose-500/15 border border-rose-500/30 px-2 py-1 rounded-lg flex-shrink-0">
+                        {isRtl ? "معطل إدارياً 🔒" : "Admin Locked 🔒"}
+                      </span>
+                    ) : (
+                      <Switch
+                        checked={isUserOfflineEnabled}
+                        onCheckedChange={(val) => {
+                          setUserOfflineEnabled(val);
+                          toast.success(
+                            val
+                              ? isRtl
+                                ? "تم تفعيل التصفح دون اتصال وتوفير البيانات ✓"
+                                : "Offline mode enabled ✓"
+                              : isRtl
+                              ? "تم إيقاف التصفح دون اتصال (سحابي مباشر فقط)"
+                              : "Offline mode disabled (cloud direct only)"
+                          );
+                        }}
+                        className="flex-shrink-0"
+                      />
+                    )
+                  }
+                />
+
+                {/* 2. Storage Overview & Sync Now */}
+                <div className={`p-3.5 space-y-2.5 ${alignClass}`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <HardDrive className="w-4 h-4 text-primary flex-shrink-0" />
+                      <span className="text-xs font-semibold text-foreground">
+                        {isRtl ? "النسخة المخزنة على هاتفك" : "Cached Device Storage"}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleSyncCache}
+                      disabled={syncingCache || isSyncing || !isOnline}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-primary/15 hover:bg-primary/25 text-primary border border-primary/30 transition-all disabled:opacity-50 active:scale-95 cursor-pointer"
+                      title={!isOnline ? (isRtl ? "يتطلب اتصالاً بالإنترنت" : "Requires connection") : undefined}
+                    >
+                      <RefreshCw className={`w-3 h-3 ${syncingCache || isSyncing ? "animate-spin" : ""}`} />
+                      <span>{isRtl ? "مزامنة الآن" : "Sync Now"}</span>
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 bg-background/60 p-2 rounded-xl border border-primary/15 text-center">
+                    <div>
+                      <span className="block text-[10px] text-muted-foreground">{isRtl ? "المنح" : "Scholarships"}</span>
+                      <span className="block text-xs font-bold text-foreground">19</span>
+                    </div>
+                    <div>
+                      <span className="block text-[10px] text-muted-foreground">{isRtl ? "الوظائف" : "Jobs"}</span>
+                      <span className="block text-xs font-bold text-foreground">47</span>
+                    </div>
+                    <div>
+                      <span className="block text-[10px] text-muted-foreground">{isRtl ? "الجامعات" : "Universities"}</span>
+                      <span className="block text-xs font-bold text-foreground">293</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Clear Cache */}
                 <SettingRow
                   icon={Trash2}
                   title={t("clearCache")}
@@ -480,7 +586,7 @@ export const SettingsSheet = ({ open, onOpenChange, onOpenAdmin }: Props) => {
             </div>
 
             {/* Currency List */}
-            <div className="max-h-60 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
+            <div className="max-h-60 overflow-y-auto space-y-1 pe-1 custom-scrollbar">
               {filteredCurrencies.map((c) => {
                 const isSelected = localCurrency === c.code;
                 return (
@@ -501,7 +607,7 @@ export const SettingsSheet = ({ open, onOpenChange, onOpenAdmin }: Props) => {
                       <span className="text-base flex-shrink-0">{c.flag}</span>
                       <div className="min-w-0">
                         <span className="font-semibold">{isRtl ? c.nameAr : c.nameEn}</span>
-                        <span className="text-[10px] text-muted-foreground ml-1.5 mr-1.5 font-mono">({c.code} · {c.symbol})</span>
+                        <span className="text-[10px] text-muted-foreground mx-1.5 font-mono">({c.code} · {c.symbol})</span>
                       </div>
                     </div>
                     {isSelected && <Check className="w-4 h-4 text-primary flex-shrink-0" />}

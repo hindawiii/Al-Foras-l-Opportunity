@@ -1,6 +1,6 @@
 import { motion, PanInfo, useMotionValue, useTransform } from "framer-motion";
 import { BadgeCheck, Clock, MapPin, Award, X, Heart, Search, Link2, Share2, Sparkles, Languages, GraduationCap } from "lucide-react";
-import { Scholarship } from "@/lib/mockData";
+import { Scholarship, MatchAnalysis } from "@/lib/mockData";
 import { nativeShare } from "@/lib/share";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -11,6 +11,8 @@ interface Props {
   active: boolean;
   index: number;
   matchScore: number;
+  matchReason?: string;
+  matchAnalysis?: MatchAnalysis;
 }
 
 const buildShareUrl = (id: string) => {
@@ -47,7 +49,16 @@ const TAG_TRANSLATIONS: Record<string, string> = {
   "تأمين صحي": "Health Insurance",
 };
 
-export const ScholarshipCard = ({ scholarship, onSwipe, onTap, active, index, matchScore }: Props) => {
+export const ScholarshipCard = ({
+  scholarship,
+  onSwipe,
+  onTap,
+  active,
+  index,
+  matchScore,
+  matchReason,
+  matchAnalysis,
+}: Props) => {
   const { lang, t, dir } = useLanguage();
   const ar = lang === "ar";
   const isRtl = dir === "rtl";
@@ -56,6 +67,10 @@ export const ScholarshipCard = ({ scholarship, onSwipe, onTap, active, index, ma
   const opacity = useTransform(x, [-200, -50, 0, 50, 200], [0, 1, 1, 1, 0]);
   const saveOpacity = useTransform(x, [10, 70], [0, 1]);
   const ignoreOpacity = useTransform(x, [-70, -10], [1, 0]);
+
+  const matchReasonText =
+    matchReason ||
+    (matchAnalysis ? (ar ? matchAnalysis.reasonAr : matchAnalysis.reasonEn) : undefined);
 
   if (!scholarship) return null;
 
@@ -198,6 +213,20 @@ export const ScholarshipCard = ({ scholarship, onSwipe, onTap, active, index, ma
                 {titleText}
               </h3>
             </div>
+
+            {/* Luxe Pro AI Guidance Micro-Banner */}
+            {matchReasonText && (
+              <div
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border backdrop-blur-md text-[11px] sm:text-xs font-semibold text-start shadow-sm transition-all ${
+                  isArab
+                    ? "bg-primary/10 border-primary/25 text-primary"
+                    : "bg-[hsl(210_70%_55%/0.12)] border-[hsl(210_70%_60%/0.3)] text-[hsl(210_90%_75%)]"
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5 flex-shrink-0 animate-pulse text-primary" />
+                <span className="truncate">{matchReasonText}</span>
+              </div>
+            )}
 
             <p className="text-muted-foreground text-xs sm:text-sm leading-relaxed line-clamp-3 text-start">
               {descText}

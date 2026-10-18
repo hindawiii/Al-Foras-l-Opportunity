@@ -229,7 +229,7 @@ export const LinkEditorModal: React.FC<LinkEditorModalProps> = ({
               }}
               className="text-destructive border-destructive/30 hover:bg-destructive/10 text-xs"
             >
-              <Trash2 className="w-3.5 h-3.5 mr-1" />
+              <Trash2 className="w-3.5 h-3.5 me-1" />
               <span>{ar ? "حذف" : "Delete"}</span>
             </Button>
           ) : (
@@ -253,7 +253,7 @@ export const LinkEditorModal: React.FC<LinkEditorModalProps> = ({
               onClick={handleSave}
               className="text-xs font-bold shadow-gold px-4"
             >
-              <Check className="w-3.5 h-3.5 mr-1" />
+              <Check className="w-3.5 h-3.5 me-1" />
               <span>{initialLink ? (ar ? "حفظ التعديل" : "Update") : (ar ? "إضافة الرابط" : "Add Link")}</span>
             </Button>
           </div>

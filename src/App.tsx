@@ -17,6 +17,7 @@ import { AIAdvisor } from "@/components/foras/AIAdvisor";
 import { ErrorBoundary } from "@/components/foras/ErrorBoundary";
 import { dynamicStore } from "@/lib/dynamicStore";
 import { selfHealingEngine } from "@/lib/selfHealingEngine";
+import { OfflineStatusBanner } from "@/components/foras/OfflineStatusBanner";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +34,7 @@ const App = () => {
           <SettingsProvider>
             <AuthProvider>
               <TooltipProvider>
+                <OfflineStatusBanner />
                 <Sonner position="top-center" richColors closeButton />
                 <BrowserRouter
                   future={{

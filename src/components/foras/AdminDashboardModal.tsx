@@ -11,7 +11,7 @@ import {
   Upload, Layers, CheckSquare, Square, MinusSquare, Building2, Globe2,
   Crown, Shield, Unlock, HelpCircle, LockKeyhole, Smartphone, Tablet,
   Laptop, Monitor, SlidersHorizontal, BarChart3, Copy, Link2,
-  Filter, Clock, BookOpen, Award, Database
+  Filter, Clock, BookOpen, Award, Database, Radio
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Scholarship } from "@/lib/mockData";
@@ -19,6 +19,8 @@ import { dynamicStore, CustomJobItem, ArchivedItem, isArabCountry } from "@/lib/
 import { adminAuthStore, AdminUser, AuditLog, PendingItem, AdminRole, LockoutState, UNIFIED_ADMIN_EMAIL } from "@/lib/adminAuthStore";
 import { ARAB_UNIVERSITIES, ARAB_COUNTRY_STATS } from "@/lib/arabUniversities";
 import { GLOBAL_COUNTRIES } from "@/lib/globalUniversities";
+import { notificationsStore } from "@/lib/notificationsStorage";
+import { universitiesDirectoryStore } from "@/lib/universitiesDirectoryStore";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { SecurityPasswordManager } from "@/components/foras/SecurityPasswordManager";
@@ -29,6 +31,47 @@ import { ExtractedOpportunityPreview } from "@/components/foras/ExtractedOpportu
 import { AutomationCommandCenter } from "@/components/foras/AutomationCommandCenter";
 import { CloudDatabaseHealthMonitor } from "@/components/foras/CloudDatabaseHealthMonitor";
 import { selfHealingEngine } from "@/lib/selfHealingEngine";
+import { ArabUniversitiesAdminView } from "./admin/ArabUniversitiesAdminView";
+import { GlobalUniversitiesAdminView } from "./admin/GlobalUniversitiesAdminView";
+import { ArchiveVaultAdminView } from "./admin/ArchiveVaultAdminView";
+import { AuditLogsAdminView } from "./admin/AuditLogsAdminView";
+import { TeamManagementAdminView } from "./admin/TeamManagementAdminView";
+import { PendingReviewsAdminView } from "./admin/PendingReviewsAdminView";
+import { DataBackupAdminView } from "./admin/DataBackupAdminView";
+import { ScholarshipsManagementView } from "./admin/ScholarshipsManagementView";
+import { JobsManagementView } from "./admin/JobsManagementView";
+
+// Active Task Section in Slide Sidebar
+export type AdminTab =
+  | "scholarships"
+  | "jobs"
+  | "arab_unis"
+  | "global_unis"
+  | "archive"
+  | "url_parser"
+  | "automation"
+  | "pending_reviews"
+  | "team"
+  | "audit_logs"
+  | "backup"
+  | "security"
+  | "database";
+
+const VALID_ADMIN_TABS: AdminTab[] = [
+  "scholarships",
+  "jobs",
+  "arab_unis",
+  "global_unis",
+  "archive",
+  "url_parser",
+  "automation",
+  "pending_reviews",
+  "team",
+  "audit_logs",
+  "backup",
+  "security",
+  "database",
+];
 
 export const AdminDashboardModal: React.FC<{
   isOpen: boolean;
@@ -40,42 +83,10 @@ export const AdminDashboardModal: React.FC<{
   const alignClass = isRtl ? "text-right" : "text-left";
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Active Task Section in Slide Sidebar
-  type AdminTab =
-    | "scholarships"
-    | "jobs"
-    | "arab_unis"
-    | "global_unis"
-    | "archive"
-    | "url_parser"
-    | "automation"
-    | "pending_reviews"
-    | "team"
-    | "audit_logs"
-    | "backup"
-    | "security"
-    | "database";
-
-  const validAdminTabs: AdminTab[] = [
-    "scholarships",
-    "jobs",
-    "arab_unis",
-    "global_unis",
-    "archive",
-    "url_parser",
-    "automation",
-    "pending_reviews",
-    "team",
-    "audit_logs",
-    "backup",
-    "security",
-    "database",
-  ];
-
   const getInitialAdminTab = (): AdminTab => {
     if (isStandalonePage) {
       const q = searchParams.get("tab") as AdminTab;
-      if (q && validAdminTabs.includes(q)) return q;
+      if (q && VALID_ADMIN_TABS.includes(q)) return q;
     }
     return "scholarships";
   };
@@ -99,8 +110,8 @@ export const AdminDashboardModal: React.FC<{
   useEffect(() => {
     if (isStandalonePage) {
       const q = searchParams.get("tab") as AdminTab;
-      if (q && validAdminTabs.includes(q) && q !== activeTab) {
-        setActiveTab(q);
+      if (q && VALID_ADMIN_TABS.includes(q)) {
+        setActiveTab(prev => (prev !== q ? q : prev));
       }
     }
   }, [searchParams, isStandalonePage]);
@@ -167,6 +178,46 @@ export const AdminDashboardModal: React.FC<{
   });
   const [isTriggeringAutomation, setIsTriggeringAutomation] = useState(false);
   const [isSyncingServer, setIsSyncingServer] = useState(false);
+
+  // Broadcast Notification Modal State
+  const [broadcastModalOpen, setBroadcastModalOpen] = useState(false);
+  const [broadcastTitle, setBroadcastTitle] = useState("");
+  const [broadcastTitleEn, setBroadcastTitleEn] = useState("");
+  const [broadcastBody, setBroadcastBody] = useState("");
+  const [broadcastBodyEn, setBroadcastBodyEn] = useState("");
+  const [broadcastTab, setBroadcastTab] = useState<"scholarships" | "jobs" | "arab_unis" | "news">("scholarships");
+  const [isBroadcasting, setIsBroadcasting] = useState(false);
+
+  const handleSendBroadcast = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!broadcastTitle.trim() || !broadcastBody.trim()) {
+      toast.error(isRtl ? "يرجى كتابة عنوان وتفاصيل الإشعار" : "Title and body required");
+      return;
+    }
+    setIsBroadcasting(true);
+    const success = await notificationsStore.broadcastNotification({
+      id: `broadcast_${Date.now()}`,
+      kind: "broadcast",
+      title: broadcastTitle.trim(),
+      titleEn: broadcastTitleEn.trim() || broadcastTitle.trim(),
+      body: broadcastBody.trim(),
+      bodyEn: broadcastBodyEn.trim() || broadcastBody.trim(),
+      actionTab: broadcastTab,
+      ts: Date.now(),
+    }, currentUser);
+    setIsBroadcasting(false);
+
+    if (success) {
+      toast.success(isRtl ? "تم بث التنبيه لجميع المستخدمين بنجاح! 📡" : "Broadcast sent to all users! 📡");
+      setBroadcastModalOpen(false);
+      setBroadcastTitle("");
+      setBroadcastTitleEn("");
+      setBroadcastBody("");
+      setBroadcastBodyEn("");
+    } else {
+      toast.error(isRtl ? "تعذر بث التنبيه" : "Failed to broadcast");
+    }
+  };
 
   const fetchAutomationStatus = async () => {
     try {
@@ -252,6 +303,10 @@ export const AdminDashboardModal: React.FC<{
   const [showRecoveryConfirmPass, setShowRecoveryConfirmPass] = useState(false);
   const [isSendingRecoveryOtp, setIsSendingRecoveryOtp] = useState(false);
   const recoveryOtpRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Arab Universities Directory Filters & Pagination State
+  const [selectedArabCountry, setSelectedArabCountry] = useState<string>("all");
+  const [visibleUnisCount, setVisibleUnisCount] = useState<number>(35);
 
   // Update identifier when switching roles
   useEffect(() => {
@@ -391,13 +446,18 @@ export const AdminDashboardModal: React.FC<{
     }
   };
 
+  const performLoginRef = useRef(performLogin);
+  performLoginRef.current = performLogin;
+  const identifierInputRef = useRef(identifierInput);
+  identifierInputRef.current = identifierInput;
+
   // Auto-Submit when all PIN digits are filled!
   useEffect(() => {
     if (usePinMode && !currentUser && !lockoutState.isLocked) {
       const isComplete = pinDigits.every(d => d !== "");
       if (isComplete) {
         const fullPin = pinDigits.join("");
-        performLogin(identifierInput, fullPin);
+        performLoginRef.current(identifierInputRef.current, fullPin);
       }
     }
   }, [pinDigits, usePinMode, currentUser, lockoutState.isLocked]);
@@ -528,10 +588,12 @@ export const AdminDashboardModal: React.FC<{
     window.addEventListener("foras:data-updated", handleUpdates);
     window.addEventListener("foras:archive-updated", handleUpdates);
     window.addEventListener("foras:audit-updated", handleUpdates);
+    window.addEventListener("foras:team-updated", handleUpdates);
     return () => {
       window.removeEventListener("foras:data-updated", handleUpdates);
       window.removeEventListener("foras:archive-updated", handleUpdates);
       window.removeEventListener("foras:audit-updated", handleUpdates);
+      window.removeEventListener("foras:team-updated", handleUpdates);
     };
   }, []);
 
@@ -723,10 +785,29 @@ export const AdminDashboardModal: React.FC<{
     });
   }, [archivedItems, searchQuery]);
 
+  const availableArabCountries = useMemo(() => {
+    const map = new Map<string, { name: string; flag: string; count: number }>();
+    ARAB_UNIVERSITIES.forEach(u => {
+      if (!map.has(u.country)) {
+        map.set(u.country, { name: u.country, flag: u.flag || "🏛️", count: 1 });
+      } else {
+        const item = map.get(u.country)!;
+        item.count++;
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => b.count - a.count);
+  }, []);
+
   const filteredArabUnis = useMemo(() => {
-    if (!searchQuery.trim()) return ARAB_UNIVERSITIES;
+    let list = ARAB_UNIVERSITIES;
+    if (selectedArabCountry !== "all") {
+      list = list.filter(
+        u => u.country === selectedArabCountry || (u.countryEn && u.countryEn.toLowerCase() === selectedArabCountry.toLowerCase())
+      );
+    }
+    if (!searchQuery.trim()) return list;
     const q = searchQuery.toLowerCase().trim();
-    return ARAB_UNIVERSITIES.filter(
+    return list.filter(
       u =>
         u.name.toLowerCase().includes(q) ||
         (u.nameEn && u.nameEn.toLowerCase().includes(q)) ||
@@ -734,7 +815,7 @@ export const AdminDashboardModal: React.FC<{
         u.countryEn.toLowerCase().includes(q) ||
         u.city.toLowerCase().includes(q)
     );
-  }, [searchQuery]);
+  }, [searchQuery, selectedArabCountry]);
 
   const filteredGlobalCountries = useMemo(() => {
     if (!searchQuery.trim()) return GLOBAL_COUNTRIES;
@@ -904,6 +985,44 @@ export const AdminDashboardModal: React.FC<{
     );
   };
 
+  // Bulk Permanent Delete Action (Direct Purge)
+  const handleBulkDelete = () => {
+    if (selectedIds.length === 0) return;
+    if (!adminAuthStore.canUserPerform(currentUser, "delete")) {
+      toast.error(
+        isRtl
+          ? "غير مصرح لك بحذف العناصر. يرجى التواصل مع المدير العام."
+          : "You do not have permission to delete items."
+      );
+      return;
+    }
+    const count = selectedIds.length;
+    const type = activeTab === "scholarships" ? "scholarship" : "job";
+    const confirmMessage = isRtl
+      ? `هل أنت متأكد من مسح وحذف ${count} ${count === 1 ? (type === "scholarship" ? "منحة" : "وظيفة") : (type === "scholarship" ? "منح" : "وظائف")} نهائياً وبشكل فوري؟`
+      : `Are you sure you want to permanently delete ${count} selected ${type}(s)?`;
+
+    if (!window.confirm(confirmMessage)) return;
+
+    const items = selectedIds.map(id => ({ id, type }));
+    dynamicStore.archiveMultiple(items, currentUser, "مسح وحذف فوري من قبل المشرف");
+    selectedIds.forEach(id => {
+      try {
+        const archive = dynamicStore.getArchivedItems();
+        localStorage.setItem("foras_archived_vault_v1", JSON.stringify(archive.filter(a => a.id !== id)));
+      } catch {
+        // silent
+      }
+    });
+
+    setSelectedIds([]);
+    toast.success(
+      isRtl
+        ? `تم مسح وحذف ${count} ${count === 1 ? "عنصر" : "عناصر"} بنجاح`
+        : `Successfully deleted ${count} item(s)`
+    );
+  };
+
   // Bulk Restore from Archive
   const handleBulkRestore = () => {
     if (selectedIds.length === 0) return;
@@ -937,7 +1056,7 @@ export const AdminDashboardModal: React.FC<{
       items: [
         { id: "scholarships" as const, labelAr: "المنح الدراسية", labelEn: "Scholarships", icon: GraduationCap, badge: scholarships.length },
         { id: "jobs" as const, labelAr: "وظائف العمل الحر $", labelEn: "Remote Freelance Jobs", icon: Briefcase, badge: jobs.length },
-        { id: "arab_unis" as const, labelAr: "دليل الجامعات العربية", labelEn: "Arab Universities", icon: Building2, badge: ARAB_UNIVERSITIES.length },
+        { id: "arab_unis" as const, labelAr: "دليل الجامعات العربية", labelEn: "Arab Universities", icon: Building2, badge: universitiesDirectoryStore.getArabUniversities().length },
         { id: "global_unis" as const, labelAr: "دليل الجامعات العالمية", labelEn: "Global Universities", icon: Globe2, badge: GLOBAL_COUNTRIES.length },
         { id: "url_parser" as const, labelAr: "محرر الروابط الذكي AI", labelEn: "AI URL Parser", icon: Sparkles },
         { id: "automation" as const, labelAr: "محرك الأوتوميشن الذكي AI", labelEn: "AI Auto-Ingestion Engine", icon: RefreshCw },
@@ -963,7 +1082,7 @@ export const AdminDashboardModal: React.FC<{
       groupTitleAr: "الإعدادات وقاعدة البيانات",
       groupTitleEn: "Settings & Database",
       items: [
-        { id: "database" as const, labelAr: "قاعدة البيانات السحابية (Firebase)", labelEn: "Cloud Database (Firebase)", icon: Database },
+        { id: "database" as const, labelAr: "السحابة ونظام الأوفلاين (Master)", labelEn: "Cloud & Global Offline (Master)", icon: Database },
         { id: "backup" as const, labelAr: "تصدير / استيراد البيانات", labelEn: "Data Backup & Restore", icon: Download },
         { id: "security" as const, labelAr: "تغيير كلمة المرور", labelEn: "Admin Password", icon: KeyRound },
       ],
@@ -1149,6 +1268,19 @@ export const AdminDashboardModal: React.FC<{
             </button>
           )}
 
+          {/* Real-time Broadcast Notification to All Users */}
+          {currentUser && (
+            <button
+              type="button"
+              onClick={() => setBroadcastModalOpen(true)}
+              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-500/15 border border-amber-500/30 hover:border-amber-500/60 text-2xs font-bold text-amber-300 hover:text-white transition-all cursor-pointer shadow-sm"
+              title={isRtl ? "بث إشعار عام لحظي لجميع المستخدمين" : "Broadcast Notification"}
+            >
+              <Radio className="w-3 h-3 text-amber-400 animate-pulse" />
+              <span className="hidden md:inline">{isRtl ? "بث إشعار عام" : "Broadcast"}</span>
+            </button>
+          )}
+
           <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
             {currentUser && (
               <button
@@ -1318,7 +1450,7 @@ export const AdminDashboardModal: React.FC<{
                       className="w-full px-3.5 sm:px-4 py-2.5 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 font-semibold text-xs sm:text-sm border-2 border-primary/40 focus:border-primary focus:ring-2 focus:ring-primary/40 shadow-[0_0_15px_rgba(255,255,255,0.15)] outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                       dir={dir}
                     />
-                    <span className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? "left-3" : "right-3"} text-gray-600 text-xs`}>
+                    <span className="absolute top-1/2 -translate-y-1/2 end-3 text-gray-600 text-xs">
                       {loginRole === "super_admin" ? "👑" : "🛡️"}
                     </span>
                   </div>
@@ -1414,14 +1546,12 @@ export const AdminDashboardModal: React.FC<{
                         showPlain={showPassword}
                         disabled={lockoutState.isLocked}
                         placeholder="★★★★★★"
-                        className={`w-full py-2 sm:py-2.5 px-3.5 sm:px-4 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 text-xs sm:text-sm border-2 border-primary/40 focus:border-primary focus:ring-2 focus:ring-primary/40 shadow-sm outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-all ${
-                          isRtl ? "pl-10 pr-3.5" : "pr-10 pl-3.5"
-                        }`}
+                        className="w-full py-2 sm:py-2.5 px-3.5 sm:px-4 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 text-xs sm:text-sm border-2 border-primary/40 focus:border-primary focus:ring-2 focus:ring-primary/40 shadow-sm outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-all ps-3.5 pe-10"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(p => !p)}
-                        className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? "left-3" : "right-3"} text-gray-600 hover:text-gray-900 cursor-pointer p-1`}
+                        className="absolute top-1/2 -translate-y-1/2 end-3 text-gray-600 hover:text-gray-900 cursor-pointer p-1"
                       >
                         {showPassword ? <EyeOff className="w-4 h-4 text-gray-700" /> : <Eye className="w-4 h-4 text-primary" />}
                       </button>
@@ -1450,7 +1580,7 @@ export const AdminDashboardModal: React.FC<{
                   disabled={lockoutState.isLocked}
                   className="w-full py-3 sm:py-3.5 rounded-xl shadow-gold font-bold text-sm sm:text-base cursor-pointer mt-1 sm:mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Lock className="w-4 h-4 mr-1.5 ml-1.5" />
+                  <Lock className="w-4 h-4 mx-1.5" />
                   <span>{t("adminUnlockBtn")}</span>
                 </Button>
               </form>
@@ -1475,13 +1605,13 @@ export const AdminDashboardModal: React.FC<{
                 {/* Sidebar Search Section */}
                 <div className="p-2 sm:p-2.5 border-b border-primary/20 w-full flex-shrink-0">
                   <div className="relative">
-                    <Search className={`w-3.5 h-3.5 absolute top-1/2 -translate-y-1/2 ${isRtl ? "right-2.5" : "left-2.5"} text-gray-400`} />
+                    <Search className="w-3.5 h-3.5 absolute top-1/2 -translate-y-1/2 start-2.5 text-gray-400" />
                     <input
                       type="text"
                       value={sidebarSearch}
                       onChange={e => setSidebarSearch(e.target.value)}
                       placeholder={t("adminSearchMenu")}
-                      className={`w-full py-1.5 ${isRtl ? "pr-8 pl-2.5" : "pl-8 pr-2.5"} rounded-xl bg-background/80 border border-primary/30 text-xs text-white focus:border-primary outline-none`}
+                      className="w-full py-1.5 ps-8 pe-2.5 rounded-xl bg-background/80 border border-primary/30 text-xs text-white focus:border-primary outline-none"
                       dir={dir}
                     />
                   </div>
@@ -1573,7 +1703,7 @@ export const AdminDashboardModal: React.FC<{
                   )}
 
                   <div className="relative flex-1">
-                    <Search className={`w-4 h-4 absolute top-1/2 -translate-y-1/2 ${isRtl ? "right-3" : "left-3"} text-gray-400`} />
+                    <Search className="w-4 h-4 absolute top-1/2 -translate-y-1/2 start-3 text-gray-400" />
                     <input
                       type="text"
                       value={searchQuery}
@@ -1591,7 +1721,7 @@ export const AdminDashboardModal: React.FC<{
                             }`
                           : "Search listings..."
                       }
-                      className={`w-full py-2 ${isRtl ? "pr-9 pl-3" : "pl-9 pr-3"} rounded-xl bg-background border border-primary/30 text-xs sm:text-sm text-white focus:border-primary outline-none`}
+                      className={`w-full py-2 ps-9 pe-3 rounded-xl bg-background border border-primary/30 text-xs sm:text-sm text-white focus:border-primary outline-none`}
                       dir={dir}
                     />
                   </div>
@@ -1599,1915 +1729,117 @@ export const AdminDashboardModal: React.FC<{
               </div>
 
               {/* Tab Views */}
-              <div className="flex-1 overflow-hidden p-2 sm:p-4 bg-background/20">
-                {/* 1. Scholarships Management - Multi-Pane Responsive Adaptive Grid (Video 2) */}
+              <div className="flex-1 overflow-hidden p-2 sm:p-4 bg-background/20 min-h-0 flex flex-col">
+                {/* 1. Scholarships Management - Modular View */}
                 {activeTab === "scholarships" && (
-                  <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 overflow-hidden">
-                    {/* Pane 2: List Pane (Width: 4/12 on lg, 5/12 on xl, 12/12 on mobile list view) */}
-                    <div
-                      className={`h-full flex flex-col bg-card/60 border border-primary/25 rounded-2xl overflow-hidden shadow-lg transition-all duration-300 ${
-                        deviceSimulator === "phone" && mobileViewPane === "detail"
-                          ? "hidden"
-                          : "lg:col-span-4 xl:col-span-4 flex"
-                      }`}
-                    >
-                      {/* List Header & Categories Segment Hub */}
-                      <div className="border-b border-primary/20 bg-card/90 flex flex-col flex-shrink-0">
-                        {/* 1. Header Bar */}
-                        <div className="p-3 pb-2 flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center text-primary">
-                              <GraduationCap className="w-3.5 h-3.5" />
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                                <span>{isRtl ? "سجل المنح الدراسية" : "Scholarships Hub"}</span>
-                                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-primary/25 border border-primary/40 text-primary">
-                                  {filteredScholarships.length}
-                                  {filteredScholarships.length !== scholarships.length && ` / ${scholarships.length}`}
-                                </span>
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-1.5">
-                            {hasActiveScholarshipFilters && (
-                              <button
-                                onClick={resetScholarshipFilters}
-                                title={isRtl ? "تصفير جميع الفلاتر" : "Reset all filters"}
-                                className="px-2 py-1 rounded-lg text-[10px] font-bold text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all cursor-pointer flex items-center gap-1"
-                              >
-                                <X className="w-3 h-3" />
-                                <span className="hidden sm:inline">{isRtl ? "تصفير" : "Reset"}</span>
-                              </button>
-                            )}
-
-                            {adminAuthStore.canUserPerform(currentUser, "create") && (
-                              <button
-                                onClick={() => {
-                                  const newSch = {
-                                    id: `sch_${Date.now()}`,
-                                    title_ar: "منحة دراسية جديدة ممولة بالكامل",
-                                    title_en: "New Fully Funded Scholarship",
-                                    university: isRtl ? "جامعة دولية معتمدة" : "Accredited International University",
-                                    country: isRtl ? "عالمي" : "International",
-                                    flag: "🌍",
-                                    category: scholarshipCategoryFilter === "arab" ? "arab" : "global",
-                                    degree: "bachelor_master",
-                                    coverage: "full" as any,
-                                    deadline: new Date(Date.now() + 45 * 86400000).toISOString().split("T")[0],
-                                    majors: ["الهندسة والتقنية", "الطب والعلوم"],
-                                    apply_url: "https://example.com",
-                                    official_website: "https://example.com",
-                                    description_ar: "وصف المنحة وتفاصيل الدعم المالي والرسوم والتذاكر والسكن.",
-                                    description_en: "Scholarship description and full financial coverage details.",
-                                    benefits_ar: ["إعفاء كامل من المصروفات", "راتب شهري", "سكن مجاني"],
-                                    benefits_en: ["Full tuition waiver", "Monthly stipend"],
-                                  };
-                                  setEditingScholarship(newSch as any);
-                                  setMobileViewPane("detail");
-                                }}
-                                className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-gold hover:opacity-90 transition-all cursor-pointer"
-                              >
-                                <Plus className="w-3.5 h-3.5" />
-                                <span>{isRtl ? "إضافة منحة" : "New"}</span>
-                              </button>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* 2. Primary Geographic Scope Tabs (القطاع الجغرافي) */}
-                        <div className="px-3 pb-2 flex gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => setScholarshipCategoryFilter("all")}
-                            className={`flex-1 py-1.5 px-2 rounded-xl text-[11px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                              scholarshipCategoryFilter === "all"
-                                ? "bg-primary text-primary-foreground shadow-gold"
-                                : "bg-card/70 border border-primary/20 text-gray-300 hover:text-white hover:border-primary/40"
-                            }`}
-                          >
-                            <span>🌍</span>
-                            <span>{isRtl ? "الكل" : "All"}</span>
-                            <span className={`text-[10px] px-1 rounded-full ${
-                              scholarshipCategoryFilter === "all" ? "bg-black/20 text-white" : "bg-primary/20 text-primary"
-                            }`}>
-                              {scholarshipCategoryCounts.total}
-                            </span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => setScholarshipCategoryFilter("arab")}
-                            className={`flex-1 py-1.5 px-2 rounded-xl text-[11px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                              scholarshipCategoryFilter === "arab"
-                                ? "bg-primary text-primary-foreground shadow-gold"
-                                : "bg-card/70 border border-primary/20 text-gray-300 hover:text-white hover:border-primary/40"
-                            }`}
-                          >
-                            <span>🏛️</span>
-                            <span>{isRtl ? "منح عربية" : "Arab"}</span>
-                            <span className={`text-[10px] px-1 rounded-full ${
-                              scholarshipCategoryFilter === "arab" ? "bg-black/20 text-white" : "bg-primary/20 text-primary"
-                            }`}>
-                              {scholarshipCategoryCounts.arab}
-                            </span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => setScholarshipCategoryFilter("global")}
-                            className={`flex-1 py-1.5 px-2 rounded-xl text-[11px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                              scholarshipCategoryFilter === "global"
-                                ? "bg-primary text-primary-foreground shadow-gold"
-                                : "bg-card/70 border border-primary/20 text-gray-300 hover:text-white hover:border-primary/40"
-                            }`}
-                          >
-                            <span>🌐</span>
-                            <span>{isRtl ? "منح دولية" : "Global"}</span>
-                            <span className={`text-[10px] px-1 rounded-full ${
-                              scholarshipCategoryFilter === "global" ? "bg-black/20 text-white" : "bg-primary/20 text-primary"
-                            }`}>
-                              {scholarshipCategoryCounts.global}
-                            </span>
-                          </button>
-                        </div>
-
-                        {/* 3. Fast Sub-Filter Chips (المرشحات السريعة للتمويل والمرحلة والصلاحية) */}
-                        <div className="px-3 pb-2.5 flex items-center gap-1.5 overflow-x-auto scrollbar-none">
-                          {/* Funding Pills */}
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setScholarshipFundingFilter(prev => (prev === "full" ? "all" : "full"))
-                            }
-                            className={`px-2 py-1 rounded-lg text-[10px] font-bold flex-shrink-0 transition-all cursor-pointer flex items-center gap-1 ${
-                              scholarshipFundingFilter === "full"
-                                ? "bg-emerald-500 text-white shadow-sm"
-                                : "bg-card/60 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/15"
-                            }`}
-                          >
-                            <span>💎</span>
-                            <span>{isRtl ? "ممولة بالكامل" : "Full"}</span>
-                            <span className="opacity-80">({scholarshipCategoryCounts.full})</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setScholarshipFundingFilter(prev => (prev === "partial" ? "all" : "partial"))
-                            }
-                            className={`px-2 py-1 rounded-lg text-[10px] font-bold flex-shrink-0 transition-all cursor-pointer flex items-center gap-1 ${
-                              scholarshipFundingFilter === "partial"
-                                ? "bg-blue-500 text-white shadow-sm"
-                                : "bg-card/60 border border-blue-500/30 text-blue-400 hover:bg-blue-500/15"
-                            }`}
-                          >
-                            <span>⚖️</span>
-                            <span>{isRtl ? "تمويل جزئي" : "Partial"}</span>
-                            <span className="opacity-80">({scholarshipCategoryCounts.partial})</span>
-                          </button>
-
-                          {/* Degree Pills */}
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setScholarshipDegreeFilter(prev => (prev === "bachelor" ? "all" : "bachelor"))
-                            }
-                            className={`px-2 py-1 rounded-lg text-[10px] font-bold flex-shrink-0 transition-all cursor-pointer flex items-center gap-1 ${
-                              scholarshipDegreeFilter === "bachelor"
-                                ? "bg-amber-500 text-black font-black shadow-sm"
-                                : "bg-card/60 border border-amber-500/30 text-amber-300 hover:bg-amber-500/15"
-                            }`}
-                          >
-                            <span>🎓</span>
-                            <span>{isRtl ? "بكالوريوس" : "Bachelor"}</span>
-                            <span className="opacity-80">({scholarshipCategoryCounts.bachelor})</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setScholarshipDegreeFilter(prev => (prev === "postgrad" ? "all" : "postgrad"))
-                            }
-                            className={`px-2 py-1 rounded-lg text-[10px] font-bold flex-shrink-0 transition-all cursor-pointer flex items-center gap-1 ${
-                              scholarshipDegreeFilter === "postgrad"
-                                ? "bg-purple-500 text-white shadow-sm"
-                                : "bg-card/60 border border-purple-500/30 text-purple-300 hover:bg-purple-500/15"
-                            }`}
-                          >
-                            <span>📚</span>
-                            <span>{isRtl ? "دراسات عليا" : "Postgrad"}</span>
-                            <span className="opacity-80">({scholarshipCategoryCounts.postgrad})</span>
-                          </button>
-
-                          {/* Expired Filter Pill - High Priority Maintenance */}
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setScholarshipDeadlineFilter(prev => (prev === "expired" ? "all" : "expired"))
-                            }
-                            className={`px-2 py-1 rounded-lg text-[10px] font-bold flex-shrink-0 transition-all cursor-pointer flex items-center gap-1 ${
-                              scholarshipDeadlineFilter === "expired"
-                                ? "bg-red-500 text-white shadow-sm font-black"
-                                : scholarshipCategoryCounts.expired > 0
-                                ? "bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30"
-                                : "bg-card/60 border border-primary/20 text-gray-400 hover:text-white"
-                            }`}
-                          >
-                            <span>🔴</span>
-                            <span>{isRtl ? "منتهية الصلاحية" : "Expired"}</span>
-                            <span className="opacity-90 font-black">({scholarshipCategoryCounts.expired})</span>
-                          </button>
-
-                          {/* Expiring Soon Pill */}
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setScholarshipDeadlineFilter(prev => (prev === "expiring_soon" ? "all" : "expiring_soon"))
-                            }
-                            className={`px-2 py-1 rounded-lg text-[10px] font-bold flex-shrink-0 transition-all cursor-pointer flex items-center gap-1 ${
-                              scholarshipDeadlineFilter === "expiring_soon"
-                                ? "bg-amber-600 text-white shadow-sm"
-                                : "bg-card/60 border border-amber-500/30 text-amber-400 hover:bg-amber-500/15"
-                            }`}
-                          >
-                            <span>⏳</span>
-                            <span>{isRtl ? "تنتهي قريباً" : "Expiring"}</span>
-                            <span className="opacity-80">({scholarshipCategoryCounts.expiringSoon})</span>
-                          </button>
-                        </div>
-
-                        {/* 4. Expired Batch Maintenance Banner */}
-                        {scholarshipDeadlineFilter === "expired" && (
-                          <div className="mx-3 mb-2.5 p-3 rounded-xl bg-red-500/15 border border-red-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                            <div className="flex items-center gap-1.5 text-xs text-red-300 font-bold">
-                              <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
-                              <span>
-                                {isRtl
-                                  ? `تم فرز ${filteredScholarships.length} منحة منتهية الصلاحية.`
-                                  : `${filteredScholarships.length} expired scholarships found.`}
-                              </span>
-                              {selectedIds.length > 0 && (
-                                <span className="bg-red-500/30 px-2 py-0.5 rounded-full text-[10px] text-white font-mono">
-                                  {isRtl ? `(${selectedIds.length} محددة)` : `(${selectedIds.length} selected)`}
-                                </span>
-                              )}
-                            </div>
-
-                            {filteredScholarships.length > 0 && (
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const expiredIds = filteredScholarships.map(s => s.id);
-                                    if (selectedIds.length === expiredIds.length) {
-                                      setSelectedIds([]);
-                                    } else {
-                                      setSelectedIds(expiredIds);
-                                    }
-                                  }}
-                                  className="px-2.5 py-1.5 rounded-lg bg-card/80 border border-red-500/40 text-red-300 hover:text-white hover:bg-red-500/20 text-[11px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1"
-                                >
-                                  <CheckSquare className="w-3.5 h-3.5" />
-                                  <span>
-                                    {selectedIds.length === filteredScholarships.length
-                                      ? (isRtl ? "إلغاء التحديد" : "Deselect all")
-                                      : (isRtl ? "تحديد الكل" : "Select all")}
-                                  </span>
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const idsToArchive = selectedIds.length > 0 ? selectedIds : filteredScholarships.map(s => s.id);
-                                    if (idsToArchive.length === 0) return;
-                                    const items = idsToArchive.map(id => ({ id, type: "scholarship" }));
-                                    dynamicStore.archiveMultiple(items, currentUser);
-                                    setSelectedIds([]);
-                                    toast.success(
-                                      isRtl
-                                        ? `تم مسح وأرشفة ${idsToArchive.length} منحة منتهية بنجاح ونقلها للأرشيف`
-                                        : `Archived ${idsToArchive.length} expired scholarship(s)`
-                                    );
-                                  }}
-                                  className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-95"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                  <span>
-                                    {selectedIds.length > 0
-                                      ? (isRtl ? `مسح وأرشفة المحددة (${selectedIds.length})` : `Archive selected (${selectedIds.length})`)
-                                      : (isRtl ? `مسح جميع المنتهية (${filteredScholarships.length})` : `Archive all expired (${filteredScholarships.length})`)}
-                                  </span>
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Scrollable List Items */}
-                      <div className="flex-1 overflow-y-auto p-2 space-y-2 scrollbar-thin scrollbar-thumb-primary/20">
-                        {filteredScholarships.length === 0 ? (
-                          <div className="text-center py-12 p-4 rounded-xl bg-card/40 border border-primary/20 space-y-2">
-                            <GraduationCap className="w-8 h-8 text-primary mx-auto opacity-50" />
-                            <p className="text-xs text-gray-300 font-bold">
-                              {hasActiveScholarshipFilters || searchQuery
-                                ? (isRtl ? "لا توجد منح مطابقة للفلاتر المحددة حالياً" : "No scholarships match current filters")
-                                : t("adminNoScholarships")}
-                            </p>
-                            {hasActiveScholarshipFilters && (
-                              <button
-                                onClick={resetScholarshipFilters}
-                                className="px-3 py-1.5 rounded-xl bg-primary/20 border border-primary/40 text-primary text-xs font-bold hover:bg-primary/30 transition-all cursor-pointer inline-flex items-center gap-1.5"
-                              >
-                                <RotateCcw className="w-3.5 h-3.5" />
-                                <span>{isRtl ? "إلغاء التصفية وعرض الكل" : "Clear filters and show all"}</span>
-                              </button>
-                            )}
-                          </div>
-                        ) : (
-                          filteredScholarships.map((s, idx) => {
-                            const isSelected = selectedIds.includes(s.id);
-                            const isActiveEdit = editingScholarship?.id === s.id;
-                            const scoreData = calculateScholarshipScore(s);
-                            const deadlineStatus = getScholarshipDeadlineStatus(s);
-                            const isArab = s.category === "arab";
-
-                            return (
-                              <div
-                                key={s.id}
-                                onClick={() => {
-                                  setEditingScholarship(s);
-                                  setMobileViewPane("detail");
-                                }}
-                                className={`p-3 rounded-xl border-2 transition-all cursor-pointer flex flex-col gap-2 relative ${
-                                  isActiveEdit
-                                    ? "bg-primary/20 border-primary shadow-gold"
-                                    : isSelected
-                                    ? "bg-primary/10 border-primary/50"
-                                    : "bg-card/70 border-primary/15 hover:border-primary/40 hover:bg-card"
-                                }`}
-                              >
-                                <div className="flex items-start justify-between gap-2">
-                                  <div className="flex items-start gap-2.5 min-w-0">
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleToggleSelectItem(s.id, idx, e);
-                                      }}
-                                      className="pt-0.5 text-gray-400 hover:text-primary transition-colors cursor-pointer"
-                                    >
-                                      {isSelected ? (
-                                        <CheckSquare className="w-4 h-4 text-primary" />
-                                      ) : (
-                                        <Square className="w-4 h-4 text-gray-400" />
-                                      )}
-                                    </button>
-
-                                    <div className="min-w-0">
-                                      <div className="flex items-center gap-1.5 flex-wrap mb-1">
-                                        {/* Category Badge */}
-                                        <span
-                                          className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                                            isArab
-                                              ? "bg-blue-500/15 border border-blue-500/30 text-blue-300"
-                                              : "bg-indigo-500/15 border border-indigo-500/30 text-indigo-300"
-                                          }`}
-                                        >
-                                          {isArab ? (isRtl ? "🏛️ عربية" : "Arab") : (isRtl ? "🌐 دولية" : "Global")}
-                                        </span>
-
-                                        {/* Degree Badge if available */}
-                                        {((s as any).degree || s.level) && (
-                                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-card border border-primary/20 text-gray-300">
-                                            {isScholarshipBachelor(s)
-                                              ? (isRtl ? "🎓 بكالوريوس" : "Bachelor")
-                                              : isScholarshipPostgrad(s)
-                                              ? (isRtl ? "📚 دراسات عليا" : "Postgrad")
-                                              : (s.level || (s as any).degree)}
-                                          </span>
-                                        )}
-                                      </div>
-
-                                      <h4 className="text-xs sm:text-sm font-bold text-white leading-snug line-clamp-1">
-                                        {isRtl ? s.title || (s as any).title_ar : (s as any).title_en || s.title}
-                                      </h4>
-                                      <p className="text-[11px] text-gray-400 line-clamp-1 mt-0.5">
-                                        {s.university || s.org} • {s.country}
-                                      </p>
-                                    </div>
-                                  </div>
-
-                                  <span
-                                    className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold flex-shrink-0 ${
-                                      scoreData.score >= 85
-                                        ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                                        : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-                                    }`}
-                                  >
-                                    {scoreData.score}%
-                                  </span>
-                                </div>
-
-                                <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-primary/10 text-gray-400">
-                                  <span className="text-amber-300 font-medium">
-                                    {isScholarshipFullyFunded(s)
-                                      ? (isRtl ? "💎 ممولة بالكامل" : "Fully Funded")
-                                      : (isRtl ? "⚖️ تمويل جزئي" : "Partial")}
-                                  </span>
-
-                                  {/* Deadline with color alert */}
-                                  <span
-                                    className={`text-[10px] font-bold flex items-center gap-1 ${
-                                      deadlineStatus === "expired"
-                                        ? "text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded"
-                                        : deadlineStatus === "expiring_soon"
-                                        ? "text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded"
-                                        : "text-gray-400"
-                                    }`}
-                                  >
-                                    {deadlineStatus === "expired" && "🔴 "}
-                                    {deadlineStatus === "expiring_soon" && "⏳ "}
-                                    {s.deadline
-                                      ? `${s.deadline} ${deadlineStatus === "expired" ? (isRtl ? "(منتهية)" : "(Expired)") : ""}`
-                                      : isRtl
-                                      ? "مفتوح دائماً"
-                                      : "Open"}
-                                  </span>
-                                </div>
-                              </div>
-                            );
-                          })
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Pane 3: Detail Workspace Pane (Width: 8/12 on lg, 5/12 on xl when Inspector is open, 12/12 on mobile detail view) */}
-                    <div
-                      className={`h-full flex flex-col bg-card/75 border border-primary/30 rounded-2xl overflow-hidden shadow-2xl transition-all duration-300 ${
-                        !editingScholarship
-                          ? "hidden lg:flex lg:col-span-8 xl:col-span-8"
-                          : deviceSimulator === "phone" && mobileViewPane === "list"
-                          ? "hidden"
-                          : isInspectorOpen
-                          ? "lg:col-span-8 xl:col-span-5 flex"
-                          : "lg:col-span-8 xl:col-span-8 flex"
-                      }`}
-                    >
-                      {editingScholarship ? (
-                        <div className="h-full flex flex-col overflow-hidden">
-                          {/* Workspace Header with Tabs & Actions */}
-                          <div className="p-3 border-b border-primary/20 bg-card flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 flex-shrink-0">
-                            <div className="flex items-center gap-2">
-                              {deviceSimulator === "phone" && (
-                                <button
-                                  onClick={() => setMobileViewPane("list")}
-                                  className="p-1.5 rounded-xl bg-primary/15 border border-primary/30 text-primary hover:bg-primary/25 transition-all text-xs font-bold flex items-center gap-1 cursor-pointer"
-                                >
-                                  {isRtl ? <ArrowRight className="w-3.5 h-3.5" /> : <ArrowLeft className="w-3.5 h-3.5" />}
-                                  <span>{isRtl ? "القائمة" : "List"}</span>
-                                </button>
-                              )}
-                              <div className="w-7 h-7 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center text-primary flex-shrink-0">
-                                <Edit3 className="w-3.5 h-3.5" />
-                              </div>
-                              <div className="min-w-0">
-                                <h3 className="text-xs sm:text-sm font-bold text-white truncate max-w-[200px] sm:max-w-xs">
-                                  {isRtl ? editingScholarship.title || (editingScholarship as any).title_ar : (editingScholarship as any).title_en || editingScholarship.title}
-                                </h3>
-                                <p className="text-[10px] text-gray-400">
-                                  {editingScholarship.id}
-                                </p>
-                              </div>
-                            </div>
-
-                            {/* Actions & Tab Switchers */}
-                            <div className="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setEditingScholarship(null)}
-                                className="h-8 px-2.5 rounded-xl text-xs cursor-pointer text-gray-300 hover:text-white"
-                              >
-                                {isRtl ? "إغلاق" : "Close"}
-                              </Button>
-                              <Button
-                                variant="luxe"
-                                size="sm"
-                                onClick={() => {
-                                  if (scholarshipDuplicateResult.isDuplicate && duplicateOverriddenId !== editingScholarship.id) {
-                                    toast.error(
-                                      isRtl
-                                        ? `⚠️ تنبيه النزاهة: تم رصد منحة مطابقة مسبقاً (${scholarshipDuplicateResult.matchedItem?.title})! اضغط "تجاوز" في صندوق التنبيه لتأكيد الحفظ كمنحة منفصلة.`
-                                        : `⚠️ Duplicate detected! Click "Ignore" on the alert to save as separate.`
-                                    );
-                                    return;
-                                  }
-                                  dynamicStore.saveScholarship(editingScholarship);
-                                  toast.success(isRtl ? "تم الحفظ والنشر الفوري بنجاح" : "Saved & Published successfully");
-                                }}
-                                className="h-8 px-3 rounded-xl text-xs font-bold shadow-gold cursor-pointer"
-                              >
-                                <Check className="w-3.5 h-3.5 me-1" />
-                                {t("adminSavePublish")}
-                              </Button>
-                            </div>
-                          </div>
-
-                          {/* Editor Tabs Navigation (Pane 3 Tabs) */}
-                          <div className="flex items-center gap-1 p-2 bg-background/50 border-b border-primary/15 overflow-x-auto flex-shrink-0">
-                            {[
-                              { id: "info", labelAr: "البيانات الأساسية", labelEn: "Basic Info" },
-                              { id: "financials", labelAr: "التمويل والمزايا", labelEn: "Financials & Benefits" },
-                              { id: "eligibility", labelAr: "الشروط والمواعيد", labelEn: "Eligibility & Dates" },
-                              { id: "custom_fields", labelAr: "حقول مخصصة", labelEn: "Custom Fields" },
-                              { id: "urls", labelAr: "روابط التقديم", labelEn: "Application Links" },
-                            ].map((tb) => (
-                              <button
-                                key={tb.id}
-                                onClick={() => setActiveEditorTab(tb.id as any)}
-                                className={`px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
-                                  activeEditorTab === tb.id
-                                    ? "bg-primary text-primary-foreground shadow-gold"
-                                    : "text-gray-400 hover:text-white hover:bg-primary/10"
-                                }`}
-                              >
-                                {isRtl ? tb.labelAr : tb.labelEn}
-                              </button>
-                            ))}
-                          </div>
-
-                          {/* Editor Tab Content */}
-                          <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3.5 scrollbar-thin scrollbar-thumb-primary/20" dir={dir}>
-                            {/* Live Integrity & Duplicate Guard Banner */}
-                            <ScholarshipDuplicateBanner
-                              checkResult={scholarshipDuplicateResult}
-                              isRtl={isRtl}
-                              onSelectExisting={(matched) => {
-                                setEditingScholarship(matched);
-                                setDuplicateOverriddenId(null);
-                                toast.info(isRtl ? `تم الانتقال للمنحة المسجلة: "${matched.title}"` : `Switched to registered scholarship: "${matched.title}"`);
-                              }}
-                              onDismissOverride={() => {
-                                setDuplicateOverriddenId(editingScholarship.id);
-                                toast.warning(isRtl ? "تم تفعيل خيار التجاوز: يمكنك الحفظ كمنحة منفصلة الآن" : "Duplicate override enabled: You can save as separate listing");
-                              }}
-                              isOverridden={duplicateOverriddenId === editingScholarship.id}
-                            />
-
-                            {activeEditorTab === "info" && (
-                              <div className="space-y-3">
-                                <div>
-                                  <label className="block text-xs font-bold text-gray-300 mb-1">
-                                    {t("adminSchTitleAr")} <span className="text-destructive">*</span>
-                                  </label>
-                                  <input
-                                    type="text"
-                                    value={(editingScholarship as any).title_ar || editingScholarship.title || ""}
-                                    onChange={(e) =>
-                                      setEditingScholarship({
-                                        ...editingScholarship,
-                                        title: e.target.value,
-                                        title_ar: e.target.value,
-                                      } as any)
-                                    }
-                                    className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs sm:text-sm text-white outline-none focus:border-primary"
-                                    dir="rtl"
-                                  />
-                                </div>
-
-                                <div>
-                                  <label className="block text-xs font-bold text-gray-300 mb-1">
-                                    {t("adminSchTitleEn")}
-                                  </label>
-                                  <input
-                                    type="text"
-                                    value={(editingScholarship as any).title_en || (editingScholarship as any).titleEn || ""}
-                                    onChange={(e) =>
-                                      setEditingScholarship({
-                                        ...editingScholarship,
-                                        title_en: e.target.value,
-                                        titleEn: e.target.value,
-                                      } as any)
-                                    }
-                                    className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs sm:text-sm text-white outline-none focus:border-primary"
-                                    dir="ltr"
-                                  />
-                                </div>
-
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                  <div>
-                                    <label className="block text-xs font-bold text-gray-300 mb-1">
-                                      {t("adminUniversity")}
-                                    </label>
-                                    <input
-                                      type="text"
-                                      value={editingScholarship.university || editingScholarship.org || ""}
-                                      onChange={(e) =>
-                                        setEditingScholarship({
-                                          ...editingScholarship,
-                                          university: e.target.value,
-                                          org: e.target.value,
-                                        })
-                                      }
-                                      className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs sm:text-sm text-white outline-none focus:border-primary"
-                                      dir={dir}
-                                    />
-                                  </div>
-
-                                  <div>
-                                    <label className="block text-xs font-bold text-gray-300 mb-1">
-                                      {t("adminCountry")}
-                                    </label>
-                                    <input
-                                      type="text"
-                                      value={editingScholarship.country || ""}
-                                      onChange={(e) => {
-                                        const newCountry = e.target.value;
-                                        const isArab = isArabCountry(newCountry, (editingScholarship as any).title_ar || editingScholarship.title);
-                                        setEditingScholarship({
-                                          ...editingScholarship,
-                                          country: newCountry,
-                                          category: isArab ? "arab" : "global",
-                                        });
-                                      }}
-                                      className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs sm:text-sm text-white outline-none focus:border-primary"
-                                      dir={dir}
-                                    />
-                                  </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                  <div>
-                                    <label className="block text-xs font-bold text-gray-300 mb-1">
-                                      {isRtl ? "تصنيف المنحة" : "Category"}
-                                    </label>
-                                    <select
-                                      value={editingScholarship.category || "global"}
-                                      onChange={(e) =>
-                                        setEditingScholarship({
-                                          ...editingScholarship,
-                                          category: e.target.value as any,
-                                        })
-                                      }
-                                      className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs sm:text-sm text-white outline-none focus:border-primary"
-                                    >
-                                      <option value="global">{isRtl ? "🌐 منحة دولية / عالمية" : "Global Scholarship"}</option>
-                                      <option value="arab">{isRtl ? "🏛️ منحة عربية / إقليمية" : "Arab Scholarship"}</option>
-                                    </select>
-                                  </div>
-
-                                  <div>
-                                    <label className="block text-xs font-bold text-gray-300 mb-1">
-                                      {t("adminDegree")}
-                                    </label>
-                                    <select
-                                      value={editingScholarship.degree || "bachelor_master"}
-                                      onChange={(e) =>
-                                        setEditingScholarship({
-                                          ...editingScholarship,
-                                          degree: e.target.value as any,
-                                        })
-                                      }
-                                      className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs sm:text-sm text-white outline-none focus:border-primary"
-                                    >
-                                      <option value="bachelor">{isRtl ? "بكالوريوس" : "Bachelor"}</option>
-                                      <option value="master">{isRtl ? "ماجستير" : "Master"}</option>
-                                      <option value="phd">{isRtl ? "دكتوراه" : "PhD"}</option>
-                                      <option value="bachelor_master">{isRtl ? "بكالوريوس + ماجستير" : "Bachelor + Master"}</option>
-                                      <option value="all">{isRtl ? "جميع المراحل الأكاديمية" : "All Degrees"}</option>
-                                    </select>
-                                  </div>
-
-                                  <div>
-                                    <label className="block text-xs font-bold text-gray-300 mb-1">
-                                      {t("adminCoverage")}
-                                    </label>
-                                    <select
-                                      value={editingScholarship.coverage || "full"}
-                                      onChange={(e) =>
-                                        setEditingScholarship({
-                                          ...editingScholarship,
-                                          coverage: e.target.value as any,
-                                        })
-                                      }
-                                      className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs sm:text-sm text-white outline-none focus:border-primary"
-                                    >
-                                      <option value="full">{isRtl ? "ممولة بالكامل (شاملة السكن والتذاكر)" : "Fully Funded"}</option>
-                                      <option value="partial">{isRtl ? "تمويل جزئي (رسوم دراسية فقط)" : "Partial"}</option>
-                                      <option value="tuition_only">{isRtl ? "إعفاء من الرسوم" : "Tuition Only"}</option>
-                                    </select>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-
-                            {activeEditorTab === "financials" && (
-                              <div className="space-y-3">
-                                <div>
-                                  <label className="block text-xs font-bold text-gray-300 mb-1">
-                                    {isRtl ? "تفاصيل التمويل والمزايا المالية (بالعربية)" : "Benefits in Arabic (one per line)"}
-                                  </label>
-                                  <textarea
-                                    rows={4}
-                                    value={
-                                      Array.isArray((editingScholarship as any).benefits_ar)
-                                        ? (editingScholarship as any).benefits_ar.join("\n")
-                                        : ""
-                                    }
-                                    onChange={(e) =>
-                                      setEditingScholarship({
-                                        ...editingScholarship,
-                                        benefits_ar: e.target.value.split("\n").filter((b) => b.trim()),
-                                      } as any)
-                                    }
-                                    placeholder={isRtl ? "إعفاء كامل من المصروفات الدراسية\nراتب شهري بقيمة 1200 يورو\nتذاكر طيران ذهاب وإياب\nسكن جامعي وتأمين صحي شامل" : "Full tuition waiver\nMonthly stipend\nRoundtrip airfare"}
-                                    className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs text-white outline-none focus:border-primary"
-                                    dir="rtl"
-                                  />
-                                </div>
-
-                                <div>
-                                  <label className="block text-xs font-bold text-gray-300 mb-1">
-                                    {isRtl ? "الوصف التفصيلي للمنحة" : "Detailed Description"}
-                                  </label>
-                                  <textarea
-                                    rows={4}
-                                    value={(editingScholarship as any).description_ar || editingScholarship.description || ""}
-                                    onChange={(e) =>
-                                      setEditingScholarship({
-                                        ...editingScholarship,
-                                        description_ar: e.target.value,
-                                        description: e.target.value,
-                                      } as any)
-                                    }
-                                    className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs text-white outline-none focus:border-primary"
-                                    dir={dir}
-                                  />
-                                </div>
-                              </div>
-                            )}
-
-                            {activeEditorTab === "eligibility" && (
-                              <div className="space-y-3">
-                                <div>
-                                  <label className="block text-xs font-bold text-gray-300 mb-1">
-                                    {t("adminDeadline")}
-                                  </label>
-                                  <input
-                                    type="date"
-                                    value={editingScholarship.deadline || ""}
-                                    onChange={(e) =>
-                                      setEditingScholarship({
-                                        ...editingScholarship,
-                                        deadline: e.target.value,
-                                      })
-                                    }
-                                    className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs text-white outline-none focus:border-primary"
-                                  />
-                                </div>
-
-                                <div>
-                                  <label className="block text-xs font-bold text-gray-300 mb-1">
-                                    {isRtl ? "التخصصات المتاحة (مفصولة بفواصل)" : "Majors (comma separated)"}
-                                  </label>
-                                  <input
-                                    type="text"
-                                    value={
-                                      Array.isArray(editingScholarship.majors)
-                                        ? editingScholarship.majors.join(", ")
-                                        : ""
-                                    }
-                                    onChange={(e) =>
-                                      setEditingScholarship({
-                                        ...editingScholarship,
-                                        majors: e.target.value.split(",").map((m) => m.trim()),
-                                      })
-                                    }
-                                    placeholder={isRtl ? "الهندسة, الطب, علوم الحاسوب, إدارة الأعمال" : "Engineering, Medicine, Computer Science"}
-                                    className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs text-white outline-none focus:border-primary"
-                                    dir={dir}
-                                  />
-                                </div>
-                              </div>
-                            )}
-
-                            {activeEditorTab === "custom_fields" && (
-                              <div className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-xs font-bold text-gray-300">
-                                    {isRtl ? "الحقول الإضافية المخصصة" : "Dynamic Custom Fields"}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const existing = (editingScholarship as any).custom_fields || [];
-                                      setEditingScholarship({
-                                        ...editingScholarship,
-                                        custom_fields: [...existing, { label: "", value: "" }],
-                                      } as any);
-                                    }}
-                                    className="flex items-center gap-1 text-[11px] font-bold text-primary hover:underline cursor-pointer"
-                                  >
-                                    <Plus className="w-3 h-3" />
-                                    <span>{isRtl ? "+ إضافة حقل" : "+ Add Field"}</span>
-                                  </button>
-                                </div>
-
-                                {(((editingScholarship as any).custom_fields) || []).map((f: any, fIdx: number) => (
-                                  <div key={fIdx} className="flex items-center gap-2">
-                                    <input
-                                      type="text"
-                                      placeholder={isRtl ? "اسم الحقل (مثل: شرط اللغة)" : "Field Label"}
-                                      value={f.label}
-                                      onChange={(e) => {
-                                        const updated = [...((editingScholarship as any).custom_fields || [])];
-                                        updated[fIdx].label = e.target.value;
-                                        setEditingScholarship({ ...editingScholarship, custom_fields: updated } as any);
-                                      }}
-                                      className="w-1/3 px-2.5 py-1.5 rounded-lg bg-background border border-primary/30 text-white text-xs outline-none focus:border-primary"
-                                    />
-                                    <input
-                                      type="text"
-                                      placeholder={isRtl ? "القيمة أو الملاحظة" : "Value"}
-                                      value={f.value}
-                                      onChange={(e) => {
-                                        const updated = [...((editingScholarship as any).custom_fields || [])];
-                                        updated[fIdx].value = e.target.value;
-                                        setEditingScholarship({ ...editingScholarship, custom_fields: updated } as any);
-                                      }}
-                                      className="flex-1 px-2.5 py-1.5 rounded-lg bg-background border border-primary/30 text-white text-xs outline-none focus:border-primary"
-                                    />
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        const updated = ((editingScholarship as any).custom_fields || []).filter((_: any, i: number) => i !== fIdx);
-                                        setEditingScholarship({ ...editingScholarship, custom_fields: updated } as any);
-                                      }}
-                                      className="p-1 text-destructive hover:bg-destructive/10 rounded-lg cursor-pointer"
-                                    >
-                                      <X className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-
-                            {activeEditorTab === "urls" && (
-                              <div className="space-y-3">
-                                <div>
-                                  <label className="block text-xs font-bold text-gray-300 mb-1">
-                                    {t("adminApplyUrl")} <span className="text-destructive">*</span>
-                                  </label>
-                                  <input
-                                    type="url"
-                                    value={editingScholarship.apply_url || ""}
-                                    onChange={(e) =>
-                                      setEditingScholarship({
-                                        ...editingScholarship,
-                                        apply_url: e.target.value,
-                                      })
-                                    }
-                                    placeholder="https://apply.university.edu/admission"
-                                    className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs text-white outline-none focus:border-primary font-mono"
-                                    dir="ltr"
-                                  />
-                                </div>
-
-                                <div>
-                                  <label className="block text-xs font-bold text-gray-300 mb-1">
-                                    {t("adminOfficialWebsite")}
-                                  </label>
-                                  <input
-                                    type="url"
-                                    value={editingScholarship.official_website || ""}
-                                    onChange={(e) =>
-                                      setEditingScholarship({
-                                        ...editingScholarship,
-                                        official_website: e.target.value,
-                                      })
-                                    }
-                                    placeholder="https://university.edu"
-                                    className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs text-white outline-none focus:border-primary font-mono"
-                                    dir="ltr"
-                                  />
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ) : (
-                        /* Empty State in Workspace: Overview & Analytics */
-                        <div className="h-full flex flex-col items-center justify-center p-6 text-center">
-                          <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/30 flex items-center justify-center text-primary mb-3">
-                            <GraduationCap className="w-8 h-8" />
-                          </div>
-                          <h4 className="text-base font-bold text-white mb-1">
-                            {isRtl ? "مساحة تحرير وتنسيق المنح الدراسية" : "Scholarship Detail Workspace"}
-                          </h4>
-                          <p className="text-xs text-gray-400 max-w-sm mb-4">
-                            {isRtl
-                              ? "اختر منحة من القائمة الجانبية لتعديلها فوريًا أو اضغط على الزر لإنشاء منحة جديدة."
-                              : "Select a scholarship from the list to edit live, or create a new one."}
-                          </p>
-                          {adminAuthStore.canUserPerform(currentUser, "create") && (
-                            <Button
-                              variant="luxe"
-                              size="sm"
-                              onClick={() => {
-                                const newSch = {
-                                  id: `sch_${Date.now()}`,
-                                  title_ar: "منحة جديدة ممولة بالكامل",
-                                  title_en: "New Fully Funded Scholarship",
-                                  university: isRtl ? "جامعة دولية معتمدة" : "Accredited International University",
-                                  country: isRtl ? "عالمي" : "International",
-                                  flag: "🌍",
-                                  degree: "bachelor_master",
-                                  coverage: "full" as any,
-                                  deadline: new Date(Date.now() + 45 * 86400000).toISOString().split("T")[0],
-                                  majors: ["الهندسة والتقنية", "الطب والعلوم"],
-                                  apply_url: "https://example.com",
-                                  official_website: "https://example.com",
-                                  description_ar: "وصف المنحة وتفاصيل الدعم المالي والرسوم والتذاكر والسكن.",
-                                  description_en: "Scholarship description and full financial coverage details.",
-                                  benefits_ar: ["إعفاء كامل من المصروفات", "راتب شهري", "سكن مجاني"],
-                                  benefits_en: ["Full tuition waiver", "Monthly stipend"],
-                                };
-                                setEditingScholarship(newSch as any);
-                                setMobileViewPane("detail");
-                              }}
-                              className="font-bold shadow-gold cursor-pointer"
-                            >
-                              <Plus className="w-4 h-4 me-1" />
-                              <span>{t("adminAddScholarship")}</span>
-                            </Button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Pane 4: Context / AI Inspector Pane (Width: 3/12 on xl, toggleable) */}
-                    {isInspectorOpen && (
-                      <div className="hidden xl:flex xl:col-span-3 h-full flex-col bg-card/60 border border-primary/25 rounded-2xl overflow-hidden shadow-lg">
-                        <div className="p-3 border-b border-primary/20 bg-card/80 flex items-center justify-between">
-                          <div className="flex items-center gap-1.5">
-                            <Sparkles className="w-4 h-4 text-primary" />
-                            <span className="text-xs font-bold text-white">
-                              {isRtl ? "مستشار وفاحص المنحة" : "Context & Quality Inspector"}
-                            </span>
-                          </div>
-                          <button
-                            onClick={() => setIsInspectorOpen(false)}
-                            className="text-gray-400 hover:text-white p-1 rounded-lg"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto p-3 space-y-3.5 scrollbar-thin scrollbar-thumb-primary/20 text-xs">
-                          {/* AI Quality Completeness Gauge */}
-                          {(() => {
-                            const scoreData = calculateScholarshipScore(editingScholarship);
-                            return (
-                              <div className="p-3 rounded-xl bg-background/60 border border-primary/20 space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <span className="font-bold text-gray-300">
-                                    {isRtl ? "جودة واكتمال البيانات" : "Data Quality Score"}
-                                  </span>
-                                  <span className="font-extrabold text-primary text-sm">
-                                    {scoreData.score}% ({scoreData.grade})
-                                  </span>
-                                </div>
-                                <div className="w-full h-2 rounded-full bg-card overflow-hidden border border-primary/20">
-                                  <div
-                                    className={`h-full transition-all duration-500 rounded-full ${
-                                      scoreData.score >= 85
-                                        ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"
-                                        : scoreData.score >= 60
-                                        ? "bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]"
-                                        : "bg-rose-500"
-                                    }`}
-                                    style={{ width: `${scoreData.score}%` }}
-                                  />
-                                </div>
-                                {scoreData.missing.length > 0 && (
-                                  <div className="pt-1">
-                                    <span className="text-[10px] text-gray-400 block mb-1">
-                                      {isRtl ? "حقول يُوصى باستكمالها:" : "Recommended to fill:"}
-                                    </span>
-                                    <div className="flex flex-wrap gap-1">
-                                      {scoreData.missing.map((m, i) => (
-                                        <span
-                                          key={i}
-                                          className="px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 text-[9px] font-bold"
-                                        >
-                                          {m}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })()}
-
-                          {/* Live Student Mobile Card Preview */}
-                          <div className="space-y-1.5">
-                            <span className="font-bold text-gray-300 block text-[11px]">
-                              {isRtl ? "معاينة بطاقة الطالب الحية:" : "Live Student Card Preview:"}
-                            </span>
-                            <div className="p-3 rounded-xl bg-background border border-primary/30 shadow-inner space-y-2">
-                              <div className="flex items-center justify-between text-[10px] text-gray-400">
-                                <span>{editingScholarship?.country || (isRtl ? "الدولة" : "Country")}</span>
-                                <span className="text-amber-300 font-bold">
-                                  {editingScholarship?.coverage === "full" ? (isRtl ? "ممولة بالكامل" : "Full") : "Partial"}
-                                </span>
-                              </div>
-                              <h5 className="font-bold text-white text-xs line-clamp-2">
-                                {isRtl
-                                  ? (editingScholarship as any)?.title_ar || editingScholarship?.title || "عنوان المنحة"
-                                  : (editingScholarship as any)?.title_en || editingScholarship?.title || "Scholarship Title"}
-                              </h5>
-                              <p className="text-[10px] text-gray-400 line-clamp-1">
-                                {editingScholarship?.university || (isRtl ? "الجامعة الرسمية" : "Official University")}
-                              </p>
-                              <div className="pt-2 border-t border-primary/20 flex items-center justify-between">
-                                <span className="text-[10px] text-gray-400">
-                                  {editingScholarship?.deadline || (isRtl ? "الموعد النهائي" : "Deadline")}
-                                </span>
-                                <span className="px-2 py-0.5 rounded-full bg-primary text-primary-foreground font-bold text-[9px]">
-                                  {isRtl ? "تفاصيل المنحة" : "View"}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Quick URL Validator & Actions */}
-                          <div className="p-3 rounded-xl bg-background/60 border border-primary/20 space-y-2">
-                            <span className="font-bold text-gray-300 block text-[11px]">
-                              {isRtl ? "إجراءات سريعة وفحص الروابط" : "Quick Actions"}
-                            </span>
-                            <div className="flex flex-col gap-1.5">
-                              <button
-                                onClick={() => {
-                                  if (editingScholarship?.apply_url) {
-                                    window.open(editingScholarship.apply_url, "_blank");
-                                  } else {
-                                    toast.error(isRtl ? "لا يوجد رابط تقديم" : "No apply URL");
-                                  }
-                                }}
-                                className="w-full py-1.5 px-2 rounded-lg bg-primary/10 border border-primary/25 hover:bg-primary/20 text-primary text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                              >
-                                <ExternalLink className="w-3.5 h-3.5" />
-                                <span>{isRtl ? "فحص رابط التقديم" : "Test Apply URL"}</span>
-                              </button>
-                              <button
-                                onClick={() => {
-                                  if (editingScholarship) {
-                                    navigator.clipboard.writeText(JSON.stringify(editingScholarship, null, 2));
-                                    toast.success(isRtl ? "تم نسخ بيانات المنحة كـ JSON" : "Copied JSON");
-                                  }
-                                }}
-                                className="w-full py-1.5 px-2 rounded-lg bg-card border border-primary/25 hover:bg-primary/10 text-gray-300 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                              >
-                                <Copy className="w-3.5 h-3.5" />
-                                <span>{isRtl ? "نسخ البيانات (JSON)" : "Copy JSON"}</span>
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  <ScholarshipsManagementView
+                    isRtl={isRtl}
+                    dir={dir}
+                    t={t}
+                    deviceSimulator={deviceSimulator}
+                    mobileViewPane={mobileViewPane}
+                    setMobileViewPane={setMobileViewPane}
+                    filteredScholarships={filteredScholarships}
+                    scholarships={scholarships}
+                    hasActiveScholarshipFilters={hasActiveScholarshipFilters}
+                    resetScholarshipFilters={resetScholarshipFilters}
+                    currentUser={currentUser}
+                    scholarshipCategoryFilter={scholarshipCategoryFilter}
+                    setScholarshipCategoryFilter={setScholarshipCategoryFilter}
+                    scholarshipFundingFilter={scholarshipFundingFilter}
+                    setScholarshipFundingFilter={setScholarshipFundingFilter}
+                    scholarshipDegreeFilter={scholarshipDegreeFilter}
+                    setScholarshipDegreeFilter={setScholarshipDegreeFilter}
+                    scholarshipDeadlineFilter={scholarshipDeadlineFilter}
+                    setScholarshipDeadlineFilter={setScholarshipDeadlineFilter}
+                    scholarshipCategoryCounts={scholarshipCategoryCounts}
+                    selectedIds={selectedIds}
+                    setSelectedIds={setSelectedIds}
+                    handleToggleSelectItem={handleToggleSelectItem}
+                    editingScholarship={editingScholarship}
+                    setEditingScholarship={setEditingScholarship}
+                    calculateScholarshipScore={calculateScholarshipScore}
+                    isInspectorOpen={isInspectorOpen}
+                    setIsInspectorOpen={setIsInspectorOpen}
+                    scholarshipDuplicateResult={scholarshipDuplicateResult}
+                    duplicateOverriddenId={duplicateOverriddenId}
+                    setDuplicateOverriddenId={setDuplicateOverriddenId}
+                    activeEditorTab={activeEditorTab}
+                    setActiveEditorTab={setActiveEditorTab}
+                  />
                 )}
 
-                {/* 2. Jobs Management - Multi-Pane Responsive Adaptive Grid */}
+                {/* 2. Jobs Management - Modular View */}
                 {activeTab === "jobs" && (
-                  <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 overflow-hidden">
-                    {/* Pane 2: List Pane */}
-                    <div
-                      className={`h-full flex flex-col bg-card/60 border border-primary/25 rounded-2xl overflow-hidden shadow-lg transition-all duration-300 ${
-                        deviceSimulator === "phone" && mobileViewPane === "detail"
-                          ? "hidden"
-                          : "lg:col-span-4 xl:col-span-4 flex"
-                      }`}
-                    >
-                      {/* List Header */}
-                      <div className="p-3 border-b border-primary/20 bg-card/80 flex items-center justify-between gap-2 flex-shrink-0">
-                        <div className="flex items-center gap-2">
-                          <Briefcase className="w-4 h-4 text-sky-400" />
-                          <span className="text-xs font-bold text-white">
-                            {t("adminActiveJobsCount").replace("{count}", String(filteredJobs.length))}
-                          </span>
-                        </div>
-                        {adminAuthStore.canUserPerform(currentUser, "create") && (
-                          <button
-                            onClick={() => {
-                              const newJob = {
-                                id: `job_${Date.now()}`,
-                                title_ar: "وظيفة عمل حر جديدة بالدولار",
-                                title_en: "New Remote USD Job",
-                                company: "Global Tech Inc.",
-                                category: "tech",
-                                type: "remote_freelance",
-                                salary: "$2,000 - $3,500",
-                                apply_url: "https://example.com",
-                                description_ar: "تفاصيل العمل والمهام المطلوبة والراتب بالدولار.",
-                                description_en: "Job details and qualifications.",
-                                skills: ["React", "TypeScript", "UI/UX"],
-                                benefits_ar: ["دخل بالدولار", "ساعات عمل مرنة"],
-                              };
-                              setEditingJob(newJob as any);
-                              setMobileViewPane("detail");
-                            }}
-                            className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-gold hover:opacity-90 transition-all cursor-pointer"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>{isRtl ? "إضافة وظيفة" : "New"}</span>
-                          </button>
-                        )}
-                      </div>
-
-                      {/* Scrollable List Items */}
-                      <div className="flex-1 overflow-y-auto p-2 space-y-2 scrollbar-thin scrollbar-thumb-primary/20">
-                        {filteredJobs.length === 0 ? (
-                          <div className="text-center py-12 p-4 rounded-xl bg-card/40 border border-primary/20">
-                            <Briefcase className="w-8 h-8 text-sky-400 mx-auto mb-2 opacity-50" />
-                            <p className="text-xs text-gray-300 font-bold">{t("adminNoJobs")}</p>
-                          </div>
-                        ) : (
-                          filteredJobs.map((j, idx) => {
-                            const isSelected = selectedIds.includes(j.id);
-                            const isActiveEdit = editingJob?.id === j.id;
-                            const scoreData = calculateJobScore(j);
-
-                            return (
-                              <div
-                                key={j.id}
-                                onClick={() => {
-                                  setEditingJob(j);
-                                  setMobileViewPane("detail");
-                                }}
-                                className={`p-3 rounded-xl border-2 transition-all cursor-pointer flex flex-col gap-2 relative ${
-                                  isActiveEdit
-                                    ? "bg-primary/20 border-primary shadow-gold"
-                                    : isSelected
-                                    ? "bg-primary/10 border-primary/50"
-                                    : "bg-card/70 border-primary/15 hover:border-primary/40 hover:bg-card"
-                                }`}
-                              >
-                                <div className="flex items-start justify-between gap-2">
-                                  <div className="flex items-start gap-2.5 min-w-0">
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleToggleSelectItem(j.id, idx, e);
-                                      }}
-                                      className="pt-0.5 text-gray-400 hover:text-primary transition-colors cursor-pointer"
-                                    >
-                                      {isSelected ? (
-                                        <CheckSquare className="w-4 h-4 text-primary" />
-                                      ) : (
-                                        <Square className="w-4 h-4 text-gray-400" />
-                                      )}
-                                    </button>
-
-                                    <div className="min-w-0">
-                                      <h4 className="text-xs sm:text-sm font-bold text-white leading-snug line-clamp-1">
-                                        {isRtl ? j.title_ar : j.title_en || j.title_ar}
-                                      </h4>
-                                      <p className="text-[11px] text-gray-400 line-clamp-1 mt-0.5">
-                                        {j.company} • <span className="text-emerald-400 font-bold">{j.salary || "$ USD"}</span>
-                                      </p>
-                                    </div>
-                                  </div>
-
-                                  <span
-                                    className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold flex-shrink-0 ${
-                                      scoreData.score >= 85
-                                        ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                                        : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-                                    }`}
-                                  >
-                                    {scoreData.score}%
-                                  </span>
-                                </div>
-
-                                <div className="flex items-center justify-between text-[11px] pt-1 border-t border-primary/10 text-gray-400">
-                                  <span className="text-primary font-medium">{j.category}</span>
-                                  <span className="text-gray-400 text-[10px]">
-                                    {j.type === "remote_freelance" ? (isRtl ? "عن بُعد / حر" : "Remote Freelance") : j.type}
-                                  </span>
-                                </div>
-                              </div>
-                            );
-                          })
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Pane 3: Detail Workspace Pane */}
-                    <div
-                      className={`h-full flex flex-col bg-card/75 border border-primary/30 rounded-2xl overflow-hidden shadow-2xl transition-all duration-300 ${
-                        !editingJob
-                          ? "hidden lg:flex lg:col-span-8 xl:col-span-8"
-                          : deviceSimulator === "phone" && mobileViewPane === "list"
-                          ? "hidden"
-                          : isInspectorOpen
-                          ? "lg:col-span-8 xl:col-span-5 flex"
-                          : "lg:col-span-8 xl:col-span-8 flex"
-                      }`}
-                    >
-                      {editingJob ? (
-                        <div className="h-full flex flex-col overflow-hidden">
-                          {/* Workspace Header with Tabs & Actions */}
-                          <div className="p-3 border-b border-primary/20 bg-card flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 flex-shrink-0">
-                            <div className="flex items-center gap-2">
-                              {deviceSimulator === "phone" && (
-                                <button
-                                  onClick={() => setMobileViewPane("list")}
-                                  className="p-1.5 rounded-xl bg-primary/15 border border-primary/30 text-primary hover:bg-primary/25 transition-all text-xs font-bold flex items-center gap-1 cursor-pointer"
-                                >
-                                  {isRtl ? <ArrowRight className="w-3.5 h-3.5" /> : <ArrowLeft className="w-3.5 h-3.5" />}
-                                  <span>{isRtl ? "القائمة" : "List"}</span>
-                                </button>
-                              )}
-                              <div className="w-7 h-7 rounded-lg bg-sky-500/20 border border-sky-500/30 flex items-center justify-center text-sky-400 flex-shrink-0">
-                                <Briefcase className="w-3.5 h-3.5" />
-                              </div>
-                              <div className="min-w-0">
-                                <h3 className="text-xs sm:text-sm font-bold text-white truncate max-w-[200px] sm:max-w-xs">
-                                  {isRtl ? editingJob.title_ar : editingJob.title_en || editingJob.title_ar}
-                                </h3>
-                                <p className="text-[10px] text-gray-400">{editingJob.id}</p>
-                              </div>
-                            </div>
-
-                            {/* Actions */}
-                            <div className="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setEditingJob(null)}
-                                className="h-8 px-2.5 rounded-xl text-xs cursor-pointer text-gray-300 hover:text-white"
-                              >
-                                {isRtl ? "إغلاق" : "Close"}
-                              </Button>
-                              <Button
-                                variant="luxe"
-                                size="sm"
-                                onClick={() => {
-                                  dynamicStore.saveJob(editingJob);
-                                  toast.success(isRtl ? "تم حفظ وتحديث بيانات الوظيفة بنجاح" : "Job saved successfully");
-                                }}
-                                className="h-8 px-3 rounded-xl text-xs font-bold shadow-gold cursor-pointer"
-                              >
-                                <Check className="w-3.5 h-3.5 me-1" />
-                                {t("adminSavePublish")}
-                              </Button>
-                            </div>
-                          </div>
-
-                          {/* Editor Tabs */}
-                          <div className="flex items-center gap-1 p-2 bg-background/50 border-b border-primary/15 overflow-x-auto flex-shrink-0">
-                            {[
-                              { id: "info", labelAr: "بيانات الوظيفة", labelEn: "Job Info" },
-                              { id: "financials", labelAr: "الراتب والمزايا", labelEn: "Salary & Benefits" },
-                              { id: "eligibility", labelAr: "المهام والمهارات", labelEn: "Skills & Tasks" },
-                              { id: "urls", labelAr: "روابط التقديم", labelEn: "Apply URLs" },
-                            ].map((tb) => (
-                              <button
-                                key={tb.id}
-                                onClick={() => setActiveEditorTab(tb.id as any)}
-                                className={`px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
-                                  activeEditorTab === tb.id
-                                    ? "bg-primary text-primary-foreground shadow-gold"
-                                    : "text-gray-400 hover:text-white hover:bg-primary/10"
-                                }`}
-                              >
-                                {isRtl ? tb.labelAr : tb.labelEn}
-                              </button>
-                            ))}
-                          </div>
-
-                          {/* Editor Form Content */}
-                          <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3.5 scrollbar-thin scrollbar-thumb-primary/20" dir={dir}>
-                            {activeEditorTab === "info" && (
-                              <div className="space-y-3">
-                                <div>
-                                  <label className="block text-xs font-bold text-gray-300 mb-1">
-                                    {t("adminJobTitleAr")} <span className="text-destructive">*</span>
-                                  </label>
-                                  <input
-                                    type="text"
-                                    value={editingJob.title_ar}
-                                    onChange={(e) => setEditingJob({ ...editingJob, title_ar: e.target.value })}
-                                    className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs sm:text-sm text-white outline-none focus:border-primary"
-                                    dir="rtl"
-                                  />
-                                </div>
-
-                                <div>
-                                  <label className="block text-xs font-bold text-gray-300 mb-1">
-                                    {t("adminJobTitleEn")}
-                                  </label>
-                                  <input
-                                    type="text"
-                                    value={editingJob.title_en || ""}
-                                    onChange={(e) => setEditingJob({ ...editingJob, title_en: e.target.value })}
-                                    className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs sm:text-sm text-white outline-none focus:border-primary"
-                                    dir="ltr"
-                                  />
-                                </div>
-
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                  <div>
-                                    <label className="block text-xs font-bold text-gray-300 mb-1">
-                                      {t("adminCompany")}
-                                    </label>
-                                    <input
-                                      type="text"
-                                      value={editingJob.company}
-                                      onChange={(e) => setEditingJob({ ...editingJob, company: e.target.value })}
-                                      className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs sm:text-sm text-white outline-none focus:border-primary"
-                                      dir={dir}
-                                    />
-                                  </div>
-
-                                  <div>
-                                    <label className="block text-xs font-bold text-gray-300 mb-1">
-                                      {t("adminSalaryUsd")}
-                                    </label>
-                                    <input
-                                      type="text"
-                                      value={editingJob.salary || ""}
-                                      onChange={(e) => setEditingJob({ ...editingJob, salary: e.target.value })}
-                                      placeholder="$2,500 - $4,500 / month"
-                                      className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs sm:text-sm text-white outline-none focus:border-primary font-mono"
-                                      dir="ltr"
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-
-                            {activeEditorTab === "financials" && (
-                              <div className="space-y-3">
-                                <div>
-                                  <label className="block text-xs font-bold text-gray-300 mb-1">
-                                    {isRtl ? "مزايا العمل والدخل بالدولار" : "Benefits (one per line)"}
-                                  </label>
-                                  <textarea
-                                    rows={4}
-                                    value={
-                                      Array.isArray((editingJob as any).benefits_ar)
-                                        ? (editingJob as any).benefits_ar.join("\n")
-                                        : ""
-                                    }
-                                    onChange={(e) =>
-                                      setEditingJob({
-                                        ...editingJob,
-                                        benefits_ar: e.target.value.split("\n").filter((b) => b.trim()),
-                                      } as any)
-                                    }
-                                    placeholder={isRtl ? "راتب شهري محول مباشرة بالدولار\nساعات عمل مرنة بالكامل\nمكافآت إنجاز ومشاريع مستمرة" : "USD Monthly payout\nFlexible hours"}
-                                    className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs text-white outline-none focus:border-primary"
-                                    dir="rtl"
-                                  />
-                                </div>
-
-                                <div>
-                                  <label className="block text-xs font-bold text-gray-300 mb-1">
-                                    {isRtl ? "وصف الوصف والمهام" : "Job Description"}
-                                  </label>
-                                  <textarea
-                                    rows={4}
-                                    value={editingJob.description_ar || ""}
-                                    onChange={(e) => setEditingJob({ ...editingJob, description_ar: e.target.value })}
-                                    className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs text-white outline-none focus:border-primary"
-                                    dir={dir}
-                                  />
-                                </div>
-                              </div>
-                            )}
-
-                            {activeEditorTab === "eligibility" && (
-                              <div className="space-y-3">
-                                <div>
-                                  <label className="block text-xs font-bold text-gray-300 mb-1">
-                                    {isRtl ? "المهارات المطلوبة (مفصولة بفواصل)" : "Required Skills"}
-                                  </label>
-                                  <input
-                                    type="text"
-                                    value={Array.isArray(editingJob.skills) ? editingJob.skills.join(", ") : ""}
-                                    onChange={(e) =>
-                                      setEditingJob({
-                                        ...editingJob,
-                                        skills: e.target.value.split(",").map((s) => s.trim()),
-                                      })
-                                    }
-                                    placeholder="React, TypeScript, Figma, English B2"
-                                    className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs text-white outline-none focus:border-primary font-mono"
-                                    dir="ltr"
-                                  />
-                                </div>
-                              </div>
-                            )}
-
-                            {activeEditorTab === "urls" && (
-                              <div className="space-y-3">
-                                <div>
-                                  <label className="block text-xs font-bold text-gray-300 mb-1">
-                                    {t("adminApplyUrl")} <span className="text-destructive">*</span>
-                                  </label>
-                                  <input
-                                    type="url"
-                                    value={editingJob.apply_url || ""}
-                                    onChange={(e) => setEditingJob({ ...editingJob, apply_url: e.target.value })}
-                                    placeholder="https://upwork.com/jobs/..."
-                                    className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-xs text-white outline-none focus:border-primary font-mono"
-                                    dir="ltr"
-                                  />
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="h-full flex flex-col items-center justify-center p-6 text-center">
-                          <div className="w-16 h-16 rounded-2xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 mb-3">
-                            <Briefcase className="w-8 h-8" />
-                          </div>
-                          <h4 className="text-base font-bold text-white mb-1">
-                            {isRtl ? "مساحة تحرير وظائف العمل الحر بالدولار" : "USD Jobs Detail Workspace"}
-                          </h4>
-                          <p className="text-xs text-gray-400 max-w-sm mb-4">
-                            {isRtl
-                              ? "اختر وظيفة من القائمة لتعديلها فوريًا أو اضغط على الزر لإنشاء فرصة عمل جديدة."
-                              : "Select a job from the list to edit live, or create a new one."}
-                          </p>
-                          {adminAuthStore.canUserPerform(currentUser, "create") && (
-                            <Button
-                              variant="luxe"
-                              size="sm"
-                              onClick={() => {
-                                const newJob = {
-                                  id: `job_${Date.now()}`,
-                                  title_ar: "وظيفة عمل حر جديدة بالدولار",
-                                  title_en: "New Remote USD Job",
-                                  company: "Global Tech Inc.",
-                                  category: "tech",
-                                  type: "remote_freelance",
-                                  salary: "$2,000 - $3,500",
-                                  apply_url: "https://example.com",
-                                  description_ar: "تفاصيل العمل والمهام المطلوبة والراتب بالدولار.",
-                                  description_en: "Job details and qualifications.",
-                                  skills: ["React", "TypeScript", "UI/UX"],
-                                  benefits_ar: ["دخل بالدولار", "ساعات عمل مرنة"],
-                                };
-                                setEditingJob(newJob as any);
-                                setMobileViewPane("detail");
-                              }}
-                              className="font-bold shadow-gold cursor-pointer"
-                            >
-                              <Plus className="w-4 h-4 me-1" />
-                              <span>{t("adminAddJob")}</span>
-                            </Button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Pane 4: Context / AI Inspector Pane */}
-                    {isInspectorOpen && (
-                      <div className="hidden xl:flex xl:col-span-3 h-full flex-col bg-card/60 border border-primary/25 rounded-2xl overflow-hidden shadow-lg">
-                        <div className="p-3 border-b border-primary/20 bg-card/80 flex items-center justify-between">
-                          <div className="flex items-center gap-1.5">
-                            <Sparkles className="w-4 h-4 text-sky-400" />
-                            <span className="text-xs font-bold text-white">
-                              {isRtl ? "مستشار وفاحص الوظيفة" : "Job Quality Inspector"}
-                            </span>
-                          </div>
-                          <button
-                            onClick={() => setIsInspectorOpen(false)}
-                            className="text-gray-400 hover:text-white p-1 rounded-lg"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto p-3 space-y-3.5 scrollbar-thin scrollbar-thumb-primary/20 text-xs">
-                          {/* AI Quality Gauge */}
-                          {(() => {
-                            const scoreData = calculateJobScore(editingJob);
-                            return (
-                              <div className="p-3 rounded-xl bg-background/60 border border-primary/20 space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <span className="font-bold text-gray-300">
-                                    {isRtl ? "جودة واكتمال البيانات" : "Data Quality Score"}
-                                  </span>
-                                  <span className="font-extrabold text-sky-400 text-sm">
-                                    {scoreData.score}% ({scoreData.grade})
-                                  </span>
-                                </div>
-                                <div className="w-full h-2 rounded-full bg-card overflow-hidden border border-primary/20">
-                                  <div
-                                    className={`h-full transition-all duration-500 rounded-full ${
-                                      scoreData.score >= 85
-                                        ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"
-                                        : scoreData.score >= 60
-                                        ? "bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]"
-                                        : "bg-rose-500"
-                                    }`}
-                                    style={{ width: `${scoreData.score}%` }}
-                                  />
-                                </div>
-                                {scoreData.missing.length > 0 && (
-                                  <div className="pt-1">
-                                    <span className="text-[10px] text-gray-400 block mb-1">
-                                      {isRtl ? "حقول يُوصى باستكمالها:" : "Recommended to fill:"}
-                                    </span>
-                                    <div className="flex flex-wrap gap-1">
-                                      {scoreData.missing.map((m, i) => (
-                                        <span
-                                          key={i}
-                                          className="px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-300 border border-sky-500/20 text-[9px] font-bold"
-                                        >
-                                          {m}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })()}
-
-                          {/* Live Student Job Card Preview */}
-                          <div className="space-y-1.5">
-                            <span className="font-bold text-gray-300 block text-[11px]">
-                              {isRtl ? "معاينة بطاقة الوظيفة الحية:" : "Live Job Card Preview:"}
-                            </span>
-                            <div className="p-3 rounded-xl bg-background border border-primary/30 shadow-inner space-y-2">
-                              <div className="flex items-center justify-between text-[10px] text-gray-400">
-                                <span>{editingJob?.company || "Company"}</span>
-                                <span className="text-emerald-400 font-bold">
-                                  {editingJob?.salary || "$ USD"}
-                                </span>
-                              </div>
-                              <h5 className="font-bold text-white text-xs line-clamp-2">
-                                {isRtl ? editingJob?.title_ar || "المسمى الوظيفي" : editingJob?.title_en || editingJob?.title_ar || "Job Title"}
-                              </h5>
-                              <div className="pt-2 border-t border-primary/20 flex items-center justify-between">
-                                <span className="text-[10px] text-gray-400">
-                                  {editingJob?.category || "Tech"}
-                                </span>
-                                <span className="px-2 py-0.5 rounded-full bg-primary text-primary-foreground font-bold text-[9px]">
-                                  {isRtl ? "تقديم سريع" : "Apply"}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Quick URL Validator */}
-                          <div className="p-3 rounded-xl bg-background/60 border border-primary/20 space-y-2">
-                            <span className="font-bold text-gray-300 block text-[11px]">
-                              {isRtl ? "إجراءات سريعة وفحص الروابط" : "Quick Actions"}
-                            </span>
-                            <div className="flex flex-col gap-1.5">
-                              <button
-                                onClick={() => {
-                                  if (editingJob?.apply_url) {
-                                    window.open(editingJob.apply_url, "_blank");
-                                  } else {
-                                    toast.error(isRtl ? "لا يوجد رابط تقديم" : "No apply URL");
-                                  }
-                                }}
-                                className="w-full py-1.5 px-2 rounded-lg bg-sky-500/10 border border-sky-500/25 hover:bg-sky-500/20 text-sky-400 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                              >
-                                <ExternalLink className="w-3.5 h-3.5" />
-                                <span>{isRtl ? "فحص رابط التقديم" : "Test Apply URL"}</span>
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  <JobsManagementView
+                    isRtl={isRtl}
+                    dir={dir}
+                    t={t}
+                    deviceSimulator={deviceSimulator}
+                    mobileViewPane={mobileViewPane}
+                    setMobileViewPane={setMobileViewPane}
+                    currentUser={currentUser}
+                    filteredJobs={filteredJobs}
+                    selectedIds={selectedIds}
+                    handleToggleSelectItem={handleToggleSelectItem}
+                    editingJob={editingJob}
+                    setEditingJob={setEditingJob}
+                    calculateJobScore={calculateJobScore}
+                    isInspectorOpen={isInspectorOpen}
+                    setIsInspectorOpen={setIsInspectorOpen}
+                    activeEditorTab={activeEditorTab}
+                    setActiveEditorTab={setActiveEditorTab}
+                  />
                 )}
 
                 {/* Arab Universities Management / Directory */}
                 {activeTab === "arab_unis" && (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between text-xs text-gray-300 mb-1 flex-wrap gap-2">
-                      <span className="font-bold text-white">
-                        {isRtl ? `دليل الجامعات العربية (${filteredArabUnis.length} جامعة)` : `Arab Universities Directory (${filteredArabUnis.length} unis)`}
-                      </span>
-                      <span className="text-primary font-medium text-2xs">
-                        {isRtl ? "يمكنك تحويل أي جامعة إلى منحة معتمدة بنقرة زر واحدة" : "Click 'Add to Scholarships' to create a grant from any uni"}
-                      </span>
-                    </div>
-
-                    <div className="space-y-3">
-                      {filteredArabUnis.map((uni) => (
-                        <div
-                          key={uni.id}
-                          className="p-4 rounded-2xl border-2 border-primary/20 bg-card/70 hover:border-primary/50 transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
-                        >
-                          <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
-                            <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center text-xl flex-shrink-0">
-                              {uni.flag}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <h4 className="text-sm sm:text-base font-bold text-white leading-tight truncate">
-                                {isRtl ? uni.name : (uni.nameEn || uni.name)}
-                              </h4>
-                              <div className="flex items-center gap-2 flex-wrap text-xs text-gray-300 mt-1">
-                                <span>{isRtl ? uni.city : uni.cityEn || uni.city}</span>
-                                <span>•</span>
-                                <span>{isRtl ? uni.country : uni.countryEn}</span>
-                                <span>•</span>
-                                <span className="text-amber-300 font-medium">
-                                  {isRtl ? `أقل نسبة: ${uni.minPercentage}%` : `Min: ${uni.minPercentage}%`}
-                                </span>
-                                {uni.scholarships && (
-                                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold">
-                                    {isRtl ? "منح متوفرة ✨" : "Scholarships Available ✨"}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-2 self-end sm:self-center shrink-0 flex-wrap">
-                            <a
-                              href={uni.website}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-2 rounded-xl bg-primary/10 border border-primary/30 hover:bg-primary/20 text-primary transition-all flex items-center gap-1 text-xs font-bold"
-                            >
-                              <ExternalLink className="w-3.5 h-3.5" />
-                              <span className="hidden sm:inline">{isRtl ? "الموقع" : "Website"}</span>
-                            </a>
-
-                            <Button
-                              variant="luxe"
-                              size="sm"
-                              onClick={() => {
-                                setEditingScholarship({
-                                  id: `sch_arab_${uni.id}_${Date.now()}`,
-                                  title_ar: `منحة ${uni.name} للطلاب الدوليين`,
-                                  title_en: `${uni.nameEn || uni.name} Scholarship for International Students`,
-                                  university: uni.name,
-                                  country: uni.country,
-                                  flag: uni.flag,
-                                  degree: "bachelor_master",
-                                  coverage: "full" as any,
-                                  deadline: new Date(Date.now() + 60 * 86400000).toISOString().split("T")[0],
-                                  majors: uni.faculties,
-                                  apply_url: uni.website,
-                                  official_website: uni.website,
-                                  description_ar: uni.highlights,
-                                  description_en: uni.highlightsEn || uni.highlights,
-                                  benefits_ar: ["إعفاء من الرسوم الدراسية", "سكن جامعي", "تأمين صحي"],
-                                  benefits_en: ["Tuition fee waiver", "Campus housing", "Health insurance"],
-                                });
-                                toast.info(isRtl ? "تم تجهيز بطاقة المنحة بنجاح! راجع التفاصيل واضغط حفظ ونشر" : "Scholarship pre-filled! Review and click Save");
-                              }}
-                              className="text-xs font-bold shadow-gold flex items-center gap-1.5"
-                            >
-                              <Plus className="w-3.5 h-3.5" />
-                              <span>{isRtl ? "إضافة للمنح" : "Add to Scholarships"}</span>
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  <ArabUniversitiesAdminView
+                    isRtl={isRtl}
+                    searchQuery={searchQuery}
+                    onSelectScholarshipDraft={(draft) => {
+                      setEditingScholarship(draft as any);
+                      toast.info(isRtl ? "تم تجهيز بطاقة المنحة بنجاح! راجع التفاصيل واضغط حفظ ونشر" : "Scholarship pre-filled! Review and click Save");
+                    }}
+                    onResetSearch={() => setSearchQuery("")}
+                  />
                 )}
 
                 {/* Global Universities Management / Directory */}
                 {activeTab === "global_unis" && (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between text-xs text-gray-300 mb-1 flex-wrap gap-2">
-                      <span className="font-bold text-white">
-                        {isRtl ? `دليل الوجهات والجامعات العالمية (${filteredGlobalCountries.length} دولة ووجهة)` : `Global Universities & Hubs (${filteredGlobalCountries.length} destinations)`}
-                      </span>
-                      <span className="text-primary font-medium text-2xs">
-                        {isRtl ? "منح حكومية ورسمية ممولة بالكامل" : "Fully funded government scholarships"}
-                      </span>
-                    </div>
-
-                    <div className="space-y-3">
-                      {filteredGlobalCountries.map((gc) => (
-                        <div
-                          key={gc.country}
-                          className="p-4 rounded-2xl border-2 border-primary/20 bg-card/70 hover:border-primary/50 transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
-                        >
-                          <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
-                            <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center text-xl flex-shrink-0">
-                              {gc.flag}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <h4 className="text-sm sm:text-base font-bold text-white leading-tight truncate">
-                                {isRtl ? gc.scholarshipName : (gc.scholarshipNameEn || gc.scholarshipName)}
-                              </h4>
-                              <div className="flex items-center gap-2 flex-wrap text-xs text-gray-300 mt-1">
-                                <span className="font-bold text-primary">{isRtl ? gc.country : gc.countryEn}</span>
-                                <span>•</span>
-                                <span className="text-emerald-400 font-semibold">{gc.stipend}</span>
-                                <span>•</span>
-                                <span className="text-amber-300 font-medium">
-                                  {isRtl ? `الموعد: ${gc.deadline}` : `Deadline: ${gc.deadline}`}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-2 self-end sm:self-center shrink-0 flex-wrap">
-                            <a
-                              href={gc.officialPortal}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-2 rounded-xl bg-primary/10 border border-primary/30 hover:bg-primary/20 text-primary transition-all flex items-center gap-1 text-xs font-bold"
-                            >
-                              <ExternalLink className="w-3.5 h-3.5" />
-                              <span className="hidden sm:inline">{isRtl ? "البوابة الرسمية" : "Official Portal"}</span>
-                            </a>
-
-                            <Button
-                              variant="luxe"
-                              size="sm"
-                              onClick={() => {
-                                setEditingScholarship({
-                                  id: `sch_global_${gc.country}_${Date.now()}`,
-                                  title_ar: gc.scholarshipName,
-                                  title_en: gc.scholarshipNameEn || gc.scholarshipName,
-                                  university: isRtl ? `الجامعات الحكومية في ${gc.country}` : `Government Universities in ${gc.countryEn}`,
-                                  country: isRtl ? gc.country : gc.countryEn,
-                                  flag: gc.flag,
-                                  degree: "all",
-                                  coverage: "full" as any,
-                                  deadline: new Date(Date.now() + 60 * 86400000).toISOString().split("T")[0],
-                                  majors: ["كافة التخصصات والمجالات الدراسية"],
-                                  apply_url: gc.officialPortal,
-                                  official_website: gc.officialPortal,
-                                  description_ar: `${gc.scholarshipName} - التمويل: ${gc.stipend}. لغة الدراسة: ${gc.studyLanguage}.`,
-                                  description_en: `${gc.scholarshipNameEn || gc.scholarshipName} - Funding: ${gc.stipend}. Study language: ${gc.studyLanguage}.`,
-                                  benefits_ar: ["إعفاء كامل من المصروفات", "راتب شهري", "سكن مجاني", "تذاكر سفر"],
-                                  benefits_en: ["Full tuition waiver", "Monthly stipend", "Free accommodation", "Flight tickets"],
-                                });
-                                toast.info(isRtl ? "تم تجهيز بطاقة المنحة بنجاح! راجع التفاصيل واضغط حفظ ونشر" : "Scholarship pre-filled! Review and click Save");
-                              }}
-                              className="text-xs font-bold shadow-gold flex items-center gap-1.5"
-                            >
-                              <Plus className="w-3.5 h-3.5" />
-                              <span>{isRtl ? "إضافة للمنح" : "Add to Scholarships"}</span>
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  <GlobalUniversitiesAdminView
+                    isRtl={isRtl}
+                    searchQuery={searchQuery}
+                    onSelectScholarshipDraft={(draft) => {
+                      setEditingScholarship(draft as any);
+                      toast.info(isRtl ? "تم تجهيز بطاقة المنحة بنجاح! راجع التفاصيل واضغط حفظ ونشر" : "Scholarship pre-filled! Review and click Save");
+                    }}
+                  />
                 )}
 
                 {/* 3. Archive Vault (Soft Delete View & Danger Zone) */}
                 {activeTab === "archive" && (
-                  <div className="space-y-6">
-                    <div className="flex items-center justify-between p-4 rounded-2xl bg-destructive/10 border border-destructive/30 text-xs sm:text-sm">
-                      <div className="flex items-center gap-2 text-destructive">
-                        <Archive className="w-5 h-5 flex-shrink-0" />
-                        <span className="font-bold">
-                          {t("adminVaultTitle").replace("{count}", String(archivedItems.length))}
-                        </span>
-                      </div>
-                      <span className="text-gray-300">
-                        {t("adminVaultHint")}
-                      </span>
-                    </div>
-
-                    {filteredArchive.length === 0 ? (
-                      <div className="text-center py-16 p-6 rounded-2xl bg-card/60 border border-primary/20">
-                        <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto mb-3 opacity-80" />
-                        <h4 className="text-base font-bold text-white mb-1">
-                          {t("adminVaultEmpty")}
-                        </h4>
-                        <p className="text-xs text-gray-300">
-                          {t("adminVaultEmptyDesc")}
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {filteredArchive.map((a, idx) => {
-                          const isSelected = selectedIds.includes(a.id);
-                          const title = a.itemData?.title_ar || a.itemData?.title || a.itemData?.titleEn || a.id;
-                          return (
-                            <div
-                              key={a.id}
-                              onClick={e => handleToggleSelectItem(a.id, idx, e)}
-                              className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
-                                isSelected
-                                  ? "bg-primary/15 border-primary shadow-gold"
-                                  : "bg-card/70 border-primary/20 hover:border-primary/50"
-                              }`}
-                            >
-                              <div className="flex items-start sm:items-center gap-3">
-                                <div className="pt-1 sm:pt-0">
-                                  {isSelected ? (
-                                    <CheckSquare className="w-5 h-5 text-primary flex-shrink-0" />
-                                  ) : (
-                                    <Square className="w-5 h-5 text-gray-400 flex-shrink-0" />
-                                  )}
-                                </div>
-
-                                <div className="w-10 h-10 rounded-xl bg-destructive/15 border border-destructive/30 flex items-center justify-center text-destructive flex-shrink-0">
-                                  <Archive className="w-5 h-5" />
-                                </div>
-
-                                <div>
-                                  <h4 className="text-sm sm:text-base font-bold text-white line-through opacity-80 leading-tight">
-                                    {title}
-                                  </h4>
-                                  <div className="flex items-center gap-2 flex-wrap text-xs text-gray-400 mt-1">
-                                    <span className="text-primary font-semibold">{a.type === "scholarship" ? (isRtl ? "منحة" : "Scholarship") : (isRtl ? "وظيفة" : "Job")}</span>
-                                    <span>•</span>
-                                    <span>{isRtl ? `أرشف بواسطة: ${a.deletedBy?.name}` : `Deleted by: ${a.deletedBy?.name}`}</span>
-                                    <span>•</span>
-                                    <span>{new Date(a.deletedAt).toLocaleDateString(isRtl ? "ar-EG" : "en-US")}</span>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="flex items-center gap-2 self-end sm:self-center" onClick={e => e.stopPropagation()}>
-                                <button
-                                  onClick={() => {
-                                    dynamicStore.restoreArchivedItem(a.id);
-                                    toast.success(isRtl ? `تمت استعادة "${title}" بنجاح` : `Restored successfully`);
-                                  }}
-                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 hover:bg-emerald-500/25 text-emerald-400 text-xs font-bold transition-all cursor-pointer"
-                                >
-                                  <RotateCcw className="w-3.5 h-3.5" />
-                                  <span>{t("adminRestore")}</span>
-                                </button>
-
-                                {currentUser?.role === "super_admin" && (
-                                  <button
-                                    onClick={() => {
-                                      dynamicStore.permanentlyDeleteArchivedItem(a.id, currentUser);
-                                      toast.success(isRtl ? "تم الحذف النهائي" : "Permanently deleted");
-                                    }}
-                                    className="p-1.5 rounded-xl bg-destructive/15 border border-destructive/30 hover:bg-destructive/25 text-destructive transition-all cursor-pointer"
-                                    title={t("adminDeletePermanently")}
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {/* DANGER ZONE (Video 4) */}
-                    {currentUser?.role === "super_admin" && archivedItems.length > 0 && (
-                      <div className="mt-8 p-5 rounded-3xl bg-destructive/5 border-2 border-destructive/40 shadow-inner">
-                        <div className="flex items-center gap-2 text-destructive font-bold text-sm sm:text-base mb-2">
-                          <AlertTriangle className="w-5 h-5" />
-                          <span>{t("adminDangerZone")}</span>
-                        </div>
-                        <p className="text-xs sm:text-sm text-gray-300 mb-4">
-                          {t("adminDangerZoneDesc")}
-                        </p>
-
-                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                          <input
-                            type="text"
-                            value={emptyArchiveConfirmText}
-                            onChange={e => setEmptyArchiveConfirmText(e.target.value)}
-                            placeholder={t("adminTypeDeleteConfirm")}
-                            className="px-4 py-2.5 rounded-xl bg-background border-2 border-destructive/40 text-white text-xs sm:text-sm focus:border-destructive outline-none"
-                            dir={dir}
-                          />
-                          <Button
-                            variant="destructive"
-                            size="default"
-                            onClick={handleEmptyArchive}
-                            disabled={
-                              emptyArchiveConfirmText.trim().toUpperCase() !== "DELETE" &&
-                              emptyArchiveConfirmText.trim() !== "تأكيد" &&
-                              emptyArchiveConfirmText.trim() !== "مسح"
-                            }
-                            className="font-bold text-xs sm:text-sm cursor-pointer"
-                          >
-                            <Trash2 className="w-4 h-4 mr-1.5 ml-1.5" />
-                            <span>{t("adminEmptyVaultBtn")}</span>
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  <ArchiveVaultAdminView
+                    isRtl={isRtl}
+                    t={t}
+                    dir={dir}
+                    archivedItems={archivedItems}
+                    filteredArchive={filteredArchive}
+                    selectedIds={selectedIds}
+                    currentUser={currentUser}
+                    onToggleSelectItem={handleToggleSelectItem}
+                    onRestoreItem={(id, title) => {
+                      dynamicStore.restoreArchivedItem(id);
+                      toast.success(isRtl ? `تمت استعادة "${title}" بنجاح` : `Restored successfully`);
+                    }}
+                    onPermanentlyDeleteItem={(id) => {
+                      if (currentUser) {
+                        dynamicStore.permanentlyDeleteArchivedItem(id, currentUser);
+                        toast.success(isRtl ? "تم الحذف النهائي" : "Permanently deleted");
+                      }
+                    }}
+                    onEmptyArchive={handleEmptyArchive}
+                  />
                 )}
 
                 {/* 4. AI URL Smart Parser */}
@@ -3841,322 +2173,51 @@ export const AdminDashboardModal: React.FC<{
 
                 {/* 5. Team & Moderators Management & RBAC Permissions */}
                 {activeTab === "team" && (
-                  <div className="space-y-4">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                      <div>
-                        <h4 className="text-sm sm:text-base font-bold text-white">{t("adminTeamTitle")}</h4>
-                        <p className="text-xs text-gray-400">{t("adminTeamDesc")}</p>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {teamMembers.map(m => {
-                        const isSuperAdmin = m.role === "super_admin";
-                        const canManage = currentUser?.role === "super_admin" && !isSuperAdmin;
-                        const perms = m.permissions || {
-                          canEdit: false,
-                          canDelete: false,
-                          canCreate: true,
-                          canAutoPublish: false,
-                          canManageTeam: false,
-                          canEmptyVault: false,
-                        };
-
-                        return (
-                          <div key={m.id} className="p-4 rounded-2xl bg-card border-2 border-primary/30 flex flex-col justify-between gap-3 shadow-md">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex items-center gap-3">
-                                <div className="w-11 h-11 rounded-xl bg-primary/20 border border-primary/40 flex items-center justify-center text-primary font-bold text-base flex-shrink-0">
-                                  {m.name.charAt(0)}
-                                </div>
-                                <div>
-                                  <h4 className="text-sm font-bold text-white leading-tight">{m.name}</h4>
-                                  <span className="text-xs text-gray-300 block">{m.email}</span>
-                                  <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-bold bg-primary/20 text-primary mt-1">
-                                    {isSuperAdmin
-                                      ? (isRtl ? "المدير العام 👑" : "Super Admin 👑")
-                                      : m.role === "editor"
-                                      ? (isRtl ? "محرر محتوى" : "Editor")
-                                      : (isRtl ? "مشرف محتوى 🛡️" : "Moderator 🛡️")}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Granular Permission Toggles (Super Admin Only) */}
-                            {!isSuperAdmin && (
-                              <div className="mt-2 pt-3 border-t border-primary/20 space-y-2">
-                                <div className="text-2xs font-bold uppercase tracking-wider text-gray-400">
-                                  {isRtl ? "صلاحيات المشرف الممنوحة:" : "Granted Permissions:"}
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-2 text-xs">
-                                  {/* canEdit */}
-                                  <button
-                                    type="button"
-                                    disabled={!canManage}
-                                    onClick={() => {
-                                      const updated = { ...perms, canEdit: !perms.canEdit };
-                                      adminAuthStore.updateMemberPermissions(m.id, updated, currentUser);
-                                      setTeamMembers(adminAuthStore.getUsers());
-                                      toast.success(t("adminPermissionsUpdatedToast"));
-                                    }}
-                                    className={`flex items-center justify-between p-2 rounded-xl border transition-all text-2xs font-semibold cursor-pointer ${
-                                      perms.canEdit
-                                        ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-400"
-                                        : "bg-background/60 border-primary/20 text-gray-400 opacity-70"
-                                    } ${!canManage ? "cursor-not-allowed" : "hover:border-primary"}`}
-                                  >
-                                    <span>{t("adminCanEditLabel")}</span>
-                                    <span>{perms.canEdit ? "✓" : "✕"}</span>
-                                  </button>
-
-                                  {/* canDelete */}
-                                  <button
-                                    type="button"
-                                    disabled={!canManage}
-                                    onClick={() => {
-                                      const updated = { ...perms, canDelete: !perms.canDelete };
-                                      adminAuthStore.updateMemberPermissions(m.id, updated, currentUser);
-                                      setTeamMembers(adminAuthStore.getUsers());
-                                      toast.success(t("adminPermissionsUpdatedToast"));
-                                    }}
-                                    className={`flex items-center justify-between p-2 rounded-xl border transition-all text-2xs font-semibold cursor-pointer ${
-                                      perms.canDelete
-                                        ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-400"
-                                        : "bg-background/60 border-primary/20 text-gray-400 opacity-70"
-                                    } ${!canManage ? "cursor-not-allowed" : "hover:border-primary"}`}
-                                  >
-                                    <span>{t("adminCanDeleteLabel")}</span>
-                                    <span>{perms.canDelete ? "✓" : "✕"}</span>
-                                  </button>
-
-                                  {/* canCreate */}
-                                  <button
-                                    type="button"
-                                    disabled={!canManage}
-                                    onClick={() => {
-                                      const updated = { ...perms, canCreate: !perms.canCreate };
-                                      adminAuthStore.updateMemberPermissions(m.id, updated, currentUser);
-                                      setTeamMembers(adminAuthStore.getUsers());
-                                      toast.success(t("adminPermissionsUpdatedToast"));
-                                    }}
-                                    className={`flex items-center justify-between p-2 rounded-xl border transition-all text-2xs font-semibold cursor-pointer ${
-                                      perms.canCreate
-                                        ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-400"
-                                        : "bg-background/60 border-primary/20 text-gray-400 opacity-70"
-                                    } ${!canManage ? "cursor-not-allowed" : "hover:border-primary"}`}
-                                  >
-                                    <span>{t("adminCanCreateLabel")}</span>
-                                    <span>{perms.canCreate ? "✓" : "✕"}</span>
-                                  </button>
-
-                                  {/* canAutoPublish */}
-                                  <button
-                                    type="button"
-                                    disabled={!canManage}
-                                    onClick={() => {
-                                      const updated = { ...perms, canAutoPublish: !perms.canAutoPublish };
-                                      adminAuthStore.updateMemberPermissions(m.id, updated, currentUser);
-                                      setTeamMembers(adminAuthStore.getUsers());
-                                      toast.success(t("adminPermissionsUpdatedToast"));
-                                    }}
-                                    className={`flex items-center justify-between p-2 rounded-xl border transition-all text-2xs font-semibold cursor-pointer ${
-                                      perms.canAutoPublish
-                                        ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-400"
-                                        : "bg-background/60 border-primary/20 text-gray-400 opacity-70"
-                                    } ${!canManage ? "cursor-not-allowed" : "hover:border-primary"}`}
-                                  >
-                                    <span>{t("adminCanAutoPublishLabel")}</span>
-                                    <span>{perms.canAutoPublish ? "✓" : "✕"}</span>
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-
-                            {isSuperAdmin && (
-                              <div className="mt-2 pt-2 border-t border-primary/20 text-2xs text-amber-400 font-semibold flex items-center gap-1.5">
-                                <span>👑</span>
-                                <span>{isRtl ? "صلاحيات كاملة وغير مقيدة لإدارة المنصة" : "Full unrestricted platform access"}</span>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
+                  <TeamManagementAdminView
+                    isRtl={isRtl}
+                    t={t}
+                    teamMembers={teamMembers}
+                    currentUser={currentUser}
+                    onRefreshTeam={() => setTeamMembers(adminAuthStore.getUsers())}
+                  />
                 )}
 
                 {/* 6. Security Audit Logs */}
                 {activeTab === "audit_logs" && (
-                  <div className="space-y-3">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-2">
-                      <div className="text-xs text-gray-300">
-                        {t("adminAuditLogTitle").replace("{count}", String(auditLogs.length))}
-                      </div>
-
-                      {lockoutState.isLocked && currentUser?.role === "super_admin" && (
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => {
-                            adminAuthStore.unlockAccount(currentUser);
-                            setLockoutState(adminAuthStore.getLockoutState());
-                            toast.success(isRtl ? "تم إلغاء الحظر الأمني بنجاح وفك القفل" : "Security lockout cleared");
-                          }}
-                          className="font-bold text-xs shadow-md cursor-pointer"
-                        >
-                          <Unlock className="w-3.5 h-3.5 mr-1.5 ml-1.5" />
-                          <span>{isRtl ? "إلغاء حظر تسجيل الدخول الأمني الآن" : "Clear Security Lockout"}</span>
-                        </Button>
-                      )}
-                    </div>
-
-                    {/* Self-Healing & Runtime Telemetry Control Panel */}
-                    <div className="p-4 rounded-2xl bg-gradient-to-r from-primary/10 via-card to-background border-2 border-primary/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs shadow-sm mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-primary/20 border border-primary/40 flex items-center justify-center text-primary flex-shrink-0">
-                          <ShieldCheck className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 font-bold text-white text-sm">
-                            <span>{isRtl ? "درع الأمان والإصلاح الذاتي للمستخدمين" : "User Self-Healing & Resilience Shield"}</span>
-                            <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                              {isRtl ? "نشط ومفعّل" : "Active"}
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-gray-400 mt-0.5">
-                            {isRtl
-                              ? `الأعطال المرصودة في الذاكرة: ${selfHealingEngine.getErrors().length} | تدريع فوري لأخطاء React والشبكة`
-                              : `Recorded errors in telemetry: ${selfHealingEngine.getErrors().length} | Runtime crash prevention`}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            selfHealingEngine.healAllJsonStorage();
-                            toast.success(isRtl ? "تم فحص وتنظيف ذاكرة التطبيق وإصلاح أي تلف تلقائياً" : "Storage scrub and auto-heal completed");
-                          }}
-                          className="text-xs border-primary/30 hover:bg-primary/10 h-9 font-semibold"
-                        >
-                          <RefreshCw className="w-3.5 h-3.5 mr-1.5 ml-1.5" />
-                          <span>{isRtl ? "فحص وتطهير الذاكرة" : "Scrub & Self-Heal"}</span>
-                        </Button>
-
-                        {selfHealingEngine.getErrors().length > 0 && (
-                          <Button
-                            variant="luxe"
-                            size="sm"
-                            onClick={() => {
-                              const latest = selfHealingEngine.getErrors()[0];
-                              if (latest) {
-                                const prompt = selfHealingEngine.generateAIFixPrompt(latest);
-                                navigator.clipboard.writeText(prompt);
-                                toast.success(isRtl ? "تم نسخ تقرير الإصلاح الذكي للمطور!" : "AI fix report copied!");
-                              }
-                            }}
-                            className="text-xs h-9 font-bold shadow-gold"
-                          >
-                            <Copy className="w-3.5 h-3.5 mr-1.5 ml-1.5" />
-                            <span>{isRtl ? "نسخ تقرير الخطأ للمطور" : "Copy AI Bug Report"}</span>
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      {auditLogs.map(log => (
-                        <div key={log.id} className="p-3.5 rounded-xl bg-card/70 border border-primary/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
-                          <div className="flex items-center gap-2">
-                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${log.action.includes("LOCKOUT") || log.action.includes("FAILED") ? "bg-destructive animate-pulse" : "bg-primary"}`} />
-                            <span className="font-bold text-white">{log.actionAr || log.action}</span>
-                            <span className="text-gray-400">({log.userName})</span>
-                          </div>
-                          <div className="flex items-center gap-3 text-gray-300">
-                            <span className="text-[11px] font-mono bg-background/50 px-2 py-0.5 rounded border border-primary/20">{log.details}</span>
-                            <span className="text-[10px] text-gray-400">{new Date(log.timestamp).toLocaleTimeString(isRtl ? "ar-EG" : "en-US")}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  <AuditLogsAdminView
+                    isRtl={isRtl}
+                    t={t}
+                    auditLogs={auditLogs}
+                    lockoutState={lockoutState}
+                    currentUser={currentUser}
+                    onUnlockAccount={() => {
+                      adminAuthStore.unlockAccount(currentUser);
+                      setLockoutState(adminAuthStore.getLockoutState());
+                      toast.success(isRtl ? "تم إلغاء الحظر الأمني بنجاح وفك القفل" : "Security lockout cleared");
+                    }}
+                  />
                 )}
 
                 {/* 7. Pending Reviews */}
                 {activeTab === "pending_reviews" && (
-                  <div className="space-y-3">
-                    <div className="text-xs text-gray-300 mb-2">
-                      {t("adminPendingTitle").replace("{count}", String(pendingItems.length))}
-                    </div>
-
-                    {pendingItems.length === 0 ? (
-                      <div className="text-center py-16 p-6 rounded-2xl bg-card/60 border border-primary/20">
-                        <FileCheck2 className="w-12 h-12 text-primary mx-auto mb-3 opacity-60" />
-                        <h4 className="text-base font-bold text-white mb-1">{t("adminNoPending")}</h4>
-                      </div>
-                    ) : (
-                      pendingItems.map(p => (
-                        <div key={p.id} className="p-4 rounded-2xl bg-card border-2 border-primary/30 flex items-center justify-between gap-3">
-                          <div>
-                            <h4 className="text-sm font-bold text-white">{p.itemData?.title_ar || p.itemData?.title}</h4>
-                            <span className="text-xs text-gray-300">{isRtl ? `مقدم بواسطة: ${p.submittedBy.name}` : `By: ${p.submittedBy.name}`}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="luxe"
-                              size="sm"
-                              onClick={() => {
-                                adminAuthStore.approvePending(p.id, currentUser!);
-                                if (p.type === "scholarship") dynamicStore.saveScholarship(p.itemData);
-                                else dynamicStore.saveJob(p.itemData);
-                                toast.success(isRtl ? "تمت الموافقة والنشر" : "Approved & Published");
-                              }}
-                              className="font-bold text-xs cursor-pointer"
-                            >
-                              {t("adminApprovePublish")}
-                            </Button>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
+                  <PendingReviewsAdminView
+                    isRtl={isRtl}
+                    t={t}
+                    pendingItems={pendingItems}
+                    currentUser={currentUser}
+                    onApprovePending={(p) => {
+                      if (!currentUser) return;
+                      adminAuthStore.approvePending(p.id, currentUser);
+                      if (p.type === "scholarship") dynamicStore.saveScholarship(p.itemData);
+                      else dynamicStore.saveJob(p.itemData);
+                      toast.success(isRtl ? "تمت الموافقة والنشر" : "Approved & Published");
+                    }}
+                  />
                 )}
 
                 {/* 8. Backup & Restore */}
                 {activeTab === "backup" && (
-                  <div className="p-6 rounded-2xl bg-card border-2 border-primary/30 max-w-xl mx-auto space-y-4">
-                    <h4 className="text-base font-bold text-white">{t("adminBackupTitle")}</h4>
-                    <p className="text-xs text-gray-300">
-                      {t("adminBackupDesc")}
-                    </p>
-                    <Button
-                      variant="luxe"
-                      onClick={() => {
-                        const data = {
-                          scholarships: dynamicStore.getScholarships(),
-                          jobs: dynamicStore.getJobs(),
-                          archive: dynamicStore.getArchivedItems(),
-                          auditLogs: adminAuthStore.getAuditLogs(),
-                          exportedAt: new Date().toISOString(),
-                        };
-                        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement("a");
-                        a.href = url;
-                        a.download = `alforas_backup_${Date.now()}.json`;
-                        a.click();
-                        toast.success(isRtl ? "تم تصدير ملف النسخة الاحتياطية بنجاح" : "Backup exported");
-                      }}
-                      className="w-full font-bold shadow-gold cursor-pointer"
-                    >
-                      <Download className="w-4 h-4 mr-2 ml-2" />
-                      <span>{t("adminDownloadBackupBtn")}</span>
-                    </Button>
-                  </div>
+                  <DataBackupAdminView isRtl={isRtl} t={t} />
                 )}
 
                 {/* 9. Password Change with 2FA Email OTP Verification */}
@@ -4210,19 +2271,33 @@ export const AdminDashboardModal: React.FC<{
                           onClick={handleBulkRestore}
                           className="font-bold text-xs sm:text-sm shadow-gold cursor-pointer"
                         >
-                          <RotateCcw className="w-4 h-4 mr-1.5 ml-1.5" />
+                          <RotateCcw className="w-4 h-4 mx-1.5" />
                           <span>{t("adminRestoreSelected").replace("{count}", String(selectedIds.length))}</span>
                         </Button>
                       ) : (
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={handleBulkArchive}
-                          className="font-bold text-xs sm:text-sm cursor-pointer"
-                        >
-                          <Archive className="w-4 h-4 mr-1.5 ml-1.5" />
-                          <span>{t("adminArchiveSelected").replace("{count}", String(selectedIds.length))}</span>
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={handleBulkDelete}
+                            className="font-bold text-xs sm:text-sm cursor-pointer shadow-md flex items-center gap-1.5 active:scale-95"
+                            title={isRtl ? "مسح وحذف نهائي من النظام" : "Permanently delete selected"}
+                          >
+                            <Trash2 className="w-4 h-4 mx-1" />
+                            <span>{isRtl ? `مسح وحذف (${selectedIds.length})` : `Delete (${selectedIds.length})`}</span>
+                          </Button>
+
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={handleBulkArchive}
+                            className="font-bold text-xs sm:text-sm cursor-pointer border border-primary/30 text-amber-300 hover:text-white flex items-center gap-1.5"
+                            title={isRtl ? "نقل العناصر المحددة للأرشيف" : "Archive selected"}
+                          >
+                            <Archive className="w-4 h-4 mx-1" />
+                            <span>{t("adminArchiveSelected").replace("{count}", String(selectedIds.length))}</span>
+                          </Button>
+                        </div>
                       )}
                     </div>
                   </motion.div>
@@ -4425,7 +2500,7 @@ export const AdminDashboardModal: React.FC<{
                   }}
                   className="text-xs border-primary/40 text-primary cursor-pointer hover:bg-primary/10"
                 >
-                  <Plus className="w-3.5 h-3.5 mr-1 ml-1" />
+                  <Plus className="w-3.5 h-3.5 mx-1" />
                   <span>{t("adminAddField")}</span>
                 </Button>
               </div>
@@ -4641,7 +2716,7 @@ export const AdminDashboardModal: React.FC<{
                   }}
                   className="text-xs border-primary/40 text-primary cursor-pointer hover:bg-primary/10"
                 >
-                  <Plus className="w-3.5 h-3.5 mr-1 ml-1" />
+                  <Plus className="w-3.5 h-3.5 mx-1" />
                   <span>{t("adminAddField")}</span>
                 </Button>
               </div>
@@ -4777,7 +2852,7 @@ export const AdminDashboardModal: React.FC<{
                       }}
                       className="font-bold shadow-gold cursor-pointer"
                     >
-                      <Mail className="w-4 h-4 mr-1.5 ml-1.5" />
+                      <Mail className="w-4 h-4 mx-1.5" />
                       <span>{isSendingRecoveryOtp ? (isRtl ? "جاري الإرسال..." : "Sending...") : t("adminSendOtpBtn")}</span>
                     </Button>
                   </div>
@@ -4866,7 +2941,7 @@ export const AdminDashboardModal: React.FC<{
                       }}
                       className="font-bold shadow-gold cursor-pointer"
                     >
-                      <CheckCircle2 className="w-4 h-4 mr-1.5 ml-1.5" />
+                      <CheckCircle2 className="w-4 h-4 mx-1.5" />
                       <span>{t("adminVerifyOtpBtn")}</span>
                     </Button>
                   </div>
@@ -4886,14 +2961,12 @@ export const AdminDashboardModal: React.FC<{
                         onChange={setRecoveryNewPassword}
                         showPlain={showRecoveryNewPass}
                         placeholder="★★★★★★"
-                        className={`w-full py-2.5 px-4 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 text-sm border-2 border-primary/40 focus:border-primary focus:ring-2 focus:ring-primary/40 shadow-sm outline-none ${
-                          isRtl ? "pl-11 pr-4" : "pr-11 pl-4"
-                        }`}
+                        className="w-full py-2.5 px-4 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 text-sm border-2 border-primary/40 focus:border-primary focus:ring-2 focus:ring-primary/40 shadow-sm outline-none ps-4 pe-11"
                       />
                       <button
                         type="button"
                         onClick={() => setShowRecoveryNewPass(p => !p)}
-                        className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? "left-3" : "right-3"} text-gray-600 hover:text-gray-900 cursor-pointer p-1`}
+                        className="absolute top-1/2 -translate-y-1/2 end-3 text-gray-600 hover:text-gray-900 cursor-pointer p-1"
                       >
                         {showRecoveryNewPass ? <EyeOff className="w-4 h-4 text-gray-700" /> : <Eye className="w-4 h-4 text-primary" />}
                       </button>
@@ -4910,14 +2983,12 @@ export const AdminDashboardModal: React.FC<{
                         onChange={setRecoveryConfirmPassword}
                         showPlain={showRecoveryConfirmPass}
                         placeholder="★ ★ ★ ★ ★ ★"
-                        className={`w-full py-2.5 px-4 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 text-sm border-2 border-primary/40 focus:border-primary focus:ring-2 focus:ring-primary/40 shadow-sm outline-none ${
-                          isRtl ? "pl-11 pr-4" : "pr-11 pl-4"
-                        }`}
+                        className="w-full py-2.5 px-4 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 text-sm border-2 border-primary/40 focus:border-primary focus:ring-2 focus:ring-primary/40 shadow-sm outline-none ps-4 pe-11"
                       />
                       <button
                         type="button"
                         onClick={() => setShowRecoveryConfirmPass(p => !p)}
-                        className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? "left-3" : "right-3"} text-gray-600 hover:text-gray-900 cursor-pointer p-1`}
+                        className="absolute top-1/2 -translate-y-1/2 end-3 text-gray-600 hover:text-gray-900 cursor-pointer p-1"
                       >
                         {showRecoveryConfirmPass ? <EyeOff className="w-4 h-4 text-gray-700" /> : <Eye className="w-4 h-4 text-primary" />}
                       </button>
@@ -4960,13 +3031,114 @@ export const AdminDashboardModal: React.FC<{
                       }}
                       className="font-bold shadow-gold cursor-pointer"
                     >
-                      <LockKeyhole className="w-4 h-4 mr-1.5 ml-1.5" />
+                      <LockKeyhole className="w-4 h-4 mx-1.5" />
                       <span>{t("adminSaveNewPasswordBtn")}</span>
                     </Button>
                   </div>
                 </div>
               )}
             </motion.div>
+          </div>
+        )}
+        {/* Real-time Broadcast Notification Modal */}
+        {broadcastModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="w-full max-w-lg bg-slate-900 border-2 border-amber-500/50 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+              <div className="p-4 border-b border-amber-500/30 flex items-center justify-between bg-card/60">
+                <div className="flex items-center gap-2">
+                  <Radio className="w-5 h-5 text-amber-400 animate-pulse" />
+                  <h3 className="font-bold text-white text-base">
+                    {isRtl ? "بث إشعار عام لحظي لجميع المستخدمين" : "Broadcast Notification to All Users"}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setBroadcastModalOpen(false)}
+                  className="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSendBroadcast} className="p-5 space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-200">
+                    {isRtl ? "عنوان التنبيه (بالعربية) *" : "Notification Title (Arabic) *"}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={broadcastTitle}
+                    onChange={(e) => setBroadcastTitle(e.target.value)}
+                    placeholder={isRtl ? "مثال: فتح باب التقديم لمنحة الحكومة التركية 2026" : "e.g. Turkiye Burslari 2026 Now Open"}
+                    className="w-full h-11 px-3 rounded-xl bg-card border border-primary/30 text-xs text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-200">
+                    {isRtl ? "عنوان التنبيه (بالإنجليزية)" : "Notification Title (English)"}
+                  </label>
+                  <input
+                    type="text"
+                    value={broadcastTitleEn}
+                    onChange={(e) => setBroadcastTitleEn(e.target.value)}
+                    placeholder="e.g. Turkiye Burslari 2026 Open for Applications"
+                    className="w-full h-11 px-3 rounded-xl bg-card border border-primary/30 text-xs text-white focus:outline-none focus:ring-2 focus:ring-primary text-start"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-200">
+                    {isRtl ? "القسم المرتبط عند النقر" : "Target Section"}
+                  </label>
+                  <select
+                    value={broadcastTab}
+                    onChange={(e) => setBroadcastTab(e.target.value as any)}
+                    className="w-full h-11 px-3 rounded-xl bg-card border border-primary/30 text-xs font-medium text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="scholarships">{isRtl ? "قسم المنح الدراسية" : "Scholarships"}</option>
+                    <option value="jobs">{isRtl ? "قسم وظائف العمل الحر" : "Jobs"}</option>
+                    <option value="arab_unis">{isRtl ? "دليل الجامعات العربية" : "Arab Universities"}</option>
+                    <option value="news">{isRtl ? "مركز الأخبار والاقتصاد" : "News & Economy"}</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-200">
+                    {isRtl ? "نص الإشعار والتفاصيل *" : "Notification Message *"}
+                  </label>
+                  <textarea
+                    rows={3}
+                    required
+                    value={broadcastBody}
+                    onChange={(e) => setBroadcastBody(e.target.value)}
+                    placeholder={isRtl ? "اكتب تفاصيل التنبيه المباشر الذي سيصل لجميع الطلاب..." : "Write message..."}
+                    className="w-full p-3 rounded-xl bg-card border border-primary/30 text-xs text-white focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-2 border-t border-primary/20">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setBroadcastModalOpen(false)}
+                    className="h-10 px-4 text-xs font-bold"
+                  >
+                    {isRtl ? "إلغاء" : "Cancel"}
+                  </Button>
+                  <Button
+                    type="submit"
+                    variant="luxe"
+                    disabled={isBroadcasting}
+                    className="h-10 px-6 text-xs font-bold shadow-gold flex items-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white"
+                  >
+                    <Radio className={`w-4 h-4 ${isBroadcasting ? "animate-spin" : ""}`} />
+                    <span>{isRtl ? "إرسال وبث فوري لجميع المستخدمين" : "Broadcast Now"}</span>
+                  </Button>
+                </div>
+              </form>
+            </div>
           </div>
         )}
       </AnimatePresence>

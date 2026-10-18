@@ -229,6 +229,55 @@ export const AutomationCommandCenter: React.FC<AutomationCommandCenterProps> = (
     }
   };
 
+  // Cloud Firestore Sync Handler
+  const [isCloudSyncing, setIsCloudSyncing] = useState(false);
+  const handleCloudFirestoreSync = async () => {
+    setIsCloudSyncing(true);
+    try {
+      const res = await fetch("/api/opportunities/sync-cloud", { method: "POST" });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.success(
+          isRtl
+            ? `تمت المزامنة السحابية الحية مع Firebase بنجاح! (${data.scholarshipsCount} منحة، ${data.jobsCount} وظيفة)`
+            : `Live sync to Firebase complete! (${data.scholarshipsCount} scholarships, ${data.jobsCount} jobs)`
+        );
+        await onSyncClient();
+        await refreshAll();
+      } else {
+        toast.error(data.error || (isRtl ? "تعذر إتمام المزامنة السحابية" : "Cloud sync failed"));
+      }
+    } catch (err: any) {
+      toast.error(err?.message || (isRtl ? "خطأ في الاتصال بالسيرفر" : "Network error"));
+    } finally {
+      setIsCloudSyncing(false);
+    }
+  };
+
+  // Immediate Digest Dispatch Handler
+  const [isDispatching, setIsDispatching] = useState(false);
+  const handleDispatchDigestNow = async () => {
+    setIsDispatching(true);
+    try {
+      const res = await fetch("/api/opportunities/dispatch-digest", { method: "POST" });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.success(
+          isRtl
+            ? "تم إرسال التقرير الشامل وروابط الاعتماد السريع بنجاح إلى الإيميلات المعتمدة وهاتفك في الواتساب!"
+            : "Digest with 1-click action links dispatched to email & WhatsApp!"
+        );
+        await fetchNotifications();
+      } else {
+        toast.error(data.error || (isRtl ? "تعذر إرسال التقرير" : "Dispatch failed"));
+      }
+    } catch (err: any) {
+      toast.error(err?.message || (isRtl ? "خطأ في الاتصال" : "Connection error"));
+    } finally {
+      setIsDispatching(false);
+    }
+  };
+
   // Sync Client
   const handleManualSync = async () => {
     setIsSyncing(true);
@@ -379,27 +428,32 @@ export const AutomationCommandCenter: React.FC<AutomationCommandCenterProps> = (
     }
   };
 
-  // Share via WhatsApp Web One-Click Generator
-  const handleShareWhatsAppDigest = () => {
+  // Share via WhatsApp Web One-Click Generator with Direct Recipient
+  const handleShareWhatsAppDigest = (phone = "249900713251") => {
     const modeLabels: Record<string, string> = {
       smart_auto: "النشر التلقائي الذكي (للمكتمل 100% فقط)",
       strict_review: "المراجعة الصارمة قبل النشر (كل الفرص محتجزة)",
       full_auto: "النشر التلقائي المباشر",
     };
 
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://alforas.com";
+    const cleanPhone = phone.replace(/[^0-9]/g, "");
+
     const text =
-      `📢 *تقرير إشعار محرك الأوتوميشن - منصة الفرص*\n` +
+      `📢 *تقرير إشعار محرك الأوتوميشن والمنح - منصة الفرص*\n` +
       `📅 *التاريخ:* ${new Date().toLocaleDateString("ar-SA")}\n` +
       `⚙️ *وضع الضبط النشط:* ${modeLabels[settings.publishMode] || settings.publishMode}\n` +
       `------------------------------------\n` +
-      `🎓 *إجمالي المنح المنشورة:* ${scholarshipsCount}\n` +
-      `💼 *إجمالي الوظائف المنشورة:* ${jobsCount}\n` +
+      `🎓 *إجمالي المنح المنشورة بالسحابة:* ${scholarshipsCount}\n` +
+      `💼 *إجمالي الوظائف المنشورة بالسحابة:* ${jobsCount}\n` +
       `⏳ *الفرص المحتجزة للمراجعة:* ${pendingItems.length}\n` +
       `⚡ *الفرص المكتشفة آلياً:* ${status.totalIngested || 0}\n\n` +
-      `🔗 *رابط مراجعة واعتماد الفرص المعلقة:* https://alforas.com/admin?tab=automation\n` +
-      `منصة الفرص | AlForas Engine`;
+      `🔗 *رابط مراجعة واعتماد الفرص المعلقة:* ${origin}/admin?tab=automation\n` +
+      `منصة الفرص | AlForas Smart Engine`;
 
-    const shareUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    const shareUrl = cleanPhone
+      ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`
+      : `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(shareUrl, "_blank");
   };
 
@@ -494,6 +548,65 @@ export const AutomationCommandCenter: React.FC<AutomationCommandCenterProps> = (
                 ? isRtl ? "جاري الفحص الآن..." : "Running..."
                 : isRtl ? "جاهز ومستعد" : "Idle (Ready)"}
             </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Firebase Cloud Firestore Real-time Sync & Alerts Control Card */}
+      <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-card to-card border-2 border-emerald-500/30 shadow-md">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-sm shadow-emerald-400" />
+              <h4 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                {isRtl ? "المزامنة السحابية الحية (Firebase Firestore) وشبكة التنبيهات" : "Live Cloud Firestore Sync & Alert Network"}
+              </h4>
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                {isRtl ? "متصل لحظياً 100%" : "Realtime 100% Active"}
+              </span>
+            </div>
+            <p className="text-xs text-gray-300 leading-relaxed max-w-2xl">
+              {isRtl
+                ? "كافة المنح والفرص التي يجلبها الذكاء الاصطناعي أو يتم اعتمادها تُدفع فورياً إلى سحابة Firestore، لتظهر لحظياً لجميع مستخدمي التطبيق دون تأخير، مع توجيه التقارير وروابط الاعتماد السريع بنقرة واحدة إلى بريدك ورقم الواتساب."
+                : "All AI-crawled & approved opportunities are pushed directly to Firebase Firestore with zero latency, syncing across all user devices with 1-click quick action tokens."}
+            </p>
+            <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px] text-gray-400">
+              <span className="bg-white/5 px-2 py-1 rounded-md border border-white/10 text-emerald-400 font-medium">
+                ✉️ mohsentiben@gmail.com
+              </span>
+              <span className="bg-white/5 px-2 py-1 rounded-md border border-white/10 text-emerald-400 font-medium">
+                ✉️ alforas.one@gmail.com
+              </span>
+              <span className="bg-white/5 px-2 py-1 rounded-md border border-white/10 text-emerald-400 font-medium">
+                📱 +249900713251 (WhatsApp)
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0">
+            <Button
+              type="button"
+              onClick={handleCloudFirestoreSync}
+              disabled={isCloudSyncing}
+              className="h-9 px-3.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer shadow-sm transition-all"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 me-1.5 ${isCloudSyncing ? "animate-spin" : ""}`} />
+              {isCloudSyncing
+                ? isRtl ? "جاري المزامنة مع Firestore..." : "Syncing Firestore..."
+                : isRtl ? "مزامنة سحابية شاملة مع Firestore" : "Sync All to Firestore"}
+            </Button>
+            <Button
+              type="button"
+              onClick={handleDispatchDigestNow}
+              disabled={isDispatching}
+              variant="outline"
+              className="h-9 px-3.5 text-xs font-bold border-amber-500/40 text-amber-300 hover:bg-amber-500/10 cursor-pointer transition-all"
+            >
+              <Send className={`w-3.5 h-3.5 me-1.5 ${isDispatching ? "animate-spin" : ""}`} />
+              {isDispatching
+                ? isRtl ? "جاري الإرسال..." : "Dispatching..."
+                : isRtl ? "إرسال تقرير فوري وروابط الاعتماد" : "Send Digest Alert Now"}
+            </Button>
           </div>
         </div>
       </div>

@@ -4,7 +4,7 @@ import {
   Save, Plus, X, GraduationCap, MapPin, Mail, Phone, User as UserIcon,
   Edit3, Sparkles, Check, Camera, Loader2, Link as LinkIcon, Trash2,
   Star, Briefcase, ChevronDown, Maximize2, Compass, HelpCircle, CheckCircle2,
-  ExternalLink, Award, Globe, BookOpen, Clock, Building, Copy
+  ExternalLink, Award, Globe, BookOpen, Clock, Building, Copy, AlertCircle
 } from "lucide-react";
 import { toast } from "sonner";
 import { doc, getDoc, setDoc } from "firebase/firestore";
@@ -130,9 +130,22 @@ export const ProfileTab = () => {
       }
     };
 
+    const handleProfileUpdate = (e: any) => {
+      loadData();
+      if (e?.detail?.userDocData) {
+        const data = e.detail.userDocData;
+        if (data.profile_extras) {
+          setExtras(data.profile_extras);
+          setExtrasDraft(data.profile_extras);
+        }
+      }
+    };
+
     window.addEventListener("foras:persona_change", handlePersonaChange);
+    window.addEventListener("foras:profile-updated", handleProfileUpdate);
     return () => {
       window.removeEventListener("foras:persona_change", handlePersonaChange);
+      window.removeEventListener("foras:profile-updated", handleProfileUpdate);
     };
   }, []);
 
@@ -148,6 +161,11 @@ export const ProfileTab = () => {
       .then((snap) => {
         if (snap.exists()) {
           const data = snap.data();
+          if (data.profile_extras) {
+            setExtras(data.profile_extras);
+            setExtrasDraft(data.profile_extras);
+            profileExtras.save(data.profile_extras);
+          }
           const p: ProfileState = {
             full_name: data.full_name ?? user.fullName ?? "",
             bio: data.bio ?? "",
@@ -349,6 +367,7 @@ export const ProfileTab = () => {
     try {
       await setDoc(doc(db, "users", user.id), {
         ...nextDraft,
+        profile_extras: extrasDraft,
         updated_at: new Date().toISOString(),
       }, { merge: true });
       setSaving(false);
@@ -528,6 +547,21 @@ export const ProfileTab = () => {
                     <Copy className="w-3 h-3 text-muted-foreground opacity-60 group-hover:opacity-100 group-hover:text-primary transition-all shrink-0" />
                   )}
                 </button>
+              )}
+            </div>
+
+            {/* Cloud Firestore Sync Status Badge */}
+            <div className="mt-3.5 flex items-center justify-center">
+              {!isGuest ? (
+                <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>{ar ? "متزامن لحظياً مع Cloud Firestore" : "Live Synced with Cloud Firestore"}</span>
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-medium">
+                  <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span>{ar ? "بيانات محلية مؤقتة — سجّل الدخول لحفظ ملفك سحابياً" : "Guest Mode (Local) — Sign in to save profile to cloud"}</span>
+                </div>
               )}
             </div>
           </div>
@@ -1020,7 +1054,7 @@ export const ProfileTab = () => {
         <div className="flex gap-2">
           <Button variant="ghostGold" size="sm" onClick={cancelEdit}>{t("cancel")}</Button>
           <Button variant="luxe" size="sm" onClick={handleSave} disabled={saving}>
-            {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5 ml-1" />}
+            {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5 me-1" />}
             {t("save")}
           </Button>
         </div>
@@ -1308,7 +1342,7 @@ export const ProfileTab = () => {
                     onClick={() => addDetailedSkill(k as any)}
                     className="text-xs border-primary/30 text-primary hover:bg-primary/10"
                   >
-                    <Plus className="w-3.5 h-3.5 mr-1" />
+                    <Plus className="w-3.5 h-3.5 me-1" />
                     <span>{meta.emoji} {ar ? `إضافة مهارة (${meta.labelAr.slice(0, 12)})` : `Add (${meta.labelEn.slice(0, 12)})`}</span>
                   </Button>
                 ))}
@@ -1574,7 +1608,7 @@ export const ProfileTab = () => {
                     onClick={() => addDetailedSkill(k as any)}
                     className="text-xs border-primary/30 text-primary hover:bg-primary/10"
                   >
-                    <Plus className="w-3.5 h-3.5 mr-1" />
+                    <Plus className="w-3.5 h-3.5 me-1" />
                     <span>{meta.emoji} {ar ? `إضافة (${meta.labelAr.slice(0, 12)})` : `Add (${meta.labelEn.slice(0, 12)})`}</span>
                   </Button>
                 ))}
@@ -1619,7 +1653,7 @@ export const ProfileTab = () => {
               className="bg-input border-gold/30 flex-1 text-xs"
             />
             <Button type="button" variant="luxe" size="sm" onClick={addSkill}>
-              <Plus className="w-4 h-4 ml-1" /> {t("add")}
+              <Plus className="w-4 h-4 me-1" /> {t("add")}
             </Button>
           </div>
 
@@ -1662,7 +1696,7 @@ export const ProfileTab = () => {
       <div className="pt-3 flex justify-end gap-2">
         <Button variant="ghostGold" onClick={cancelEdit}>{t("cancel")}</Button>
         <Button variant="luxe" onClick={handleSave} disabled={saving} className="px-8 shadow-gold">
-          {saving ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <Save className="w-4 h-4 ml-2" />}
+          {saving ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <Save className="w-4 h-4 me-2" />}
           {t("saveChanges")}
         </Button>
       </div>

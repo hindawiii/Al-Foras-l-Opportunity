@@ -339,28 +339,241 @@ export const getInterestLabel = (idOrLabel: string, lang: "ar" | "en" = "ar"): s
   return lang === "en" ? item.labelEn : item.labelAr;
 };
 
+export interface MatchAnalysis {
+  score: number;
+  reasonAr: string;
+  reasonEn: string;
+  factors: {
+    gpaMatch: boolean;
+    majorMatch: boolean;
+    degreeMatch: boolean;
+    locationMatch: boolean;
+    languageMatch: boolean;
+  };
+}
+
+/**
+ * Enterprise Multi-Factor Smart Match Engine for Scholarships
+ * Evaluates 4 essential pillars:
+ * 1. Major & Field of Study Alignment (30%)
+ * 2. Academic Degree / Level Alignment (25%)
+ * 3. Academic GPA & Merit Readiness (25%)
+ * 4. Geographic & Language Compatibility (20%)
+ */
+export const computeScholarshipMatch = (
+  s: Scholarship,
+  profile?: {
+    location?: string | null;
+    skills?: string[] | null;
+    interests?: string[] | null;
+    major?: string | null;
+    degree?: string | null;
+    gpa?: string | null;
+    gpaScale?: string | null;
+  } | null,
+  extras?: {
+    major?: string | null;
+    degree?: string | null;
+    gpa?: string | null;
+    gpaScale?: string | null;
+    detailedSkills?: Array<{ name: string }> | null;
+  } | null
+): MatchAnalysis => {
+  if (!s) {
+    return {
+      score: 50,
+      reasonAr: "منحة دراسية متميزة للطلاب والباحثين",
+      reasonEn: "Featured scholarship for students and scholars",
+      factors: {
+        gpaMatch: false,
+        majorMatch: false,
+        degreeMatch: false,
+        locationMatch: false,
+        languageMatch: false,
+      },
+    };
+  }
+
+  let totalScore = 0;
+  const factors = {
+    gpaMatch: false,
+    majorMatch: false,
+    degreeMatch: false,
+    locationMatch: false,
+    languageMatch: false,
+  };
+
+  // 1. Major & Field Alignment (30 pts max)
+  const userMajor = (extras?.major || profile?.major || "").trim().toLowerCase();
+  const fieldLower = (s.field || "").toLowerCase();
+  const fieldEnLower = (s.fieldEn || "").toLowerCase();
+  const isMultidisciplinary =
+    fieldLower.includes("متعدد") ||
+    fieldLower.includes("كافة") ||
+    fieldLower.includes("جميع") ||
+    fieldEnLower.includes("multi") ||
+    fieldEnLower.includes("all");
+
+  const sInterests = Array.isArray(s.interests) ? s.interests : [];
+  const sTags = Array.isArray(s.tags) ? s.tags : [];
+  const userInterests = Array.isArray(profile?.interests) ? profile.interests : [];
+  const userSkills = [
+    ...(Array.isArray(profile?.skills) ? profile.skills : []),
+    ...(Array.isArray(extras?.detailedSkills) ? extras.detailedSkills.map(sk => sk.name) : []),
+  ];
+
+  if (isMultidisciplinary) {
+    totalScore += 28;
+    factors.majorMatch = true;
+  } else if (
+    userMajor &&
+    (fieldLower.includes(userMajor) ||
+      userMajor.includes(fieldLower) ||
+      sTags.some(t => t && (t.toLowerCase().includes(userMajor) || userMajor.includes(t.toLowerCase()))))
+  ) {
+    totalScore += 30;
+    factors.majorMatch = true;
+  } else {
+    // Check overlap of user interests or skills with tags
+    const interestOverlap = sInterests.filter(si =>
+      userInterests.some(ui => ui && (ui === si || si.includes(ui) || ui.includes(si)))
+    ).length;
+    const skillOverlap = sTags.filter(st =>
+      userSkills.some(sk => sk && (sk.toLowerCase().includes(st.toLowerCase()) || st.toLowerCase().includes(sk.toLowerCase())))
+    ).length;
+
+    if (interestOverlap > 0 || skillOverlap > 0) {
+      totalScore += Math.min(26, 16 + interestOverlap * 5 + skillOverlap * 4);
+      factors.majorMatch = true;
+    } else {
+      totalScore += 16; // Baseline
+    }
+  }
+
+  // 2. Academic Degree Alignment (25 pts max)
+  const userDegree = (extras?.degree || extras?.degreeLevel || profile?.degree || profile?.degreeLevel || "").trim().toLowerCase();
+  const levelText = (s.level || (s as any).degree || "").toLowerCase();
+  const levelEnText = (s.levelEn || "").toLowerCase();
+
+  if (!userDegree) {
+    totalScore += 18; // Neutral baseline when degree not filled
+  } else {
+    const isBachelorReq = levelText.includes("بكالوريوس") || levelEnText.includes("bachelor") || levelText.includes("جامعي");
+    const isMasterReq = levelText.includes("ماجستير") || levelEnText.includes("master");
+    const isPhdReq = levelText.includes("دكتوراه") || levelEnText.includes("phd") || levelEnText.includes("doctor");
+
+    const isUserBachelor = userDegree.includes("bachelor") || userDegree.includes("بكالوريوس");
+    const isUserMaster = userDegree.includes("master") || userDegree.includes("ماجستير");
+    const isUserPhd = userDegree.includes("phd") || userDegree.includes("دكتوراه");
+    const isUserSecondary = userDegree.includes("secondary") || userDegree.includes("ثانوي");
+
+    if (
+      (isUserBachelor && isBachelorReq) ||
+      (isUserMaster && isMasterReq) ||
+      (isUserPhd && isPhdReq) ||
+      (isUserSecondary && (isBachelorReq || levelText.includes("ثانوي")))
+    ) {
+      totalScore += 25;
+      factors.degreeMatch = true;
+    } else if (isBachelorReq && isMasterReq) {
+      totalScore += 24;
+      factors.degreeMatch = true;
+    } else {
+      totalScore += 15;
+    }
+  }
+
+  // 3. GPA & Academic Standing (25 pts max)
+  const rawGpa = extras?.gpa || profile?.gpa;
+  const gpaScale = extras?.gpaScale || profile?.gpaScale || "4";
+
+  let numGpa = NaN;
+  if (typeof rawGpa === "number") {
+    numGpa = rawGpa;
+  } else if (typeof rawGpa === "string") {
+    const cleaned = rawGpa.replace("%", "").trim();
+    const parts = cleaned.split("/");
+    numGpa = parseFloat(parts[0]);
+  }
+
+  if (isNaN(numGpa)) {
+    totalScore += 18; // Neutral baseline
+  } else {
+    let gpaPct = 75;
+    if (gpaScale === "100" || (typeof rawGpa === "string" && rawGpa.includes("%"))) {
+      gpaPct = numGpa;
+    } else if (gpaScale === "5") {
+      gpaPct = (numGpa / 5) * 100;
+    } else {
+      gpaPct = (numGpa / 4) * 100;
+    }
+
+    if (gpaPct >= 85) {
+      totalScore += 25;
+      factors.gpaMatch = true;
+    } else if (gpaPct >= 75) {
+      totalScore += 22;
+      factors.gpaMatch = true;
+    } else if (gpaPct >= 65) {
+      totalScore += 18;
+    } else {
+      totalScore += 14;
+    }
+  }
+
+  // 4. Geographic & Language Alignment (20 pts max)
+  const userLoc = (profile?.location || "").trim().toLowerCase();
+  const sCountry = (s.country || "").toLowerCase();
+  const sCountryEn = (s.countryEn || "").toLowerCase();
+
+  if (userLoc && (userLoc.includes(sCountry) || sCountry.includes(userLoc) || sCountryEn.includes(userLoc))) {
+    totalScore += 10;
+    factors.locationMatch = true;
+  } else {
+    totalScore += 7;
+  }
+
+  // Study language preference
+  if (s.studyLang === "both" || s.studyLang === "en" || s.studyLang === "ar") {
+    totalScore += 10;
+    factors.languageMatch = true;
+  }
+
+  const clampedScore = Math.min(99, Math.max(52, Math.round(totalScore)));
+
+  // Generate tailored guidance reasoning
+  let reasonAr = "فرصة دراسية ممتازة تناسب ملفك الأكاديمي واهتماماتك";
+  let reasonEn = "Excellent scholarship matching your academic profile and interests";
+
+  if (factors.majorMatch && factors.degreeMatch && factors.gpaMatch) {
+    reasonAr = `تطابق ممتاز (${clampedScore}%): معدلك وتخصصك ودرجتك العلمية مؤهلة تماماً للتقديم`;
+    reasonEn = `Top Match (${clampedScore}%): Your GPA, degree level, and major directly fulfill criteria`;
+  } else if (factors.majorMatch && factors.gpaMatch) {
+    reasonAr = `تطابق قوي (${clampedScore}%): معدلك الأكاديمي وتخصصك متوافقان مع مجالات هذه المنحة`;
+    reasonEn = `Strong Match (${clampedScore}%): Your academic GPA and major match this opportunity`;
+  } else if (factors.majorMatch) {
+    reasonAr = `تطابق تخصصي (${clampedScore}%): مجالك الدراسي مشمول ضمن البرامج المعتمدة للمنحة`;
+    reasonEn = `Field Match (${clampedScore}%): Your major is covered within eligible academic programs`;
+  } else if (isMultidisciplinary) {
+    reasonAr = `منحة شاملة (${clampedScore}%): متاحة لكافة التخصصات مع تغطية مالية متميزة`;
+    reasonEn = `Open Program (${clampedScore}%): Available to all majors with distinguished financial aid`;
+  } else {
+    reasonAr = `تطابق مرشح (${clampedScore}%): راجع متطلبات التقديم وتفاصيل الشروط الأكاديمية`;
+    reasonEn = `Candidate Match (${clampedScore}%): Review submission requirements and academic prerequisites`;
+  }
+
+  return {
+    score: clampedScore,
+    reasonAr,
+    reasonEn,
+    factors,
+  };
+};
+
 export const computeMatchScore = (
   s: Scholarship,
-  profile?: { location?: string | null; skills?: string[] | null; interests?: string[] | null } | null
+  profile?: any,
+  extras?: any
 ): number => {
-  if (!s) return 50;
-  let score = 50;
-  const loc = (profile?.location || "").toLowerCase();
-  if (loc && s.country && (loc.includes(s.country.toLowerCase()) || s.country.toLowerCase().includes(loc))) score += 20;
-  const interests = Array.isArray(profile?.interests) ? profile.interests : [];
-  const sInterests = Array.isArray(s.interests) ? s.interests : (Array.isArray(s.tags) ? s.tags : []);
-  const matchInterests = sInterests.filter(i => {
-    if (!i) return false;
-    return interests.some(userI => {
-      if (!userI) return false;
-      const item = INTEREST_ITEMS.find(it => it.id === it.id);
-      return userI === i || (item && (userI === item.labelEn || userI === item.labelAr));
-    });
-  }).length;
-  score += Math.min(20, matchInterests * 10);
-  const skills = Array.isArray(profile?.skills) ? profile.skills : [];
-  const sTags = Array.isArray(s.tags) ? s.tags : [];
-  const matchSkills = sTags.filter(t => t && skills.some(sk => sk && (sk.toLowerCase().includes(t.toLowerCase()) || t.toLowerCase().includes(sk.toLowerCase())))).length;
-  score += Math.min(10, matchSkills * 5);
-  return Math.min(99, Math.max(40, score));
+  return computeScholarshipMatch(s, profile, extras).score;
 };

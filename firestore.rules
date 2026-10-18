@@ -2,47 +2,146 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Global Deny-by-default Catch-all
+    // match /{document=**} {
+    //   allow read, write: if false;
+    // }
+
     // Helper functions
-    function isAuthenticated() {
+    function isSignedIn() {
       return request.auth != null;
     }
 
     function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
+      return isSignedIn() && request.auth.uid == userId;
     }
 
     function isAdmin() {
-      return isAuthenticated() && (
+      return isSignedIn() && (
+        request.auth.token.email == "mohsentiben@gmail.com" ||
         request.auth.token.email == "alforas.one@gmail.com" ||
-        request.auth.token.email == "mohsentiben@gmail.com"
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       );
     }
 
-    // Connection test doc
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128;
+    }
+
+    function isValidScholarship(data) {
+      return data.id is string &&
+             data.id.size() > 0 && data.id.size() <= 128 &&
+             data.title is string &&
+             data.title.size() > 0 && data.title.size() <= 500 &&
+             data.url is string;
+    }
+
+    function isValidJob(data) {
+      return data.id is string &&
+             data.id.size() > 0 && data.id.size() <= 128 &&
+             (data.title is string || data.title_ar is string);
+    }
+
+    function isValidUniversity(data) {
+      return data.id is string &&
+             data.id.size() > 0 && data.id.size() <= 128 &&
+             data.name is string &&
+             data.name.size() > 0 && data.name.size() <= 300;
+    }
+
+    function isValidNotification(data) {
+      return data.id is string &&
+             data.id.size() > 0 && data.id.size() <= 128 &&
+             data.title is string &&
+             data.title.size() > 0 && data.title.size() <= 300 &&
+             data.body is string;
+    }
+
+    // Connection test & Health check
     match /_health/{docId} {
       allow read: if true;
-      allow write: if false;
+      allow write: if isSignedIn() || isValidId(docId);
     }
 
-    // User profiles: Users can read/write their own profile, admins can manage
+    // User profiles & private subcollections
     match /users/{userId} {
-      allow read: if true;
+      allow read: if isOwner(userId) || isAdmin();
       allow write: if isOwner(userId) || isAdmin();
+
+      // Tracked Applications & Bookmarks
+      match /applications/{applicationId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+
+      // Saved Jobs
+      match /saved_jobs/{jobId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+
+      // Saved Universities
+      match /saved_universities/{uniId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+
+      // Catch-all for any user-scoped subcollections
+      match /{subcollection=**} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
     }
 
-    // Scholarships: Everyone can read and sync, writes allowed for published opportunities
+    // Public Scholarships: Read-only for public, create/update for Admins or valid scholarship schema
     match /scholarships/{scholarshipId} {
       allow read: if true;
-      allow write: if true;
+      allow create, update: if isAdmin() || (isValidId(scholarshipId) && isValidScholarship(request.resource.data));
+      allow delete: if isAdmin();
     }
 
-    // Jobs: Everyone can read and sync, writes allowed for published jobs
+    // Public Jobs: Read-only for public, create/update for Admins or valid job schema
     match /jobs/{jobId} {
       allow read: if true;
-      allow write: if true;
+      allow create, update: if isAdmin() || (isValidId(jobId) && isValidJob(request.resource.data));
+      allow delete: if isAdmin();
     }
 
-    // Default deny
+    // Cloud Archive Vault: Restricted to Admins only
+    match /archived_opportunities/{archiveId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Security & Operations Audit Logs: Admin read/manage, authenticated system logging
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
+    }
+
+    // Admins Roster & Access Control: Authenticated can read to verify privileges, Admin can write
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // App Settings & Feature Flags: Public read for client runtime, Admin write
+    match /app_settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Public Universities Directory (Arab & Global)
+    match /universities/{uniId} {
+      allow read: if true;
+      allow create, update: if isAdmin() || (isValidId(uniId) && isValidUniversity(request.resource.data));
+      allow delete: if isAdmin();
+    }
+
+    // Public System & Broadcast Notifications
+    match /notifications/{notificationId} {
+      allow read: if true;
+      allow create, update: if isAdmin() || (isValidId(notificationId) && isValidNotification(request.resource.data));
+      allow delete: if isAdmin();
+    }
+
+    // Final catch-all deny rule
     match /{document=**} {
       allow read, write: if false;
     }

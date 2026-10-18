@@ -16,7 +16,7 @@ export const CurrencyTab = () => {
     <div className="space-y-4 w-full">
       {/* Hero header — Currency & Gold Hub */}
       <div className="relative overflow-hidden rounded-3xl border border-primary/30 bg-card-gradient p-5 shadow-luxe">
-        <div className="absolute -top-12 -left-12 w-48 h-48 bg-primary/15 rounded-full blur-3xl" />
+        <div className="absolute -top-12 -start-12 w-48 h-48 bg-primary/15 rounded-full blur-3xl" />
         <div className="relative flex items-start justify-between gap-3">
           <div className="flex-1">
             <h1 className="font-display text-2xl text-gold-gradient flex items-center gap-2">
@@ -51,7 +51,7 @@ export const CurrencyTab = () => {
             <div className="text-end" dir="ltr">
               <p className="font-display text-lg text-gold-gradient font-bold">
                 {gold.price.toLocaleString("en-US", { maximumFractionDigits: 2 })}
-                <span className="text-xs text-muted-foreground ml-1">USD/oz</span>
+                <span className="text-xs text-muted-foreground ms-1">USD/oz</span>
               </p>
               <p className={`text-xs inline-flex items-center gap-1 font-bold ${gold.change24h >= 0 ? "text-success" : "text-destructive"}`}>
                 {gold.change24h >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
@@ -96,7 +96,7 @@ export const CurrencyTab = () => {
                 <p className="text-2xs text-muted-foreground">{t("priceVsUsd")}</p>
                 <p className="font-display text-base text-foreground font-bold" dir="ltr">
                   {c.liveRate.toLocaleString("en-US", { maximumFractionDigits: 4 })}
-                  <span className="text-xs text-muted-foreground mr-1">{c.symbol}</span>
+                  <span className="text-xs text-muted-foreground ms-1">{c.symbol}</span>
                 </p>
               </div>
             </motion.div>
@@ -133,7 +133,7 @@ export const CurrencyTab = () => {
                   {a.price > 1
                     ? a.price.toLocaleString("en-US", { maximumFractionDigits: 2 })
                     : a.price.toFixed(4)}
-                  <span className="text-xs text-muted-foreground mr-1">USD</span>
+                  <span className="text-xs text-muted-foreground ms-1">USD</span>
                 </p>
               </div>
             </motion.div>

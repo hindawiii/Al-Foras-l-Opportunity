@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Award, Bookmark, User, Settings as SettingsIcon, Bell, Languages, Briefcase, GraduationCap } from "lucide-react";
@@ -60,7 +60,7 @@ export const AppShell = () => {
   useGeoSync();
   const { lang, toggleLang, t: tr } = useLanguage();
 
-  const changeTab = (newTab: typeof tabs[number]["id"]) => {
+  const changeTab = useCallback((newTab: typeof tabs[number]["id"]) => {
     setTab(newTab);
     try {
       localStorage.setItem("foras_last_active_tab", newTab);
@@ -70,7 +70,7 @@ export const AppShell = () => {
         return next;
       }, { replace: true });
     } catch {}
-  };
+  }, [setSearchParams]);
 
   useEffect(() => {
     const requested = searchParams.get("tab");
@@ -102,7 +102,7 @@ export const AppShell = () => {
     };
     window.addEventListener("foras:navigate", onNav as EventListener);
     return () => window.removeEventListener("foras:navigate", onNav as EventListener);
-  }, []);
+  }, [changeTab]);
 
   useEffect(() => {
     const refresh = () => setUnread(notificationsStore.unreadCount(lang));
@@ -161,7 +161,7 @@ export const AppShell = () => {
               aria-label="الإشعارات">
               <Bell className="w-5 h-5 text-primary" />
               {unread > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive ring-2 ring-card text-[10px] font-bold text-white flex items-center justify-center">
+                <span className="absolute -top-1 -end-1 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive ring-2 ring-card text-[10px] font-bold text-white flex items-center justify-center">
                   {unread > 9 ? "9+" : unread}
                 </span>
               )}
@@ -190,7 +190,7 @@ export const AppShell = () => {
 
       {/* Bottom navigation */}
       <nav
-        className="fixed bottom-0 left-0 right-0 z-30 backdrop-blur-xl border-t border-border/70 bg-background/90"
+        className="fixed bottom-0 inset-x-0 z-30 backdrop-blur-xl border-t border-border/70 bg-background/90"
       >
         <div className="max-w-2xl mx-auto grid grid-cols-5">
           {tabs.map(tabItem => {

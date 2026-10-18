@@ -87,7 +87,7 @@ export const ApplyForm = ({ scholarship, open, onOpenChange }: Props) => {
                 placeholder={isRtl ? "لماذا تتقدم لهذه المنحة؟ ما هي أهدافك؟" : "Why are you applying for this scholarship? What are your goals?"} />
             </div>
             <Button variant="luxe" size="lg" className="w-full" onClick={submit} disabled={busy}>
-              <Send className={`w-4 h-4 ${isRtl ? "ml-2" : "mr-2"}`} />
+              <Send className="w-4 h-4 me-2" />
               {busy ? (isRtl ? "جاري الإرسال..." : "Submitting...") : (isRtl ? "إرسال الطلب" : "Submit Application")}
             </Button>
             <p className="text-[11px] text-muted-foreground text-center leading-relaxed">

@@ -1,3 +1,8 @@
+import { collection, doc, setDoc, deleteDoc, onSnapshot, Unsubscribe } from "firebase/firestore";
+import { db } from "@/integrations/firebase/client";
+
+let realtimeAuditUnsub: Unsubscribe | null = null;
+let realtimeAdminsUnsub: Unsubscribe | null = null;
 // Admin and Team Authorization Store
 // Manages Super Admin (alforas.one@gmail.com), Moderators, Role Permissions, 
 // Audit Logging, Lockout Security, and Pending Review Workflow.
@@ -137,6 +142,82 @@ const DEFAULT_MODERATORS: AdminUser[] = [
 ];
 
 export const adminAuthStore = {
+  // Cloud sync & realtime subscription from Firestore for audit logs and team members
+  async syncWithCloud(): Promise<void> {
+    if (typeof window === "undefined") return;
+
+    // 1. Setup realtime audit logs listener
+    if (!realtimeAuditUnsub) {
+      try {
+        realtimeAuditUnsub = onSnapshot(collection(db, "audit_logs"), (auditSnap) => {
+          const auditMap = new Map<string, AuditLog>();
+          const raw = localStorage.getItem(AUDIT_LOGS_KEY);
+          const localLogs: AuditLog[] = raw ? JSON.parse(raw) : [];
+          localLogs.forEach(l => { if (l && l.id) auditMap.set(l.id, l); });
+
+          auditSnap.docChanges().forEach((change) => {
+            if (change.type === "removed") {
+              auditMap.delete(change.doc.id);
+            }
+          });
+
+          auditSnap.forEach((docSnap) => {
+            const item = docSnap.data() as AuditLog;
+            if (item && item.id) {
+              auditMap.set(item.id, item);
+            }
+          });
+
+          // Sort by timestamp descending
+          const sorted = Array.from(auditMap.values()).sort((a, b) => 
+            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+          );
+
+          localStorage.setItem(AUDIT_LOGS_KEY, JSON.stringify(sorted.slice(0, 150)));
+          window.dispatchEvent(new CustomEvent("foras:audit-updated"));
+        }, (err) => console.info("Firestore audit live listener note:", err));
+      } catch (subErr) {
+        console.info("Firestore audit subscription note:", subErr);
+      }
+    }
+
+    // 2. Setup realtime admins/team listener
+    if (!realtimeAdminsUnsub) {
+      try {
+        realtimeAdminsUnsub = onSnapshot(collection(db, "admins"), (adminsSnap) => {
+          if (!adminsSnap.empty) {
+            const userMap = new Map<string, AdminUser>();
+            DEFAULT_MODERATORS.forEach(m => userMap.set(m.id, m));
+
+            const raw = localStorage.getItem(ADMIN_USERS_KEY);
+            const localUsers: AdminUser[] = raw ? JSON.parse(raw) : [];
+            localUsers.forEach(u => { if (u && u.id) userMap.set(u.id, u); });
+
+            adminsSnap.docChanges().forEach((change) => {
+              if (change.type === "removed") {
+                userMap.delete(change.doc.id);
+              }
+            });
+
+            adminsSnap.forEach((docSnap) => {
+              const item = docSnap.data() as AdminUser;
+              if (item && item.id) {
+                userMap.set(item.id, item);
+              }
+            });
+
+            const merged = Array.from(userMap.values());
+            localStorage.setItem(ADMIN_USERS_KEY, JSON.stringify(merged));
+            window.dispatchEvent(new CustomEvent("foras:team-updated"));
+            window.dispatchEvent(new CustomEvent("foras:audit-updated"));
+          }
+        }, (err) => console.info("Firestore admins live listener note:", err));
+      } catch (subErr) {
+        console.info("Firestore admins subscription note:", subErr);
+      }
+    }
+  },
+
   // Get all registered admin users
   getUsers(): AdminUser[] {
     if (typeof window === "undefined") return DEFAULT_MODERATORS;
@@ -429,6 +510,14 @@ export const adminAuthStore = {
     users[idx].passwordHash = hashed;
     this.saveUsers(users);
 
+    // Persist to Cloud Firestore admins collection
+    try {
+      setDoc(doc(db, "admins", sanitizedMember.id), sanitizedMember, { merge: true })
+        .catch(err => console.warn("Firestore member save note:", err));
+    } catch (fsErr) {
+      console.warn("Firestore member write error:", fsErr);
+    }
+
     const current = this.getCurrentSession();
     if (current && current.id === userId) {
       current.passwordHash = hashed;
@@ -462,6 +551,14 @@ export const adminAuthStore = {
   deleteMember(id: string): void {
     const users = this.getUsers().filter(u => u.id !== id);
     this.saveUsers(users);
+
+    // Delete from Cloud Firestore admins collection
+    try {
+      deleteDoc(doc(db, "admins", id))
+        .catch(err => console.warn("Firestore member delete note:", err));
+    } catch (fsErr) {
+      console.warn("Firestore member delete error:", fsErr);
+    }
   },
 
   // Activity Log
@@ -492,6 +589,14 @@ export const adminAuthStore = {
       logs.unshift(newLog);
       // Keep last 150 events
       localStorage.setItem(AUDIT_LOGS_KEY, JSON.stringify(logs.slice(0, 150)));
+
+      // Persist to Cloud Firestore audit_logs collection
+      try {
+        setDoc(doc(db, "audit_logs", newLog.id), newLog, { merge: true })
+          .catch(err => console.warn("Firestore audit log note:", err));
+      } catch (fsErr) {
+        console.warn("Firestore audit write error:", fsErr);
+      }
       if (typeof window !== "undefined") {
         setTimeout(() => {
           window.dispatchEvent(new CustomEvent("foras:audit-updated"));
@@ -612,3 +717,10 @@ export const adminAuthStore = {
   }
 };
 
+
+// Automatically sync admin store with Cloud Firestore on client boot
+if (typeof window !== "undefined") {
+  setTimeout(() => {
+    adminAuthStore.syncWithCloud().catch(console.error);
+  }, 400);
+}

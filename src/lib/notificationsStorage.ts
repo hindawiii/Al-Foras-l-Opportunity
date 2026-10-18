@@ -1,8 +1,11 @@
 import { guestStorage } from "./guestStorage";
 import { applicationsStore } from "./applicationsStorage";
 import { dynamicStore } from "./dynamicStore";
+import { collection, doc, setDoc, deleteDoc, onSnapshot, Unsubscribe } from "firebase/firestore";
+import { db } from "@/integrations/firebase/client";
+import { adminAuthStore, AdminUser } from "./adminAuthStore";
 
-export type NotifKind = "deadline" | "match" | "status" | "news";
+export type NotifKind = "deadline" | "match" | "status" | "news" | "broadcast";
 
 export interface AppNotification {
   id: string;
@@ -12,13 +15,20 @@ export interface AppNotification {
   body: string;
   bodyEn?: string;
   ts: number;
-  actionTab?: "scholarships" | "jobs" | "news" | "applications" | "profile";
+  actionTab?: "scholarships" | "jobs" | "news" | "applications" | "profile" | "arab_unis" | "global_unis";
   url?: string;
+  source?: "cloud" | "local" | "system";
+  isBroadcast?: boolean;
 }
 
 const READ_KEY = "notifRead";
 const DISMISSED_KEY = "notifDismissed";
 const PERSISTENT_EVENTS_KEY = "forasPersistentNotifs";
+const CLOUD_NOTIFS_KEY = "foras_cloud_notifications_v1";
+
+let realtimeNotifsUnsub: Unsubscribe | null = null;
+let isRealtimeListenerAttached = false;
+const knownNotifIds = new Set<string>();
 
 const daysLeft = (deadline?: string): number | null => {
   if (!deadline) return null;
@@ -31,6 +41,16 @@ export const getPersistentNotifs = (): AppNotification[] => {
   return guestStorage.get<AppNotification[]>(PERSISTENT_EVENTS_KEY, []) ?? [];
 };
 
+export const getCloudNotifs = (): AppNotification[] => {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(CLOUD_NOTIFS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
 export const addPersistentNotif = (notif: AppNotification) => {
   const current = getPersistentNotifs();
   const filtered = current.filter((n) => n.id !== notif.id);
@@ -40,7 +60,7 @@ export const addPersistentNotif = (notif: AppNotification) => {
   }
 };
 
-/** Builds the live notification feed from real application data with full automatic translation support */
+/** Builds the live notification feed from Cloud Firestore and local application state */
 export const buildNotifications = (lang: "ar" | "en" = "ar"): AppNotification[] => {
   const out: AppNotification[] = [];
   const apps = applicationsStore.all();
@@ -48,11 +68,15 @@ export const buildNotifications = (lang: "ar" | "en" = "ar"): AppNotification[] 
   const allScholarships = dynamicStore.getScholarships();
   const allJobs = dynamicStore.getJobs();
 
-  // 0) Add persistent real notifications (e.g. published scholarships/jobs from admin)
+  // 0) Cloud Broadcast & Admin Notifications from Firestore
+  const cloudNotifs = getCloudNotifs();
+  out.push(...cloudNotifs);
+
+  // 1) Persistent manual notifications
   const persistent = getPersistentNotifs();
   out.push(...persistent);
 
-  // 1) Real deadline reminders for saved / applied items
+  // 2) Real deadline reminders for saved / applied items
   apps.forEach((a) => {
     const dl = daysLeft(a.deadline);
     if (dl === null) return;
@@ -73,6 +97,7 @@ export const buildNotifications = (lang: "ar" | "en" = "ar"): AppNotification[] 
         ts: new Date(a.deadline!).getTime(),
         actionTab: "applications",
         url: a.url,
+        source: "local",
       });
     } else if (dl <= 14) {
       const isUrgent = dl <= 3;
@@ -90,11 +115,12 @@ export const buildNotifications = (lang: "ar" | "en" = "ar"): AppNotification[] 
         ts: Date.now() - dl * 1000,
         actionTab: "applications",
         url: a.url,
+        source: "local",
       });
     }
   });
 
-  // 2) Status follow-ups on applied items
+  // 3) Status follow-ups on applied items
   apps
     .filter((a) => a.status === "applied")
     .slice(0, 3)
@@ -113,10 +139,11 @@ export const buildNotifications = (lang: "ar" | "en" = "ar"): AppNotification[] 
         bodyEn: `${itemTitle} — Update your status and practice interviews.`,
         ts: new Date(a.updatedAt).getTime(),
         actionTab: "applications",
+        source: "local",
       });
     });
 
-  // 3) Real top scholarships from dynamic store not yet saved
+  // 4) Top matching scholarships
   const savedIds = new Set(apps.map((a) => a.id));
   allScholarships
     .filter((s) => !savedIds.has(s.id))
@@ -135,10 +162,11 @@ export const buildNotifications = (lang: "ar" | "en" = "ar"): AppNotification[] 
         bodyEn: `${s.titleEn || s.title} — ${s.countryEn || s.country || ""}`,
         ts: Date.now() - (i + 1) * 3_600_000,
         actionTab: "scholarships",
+        source: "system",
       });
     });
 
-  // 4) Real remote jobs from dynamic store
+  // 5) Real remote jobs from dynamic store
   allJobs
     .slice(0, 2)
     .forEach((j, i) => {
@@ -155,6 +183,7 @@ export const buildNotifications = (lang: "ar" | "en" = "ar"): AppNotification[] 
         bodyEn: `${j.title_en || j.title} — ${jComp} ${jSalary}`.trim(),
         ts: Date.now() - (i + 2) * 7_200_000,
         actionTab: "jobs",
+        source: "system",
       });
     });
 
@@ -167,7 +196,7 @@ export const buildNotifications = (lang: "ar" | "en" = "ar"): AppNotification[] 
       return true;
     })
     .sort((a, b) => b.ts - a.ts)
-    .slice(0, 25);
+    .slice(0, 35);
 };
 
 const readIds = (): string[] => guestStorage.get<string[]>(READ_KEY, []) ?? [];
@@ -181,9 +210,11 @@ export const notificationsStore = {
       .filter((n) => !dismissed.has(n.id))
       .map((n) => ({ ...n, read: read.has(n.id) }));
   },
+
   unreadCount(lang: "ar" | "en" = "ar"): number {
     return notificationsStore.list(lang).filter((n) => !n.read).length;
   },
+
   markRead(id: string) {
     const cur = readIds();
     if (!cur.includes(id)) {
@@ -193,6 +224,7 @@ export const notificationsStore = {
       }
     }
   },
+
   markAllRead(lang: "ar" | "en" = "ar") {
     const cur = readIds();
     const allIds = buildNotifications(lang).map((n) => n.id);
@@ -202,6 +234,7 @@ export const notificationsStore = {
       window.dispatchEvent(new CustomEvent("foras:notifications-updated"));
     }
   },
+
   dismiss(id: string) {
     const cur = dismissedIds();
     if (!cur.includes(id)) {
@@ -211,6 +244,7 @@ export const notificationsStore = {
       }
     }
   },
+
   clearAll(lang: "ar" | "en" = "ar") {
     const allIds = buildNotifications(lang).map((n) => n.id);
     guestStorage.set(DISMISSED_KEY, allIds);
@@ -218,8 +252,210 @@ export const notificationsStore = {
       window.dispatchEvent(new CustomEvent("foras:notifications-updated"));
     }
   },
+
   pushRealNotification(notif: AppNotification) {
     addPersistentNotif(notif);
+  },
+
+  /**
+   * Broadcast a real-time notification to all users worldwide via Cloud Firestore
+   */
+  async broadcastNotification(
+    notif: Omit<AppNotification, "ts"> & { ts?: number },
+    user?: AdminUser | null
+  ): Promise<boolean> {
+    if (typeof window === "undefined") return false;
+
+    try {
+      const activeUser = user || adminAuthStore.getCurrentSession() || {
+        id: "admin",
+        name: "إدارة المنصة",
+        role: "super_admin" as const,
+      };
+
+      const payload: AppNotification = {
+        ...notif,
+        id: notif.id || `notif_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        ts: notif.ts || Date.now(),
+        source: "cloud",
+        isBroadcast: true,
+      };
+
+      // 1. Save to local cache
+      const local = getCloudNotifs();
+      const updated = [payload, ...local.filter((n) => n.id !== payload.id)].slice(0, 50);
+      localStorage.setItem(CLOUD_NOTIFS_KEY, JSON.stringify(updated));
+
+      // 2. Dispatch local UI update
+      window.dispatchEvent(new CustomEvent("foras:notifications-updated"));
+
+      // 3. Persist to Cloud Firestore for instant real-time sync across all users
+      await setDoc(doc(db, "notifications", payload.id), payload, { merge: true });
+
+      // 4. Log in Audit Trail
+      adminAuthStore.logActivity(
+        activeUser as any,
+        "broadcast_notification" as any,
+        `بث إشعار عام للمستخدمين`,
+        `العنوان: ${payload.title} — تم البث بواسطة ${activeUser.name}`
+      );
+
+      return true;
+    } catch (err) {
+      console.warn("Failed to broadcast notification to Cloud Firestore:", err);
+      return false;
+    }
+  },
+
+  /**
+   * Automatically broadcast opportunity notification on publish
+   */
+  async broadcastOpportunityNotification(
+    type: "scholarship" | "job" | "university",
+    item: any
+  ): Promise<void> {
+    if (!item || !item.id) return;
+
+    try {
+      let notif: AppNotification;
+
+      if (type === "scholarship") {
+        notif = {
+          id: `notif_sch_${item.id}`,
+          kind: "match",
+          title: "منحة دراسية جديدة معتمدة ✨",
+          titleEn: "New Accredited Scholarship ✨",
+          body: `${item.title || item.title_ar || "منحة دراسية"} — ${item.country || "دولي"} (${item.coverage === "full" ? "ممولة بالكامل" : "تمويل جزئي"})`,
+          bodyEn: `${item.titleEn || item.title || "Scholarship"} — ${item.countryEn || item.country || "International"}`,
+          ts: Date.now(),
+          actionTab: "scholarships",
+          url: item.url || item.apply_url,
+          source: "cloud",
+          isBroadcast: true,
+        };
+      } else if (type === "job") {
+        notif = {
+          id: `notif_job_${item.id}`,
+          kind: "news",
+          title: "فرصة عمل جديدة عن بُعد 💼",
+          titleEn: "New Remote Job Opportunity 💼",
+          body: `${item.title_ar || item.title || "وظيفة جديدة"} — ${item.company || "شركة معتمدة"} ${item.salary ? `(${item.salary})` : ""}`,
+          bodyEn: `${item.title_en || item.title || "Remote Job"} — ${item.company || "Global Company"}`,
+          ts: Date.now(),
+          actionTab: "jobs",
+          url: item.apply_url || item.url,
+          source: "cloud",
+          isBroadcast: true,
+        };
+      } else {
+        notif = {
+          id: `notif_uni_${item.id}`,
+          kind: "news",
+          title: "صرح جامعي معتمد جديد 🏛️",
+          titleEn: "New Accredited University 🏛️",
+          body: `${item.name} — ${item.country} (أدنى نسبة قبول: ${item.minPercentage}%)`,
+          bodyEn: `${item.nameEn || item.name} — ${item.countryEn || item.country}`,
+          ts: Date.now(),
+          actionTab: "arab_unis",
+          url: item.website,
+          source: "cloud",
+          isBroadcast: true,
+        };
+      }
+
+      await this.broadcastNotification(notif);
+    } catch (e) {
+      console.warn("broadcastOpportunityNotification notice:", e);
+    }
+  },
+
+  /**
+   * Delete a broadcast notification from Cloud Firestore
+   */
+  async deleteNotification(id: string): Promise<boolean> {
+    if (typeof window === "undefined") return false;
+    try {
+      const local = getCloudNotifs();
+      localStorage.setItem(CLOUD_NOTIFS_KEY, JSON.stringify(local.filter((n) => n.id !== id)));
+      window.dispatchEvent(new CustomEvent("foras:notifications-updated"));
+
+      await deleteDoc(doc(db, "notifications", id));
+      return true;
+    } catch (err) {
+      console.warn("Failed to delete notification from Firestore:", err);
+      return false;
+    }
+  },
+
+  /**
+   * Listen to real-time broadcast notifications from Cloud Firestore
+   */
+  syncWithCloud(): void {
+    if (typeof window === "undefined") return;
+    if (isRealtimeListenerAttached && realtimeNotifsUnsub) return;
+
+    try {
+      isRealtimeListenerAttached = true;
+
+      // Populate known IDs from local cache
+      const initial = getCloudNotifs();
+      initial.forEach((n) => knownNotifIds.add(n.id));
+
+      realtimeNotifsUnsub = onSnapshot(
+        collection(db, "notifications"),
+        (snapshot) => {
+          const cloudList: AppNotification[] = [];
+          let hasNewLiveDoc = false;
+
+          snapshot.forEach((d) => {
+            const data = d.data() as AppNotification;
+            const notifId = d.id || data.id;
+            if (notifId && data.title) {
+              const fullNotif: AppNotification = {
+                id: notifId,
+                kind: data.kind || "broadcast",
+                title: data.title,
+                titleEn: data.titleEn,
+                body: data.body || "",
+                bodyEn: data.bodyEn,
+                ts: Number(data.ts) || Date.now(),
+                actionTab: data.actionTab,
+                url: data.url,
+                source: "cloud",
+                isBroadcast: true,
+              };
+              cloudList.push(fullNotif);
+
+              // Check if genuinely new document
+              if (!knownNotifIds.has(notifId)) {
+                knownNotifIds.add(notifId);
+                hasNewLiveDoc = true;
+              }
+            }
+          });
+
+          // Sort descending by timestamp
+          cloudList.sort((a, b) => b.ts - a.ts);
+          localStorage.setItem(CLOUD_NOTIFS_KEY, JSON.stringify(cloudList.slice(0, 50)));
+
+          // Dispatch update event
+          window.dispatchEvent(new CustomEvent("foras:notifications-updated"));
+
+          // If a new live doc arrived while user is active, trigger dynamic alert event
+          if (hasNewLiveDoc && cloudList.length > 0) {
+            const newest = cloudList[0];
+            window.dispatchEvent(
+              new CustomEvent("foras:new-cloud-notification", { detail: { notif: newest } })
+            );
+          }
+        },
+        (err) => {
+          console.info("Firestore notifications listener note:", err);
+        }
+      );
+    } catch (subErr) {
+      console.info("Firestore notifications subscription catch:", subErr);
+    }
   },
 };
 
@@ -241,3 +477,10 @@ export const relativeTime = (ts: number, lang: "ar" | "en" = "ar"): string => {
   const d = Math.round(h / 24);
   return `قبل ${d} يوم`;
 };
+
+// Automatic subscription on client boot
+if (typeof window !== "undefined") {
+  setTimeout(() => {
+    notificationsStore.syncWithCloud();
+  }, 500);
+}

@@ -182,14 +182,14 @@ export const QuickExistenceCheckerModal: React.FC<QuickExistenceCheckerModalProp
         {/* Input */}
         <div className="p-4 space-y-3">
           <div className="relative">
-            <Search className={`w-4 h-4 absolute top-1/2 -translate-y-1/2 ${isRtl ? "right-3" : "left-3"} text-primary`} />
+            <Search className="w-4 h-4 absolute top-1/2 -translate-y-1/2 start-3 text-primary" />
             <input
               type="text"
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={isRtl ? "اكتب اسم المنحة، الجامعة، أو الصق رابط التقديم..." : "Enter scholarship title, university or paste link..."}
-              className={`w-full py-2.5 ${isRtl ? "pr-9 pl-3" : "pl-9 pr-3"} rounded-xl bg-background border border-primary/40 text-xs sm:text-sm text-white focus:border-primary outline-none shadow-inner`}
+              className="w-full py-2.5 ps-9 pe-3 rounded-xl bg-background border border-primary/40 text-xs sm:text-sm text-white focus:border-primary outline-none shadow-inner"
             />
           </div>
 

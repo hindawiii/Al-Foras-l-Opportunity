@@ -4,7 +4,7 @@ import {
   Globe2, ExternalLink, MapPin, Sparkles, ShieldCheck,
   Building2, Award, Search, ChevronRight, X,
   Wallet, Home, CalendarDays, FileText, ListChecks, Map as MapIcon,
-  Flame, Compass, Users, GraduationCap, Filter, CheckCircle2,
+  Flame, Compass, Users, GraduationCap, Filter, CheckCircle2, Bookmark,
 } from "lucide-react";
 import {
   GLOBAL_COUNTRIES,
@@ -20,6 +20,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { LuxeAlumniPresenceCard } from "@/components/foras/LuxeAlumniPresenceCard";
+import { universitiesStore } from "@/lib/universitiesStorage";
+import { toast } from "sonner";
 
 interface GlobalUniversitiesViewProps {
   initialCountry?: string | null;
@@ -44,11 +46,20 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
 
   const [filterCategory, setFilterCategory] = useState<"all" | GlobalCategory>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [uniFilter, setUniFilter] = useState<"all" | "activeScholarship" | "alumni" | "presence">("all");
+  const [uniFilter, setUniFilter] = useState<"all" | "activeScholarship" | "alumni" | "presence" | "saved">("all");
   const [selectedUniDetail, setSelectedUniDetail] = useState<{
     uni: GlobalCountryStat["topUniversities"][0];
     country: GlobalCountryStat;
   } | null>(null);
+
+  // Cloud Firestore-synchronized saved universities state
+  const [savedUniIds, setSavedUniIds] = useState<string[]>(() => universitiesStore.savedIds());
+
+  useEffect(() => {
+    const handleSavedChange = () => setSavedUniIds(universitiesStore.savedIds());
+    window.addEventListener("foras:universities-saved-updated", handleSavedChange);
+    return () => window.removeEventListener("foras:universities-saved-updated", handleSavedChange);
+  }, []);
 
   // Category filter definitions with translation keys and count calculations
   const categoryFilters: Array<{
@@ -118,7 +129,10 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
       const notableAlumni = (uni.notableAlumni && uni.notableAlumni.length > 0) ? uni.notableAlumni : enrichment?.notableAlumni;
       const studentPresence = uni.studentPresence || enrichment?.studentPresence;
 
+      const uniId = uni.id || `global_${(uni.nameEn || uni.name).toLowerCase().replace(/[^a-z0-9]+/g, "_")}`;
+
       // Filter by type pill
+      if (uniFilter === "saved" && !savedUniIds.includes(uniId)) return false;
       if (uniFilter === "activeScholarship" && !activeScholarship) return false;
       if (uniFilter === "alumni" && (!notableAlumni || notableAlumni.length === 0)) return false;
       if (uniFilter === "presence" && !studentPresence) return false;
@@ -175,7 +189,7 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
 
       return false;
     });
-  }, [currentCountry, searchQuery, uniFilter]);
+  }, [currentCountry, searchQuery, uniFilter, savedUniIds]);
 
   return (
     <div className="space-y-4 w-full" dir={dir}>
@@ -240,7 +254,7 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
                   }`}
                 >
                   {isGuaranteed && (
-                    <span className={`absolute top-2.5 ${isRtl ? "left-2.5" : "right-2.5"} text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-bold`}>
+                    <span className="absolute top-2.5 end-2.5 text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-bold">
                       {t("globalUniGuaranteedBadge")}
                     </span>
                   )}
@@ -349,19 +363,19 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
           {/* Search Bar & Dropdown Controls */}
           <div className="space-y-2.5 rounded-2xl border border-primary/20 bg-card/60 backdrop-blur-md p-3">
             <div className="relative">
-              <Search className={`absolute top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground ${isRtl ? "right-3" : "left-3"}`} />
+              <Search className="absolute top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground start-3" />
               <Input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={t("globalUniSearchPlaceholder")}
-                className={`bg-background/70 border-border text-xs h-9 ${isRtl ? "pr-9 pl-3" : "pl-9 pr-3"} ${alignClass}`}
+                className={`bg-background/70 border-border text-xs h-9 ps-9 pe-3 ${alignClass}`}
                 dir={dir}
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery("")}
-                  className={`absolute top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground ${isRtl ? "left-3" : "right-3"}`}
+                  className="absolute top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground end-3"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -416,6 +430,18 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
               >
                 <Users className="w-3 h-3 text-blue-400" />
                 <span>{t("globalUniFilterPresence")}</span>
+              </button>
+
+              <button
+                onClick={() => setUniFilter((prev) => (prev === "saved" ? "all" : "saved"))}
+                className={`h-7 px-2.5 rounded-full text-[11px] font-bold border transition-all flex items-center gap-1 ${
+                  uniFilter === "saved"
+                    ? "bg-primary text-primary-foreground border-primary shadow-gold"
+                    : "bg-background/50 border-border text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Bookmark className={`w-3 h-3 ${uniFilter === "saved" ? "fill-current" : ""}`} />
+                <span>{isRtl ? `المحفوظة (${savedUniIds.length})` : `Saved (${savedUniIds.length})`}</span>
               </button>
 
               {(uniFilter !== "all" || searchQuery) && (
@@ -477,9 +503,41 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
                     </div>
 
                     <div className="flex flex-col items-end gap-1.5">
-                      <span className="text-[10px] px-2 py-0.5 rounded-full border font-bold bg-primary/15 border-primary/30 text-primary">
-                        {uni.ranking || t("globalUniLeadingBadge")}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full border font-bold bg-primary/15 border-primary/30 text-primary">
+                          {uni.ranking || t("globalUniLeadingBadge")}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const uniId = uni.id || `global_${(uni.nameEn || uni.name).toLowerCase().replace(/[^a-z0-9]+/g, "_")}`;
+                            const isSaved = universitiesStore.toggle(uniId, {
+                              name: uni.name,
+                              nameEn: uni.nameEn,
+                              country: currentCountry.country,
+                              countryEn: currentCountry.countryEn,
+                              flag: currentCountry.flag,
+                              website: uni.website,
+                              type: uni.type,
+                            });
+                            setSavedUniIds(universitiesStore.savedIds());
+                            toast.success(
+                              isSaved
+                                ? (isRtl ? `تم حفظ "${uni.name}" في جامعاتك المستهدفة` : `Saved "${uni.nameEn || uni.name}" to targets`)
+                                : (isRtl ? `تمت إزالة "${uni.name}" من المحفوظات` : `Removed "${uni.nameEn || uni.name}" from saved`)
+                            );
+                          }}
+                          className={`p-1.5 rounded-xl border transition-all ${
+                            savedUniIds.includes(uni.id || `global_${(uni.nameEn || uni.name).toLowerCase().replace(/[^a-z0-9]+/g, "_")}`)
+                              ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                              : "bg-background/80 border-primary/20 text-muted-foreground hover:text-foreground hover:border-primary/50"
+                          }`}
+                          title={savedUniIds.includes(uni.id || `global_${(uni.nameEn || uni.name).toLowerCase().replace(/[^a-z0-9]+/g, "_")}`) ? (isRtl ? "محفوظة" : "Saved") : (isRtl ? "حفظ الجامعة" : "Save university")}
+                        >
+                          <Bookmark className={`w-3.5 h-3.5 ${savedUniIds.includes(uni.id || `global_${(uni.nameEn || uni.name).toLowerCase().replace(/[^a-z0-9]+/g, "_")}`) ? "fill-current" : ""}`} />
+                        </button>
+                      </div>
                       {activeScholarship && (
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-bold flex items-center gap-1 shadow-sm">
                           <Sparkles className="w-2.5 h-2.5 text-emerald-400" />
@@ -545,7 +603,7 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
                       </p>
                       <p className="text-sm font-bold text-emerald-400 flex items-center gap-1">
                         <span>{ar ? currentCountry.fundingType : currentCountry.fundingTypeEn}</span>
-                        <span className={`${isRtl ? "mr-1.5" : "ml-1.5"} inline-flex items-center gap-0.5 text-[10px] text-emerald-400 font-bold`}>
+                        <span className="ms-1.5 inline-flex items-center gap-0.5 text-[10px] text-emerald-400 font-bold">
                           <Sparkles className="w-3 h-3" /> {t("globalUniEligibleApply")}
                         </span>
                       </p>
@@ -554,7 +612,7 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
                     <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                       <Button asChild size="sm" variant="luxe" className="h-8 rounded-xl text-[11px]">
                         <a href={uni.website} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
-                          <ExternalLink className={`w-3 h-3 ${isRtl ? "ml-1" : "mr-1"}`} />
+                          <ExternalLink className="w-3 h-3 me-1" />
                           {t("globalUniWebsite")}
                         </a>
                       </Button>
@@ -657,18 +715,55 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
               <div className="flex flex-col h-full overflow-hidden">
                 {/* Sticky Safe Header with Clearance for Close Button */}
                 <div className="shrink-0 p-4 sm:p-5 border-b border-border/80 bg-card/95 backdrop-blur-md relative pe-16">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-2xl bg-gold-gradient flex items-center justify-center text-2xl shadow-gold shrink-0">
-                      {country.flag}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="w-12 h-12 rounded-2xl bg-gold-gradient flex items-center justify-center text-2xl shadow-gold shrink-0">
+                        {country.flag}
+                      </div>
+                      <div className={`min-w-0 flex-1 ${alignClass}`}>
+                        <SheetTitle className="text-lg font-bold font-display text-gold-gradient truncate">
+                          {ar ? uni.name : (uni.nameEn || uni.name)}
+                        </SheetTitle>
+                        <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                          {cityText} · {countryText}
+                        </p>
+                      </div>
                     </div>
-                    <div className={`min-w-0 flex-1 ${alignClass}`}>
-                      <SheetTitle className="text-lg font-bold font-display text-gold-gradient truncate">
-                        {ar ? uni.name : (uni.nameEn || uni.name)}
-                      </SheetTitle>
-                      <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                        {cityText} · {countryText}
-                      </p>
-                    </div>
+
+                    {(() => {
+                      const uniId = uni.id || `global_${(uni.nameEn || uni.name).toLowerCase().replace(/[^a-z0-9]+/g, "_")}`;
+                      const isSaved = savedUniIds.includes(uniId);
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newSaved = universitiesStore.toggle(uniId, {
+                              name: uni.name,
+                              nameEn: uni.nameEn,
+                              country: country.country,
+                              countryEn: country.countryEn,
+                              flag: country.flag,
+                              website: uni.website,
+                              type: uni.type,
+                            });
+                            setSavedUniIds(universitiesStore.savedIds());
+                            toast.success(
+                              newSaved
+                                ? (isRtl ? `تم حفظ "${uni.name}" في جامعاتك المستهدفة` : `Saved "${uni.nameEn || uni.name}" to targets`)
+                                : (isRtl ? `تمت إزالة "${uni.name}" من المحفوظات` : `Removed "${uni.nameEn || uni.name}" from saved`)
+                            );
+                          }}
+                          className={`p-2.5 rounded-xl border transition-all shrink-0 ${
+                            isSaved
+                              ? "bg-primary text-primary-foreground border-primary shadow-gold"
+                              : "bg-background/80 border-primary/30 text-muted-foreground hover:text-foreground hover:border-primary/60"
+                          }`}
+                          title={isSaved ? (isRtl ? "محفوظة" : "Saved") : (isRtl ? "حفظ الجامعة" : "Save university")}
+                        >
+                          <Bookmark className={`w-4 h-4 ${isSaved ? "fill-current" : ""}`} />
+                        </button>
+                      );
+                    })()}
                   </div>
                 </div>
 
@@ -818,8 +913,42 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
                     </ol>
                   </div>
 
-                  {/* Dual Action Buttons at Bottom: Map Location & Official Website */}
-                  <div className="grid grid-cols-2 gap-2 pt-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2">
+                    {(() => {
+                      const uniId = uni.id || `global_${(uni.nameEn || uni.name).toLowerCase().replace(/[^a-z0-9]+/g, "_")}`;
+                      const isSaved = savedUniIds.includes(uniId);
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newSaved = universitiesStore.toggle(uniId, {
+                              name: uni.name,
+                              nameEn: uni.nameEn,
+                              country: country.country,
+                              countryEn: country.countryEn,
+                              flag: country.flag,
+                              website: uni.website,
+                              type: uni.type,
+                            });
+                            setSavedUniIds(universitiesStore.savedIds());
+                            toast.success(
+                              newSaved
+                                ? (isRtl ? `تم حفظ "${uni.name}" في جامعاتك المستهدفة` : `Saved "${uni.nameEn || uni.name}" to targets`)
+                                : (isRtl ? `تمت إزالة "${uni.name}" من المحفوظات` : `Removed "${uni.nameEn || uni.name}" from saved`)
+                            );
+                          }}
+                          className={`h-11 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all ${
+                            isSaved
+                              ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                              : "border-primary/30 bg-background/60 text-foreground hover:bg-primary/10"
+                          }`}
+                        >
+                          <Bookmark className={`w-4 h-4 ${isSaved ? "fill-current" : ""}`} />
+                          <span>{isSaved ? (isRtl ? "محفوظة في المستهدفة ✓" : "Saved in Targets ✓") : (isRtl ? "حفظ في المستهدفة" : "Save to Targets")}</span>
+                        </button>
+                      );
+                    })()}
+
                     <a
                       href={mapSearchUrl}
                       target="_blank"
@@ -829,6 +958,7 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
                       <MapIcon className="w-4 h-4" />
                       {t("globalUniLocationMap")}
                     </a>
+
                     <a
                       href={uni.website}
                       target="_blank"

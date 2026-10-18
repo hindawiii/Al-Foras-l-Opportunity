@@ -73,9 +73,7 @@ export const UndoBanner: React.FC = () => {
           animate={{ y: 0, opacity: 1, scale: 1 }}
           exit={{ y: 50, opacity: 0, scale: 0.95 }}
           transition={{ type: "spring", stiffness: 350, damping: 25 }}
-          className={`fixed bottom-20 z-50 flex items-center justify-between gap-4 px-5 py-3.5 rounded-2xl bg-card/95 border-2 border-primary/40 shadow-2xl backdrop-blur-xl ${
-            isRtl ? "left-4 sm:left-8" : "right-4 sm:right-8"
-          } max-w-md w-[calc(100%-2rem)] sm:w-auto`}
+          className="fixed bottom-20 z-50 flex items-center justify-between gap-4 px-5 py-3.5 rounded-2xl bg-card/95 border-2 border-primary/40 shadow-2xl backdrop-blur-xl end-4 sm:end-8 max-w-md w-[calc(100%-2rem)] sm:w-auto"
           style={{ direction: dir }}
         >
           <div className="flex items-center gap-3">
@@ -84,7 +82,7 @@ export const UndoBanner: React.FC = () => {
               <span>{timeLeft}</span>
             </div>
 
-            <div className="text-right">
+            <div className="text-start">
               <p className="text-xs sm:text-sm font-bold text-white leading-tight">
                 {isRtl
                   ? `تمت أرشفة ${activeUndo.count} ${

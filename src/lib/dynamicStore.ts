@@ -7,9 +7,12 @@ import { Job, JOBS } from "./jobsData";
 import { adminAuthStore, AdminUser } from "./adminAuthStore";
 import { collection, getDocs, doc, setDoc, deleteDoc, onSnapshot, Unsubscribe } from "firebase/firestore";
 import { db } from "@/integrations/firebase/client";
+import { notificationsStore } from "./notificationsStorage";
+import { sanitizeScholarship, sanitizeJob } from "./sanitizer";
 
 let realtimeScholarshipsUnsub: Unsubscribe | null = null;
 let realtimeJobsUnsub: Unsubscribe | null = null;
+let realtimeArchiveUnsub: Unsubscribe | null = null;
 
 export interface CustomJobItem {
   id: string;
@@ -132,75 +135,124 @@ export const dynamicStore = {
   async syncWithCloud(): Promise<void> {
     if (typeof window === "undefined") return;
 
-    // 1. Setup realtime listeners once
+    // 1. Setup realtime scholarships listener
     if (!realtimeScholarshipsUnsub) {
       try {
         realtimeScholarshipsUnsub = onSnapshot(collection(db, "scholarships"), (schSnap) => {
-          if (!schSnap.empty) {
-            const customRaw = localStorage.getItem(SCHOLARSHIPS_STORAGE_KEY);
-            const parsed = customRaw ? JSON.parse(customRaw) : [];
-            const localList: Scholarship[] = Array.isArray(parsed) ? parsed : [];
-            const localMap = new Map(localList.filter(s => s && s.id).map(s => [s.id, s]));
+          const customRaw = localStorage.getItem(SCHOLARSHIPS_STORAGE_KEY);
+          const parsed = customRaw ? JSON.parse(customRaw) : [];
+          const localList: Scholarship[] = Array.isArray(parsed) ? parsed : [];
+          const localMap = new Map(localList.filter(s => s && s.id).map(s => [s.id, s]));
 
-            schSnap.forEach((docSnap) => {
-              const item = docSnap.data();
-              if (item && item.id) {
-                const normalized: Scholarship = {
-                  id: item.id,
-                  title: item.title_ar || item.title || "منحة دراسية معتمدة",
-                  titleEn: item.title_en || item.titleEn || "Scholarship Opportunity",
-                  org: item.university || item.org || "جامعة معتمدة",
-                  country: item.country || "دولي",
-                  flag: item.flag || "🌍",
-                  coverage: item.coverage || "full",
-                  category: item.category || "global",
-                  deadline: item.deadline || new Date().toISOString().split("T")[0],
-                  tags: Array.isArray(item.majors) && item.majors.length > 0 ? item.majors : (Array.isArray(item.tags) ? item.tags : ["منح"]),
-                  description: item.description_ar || item.description || "",
-                  descriptionEn: item.description_en || item.descriptionEn || "",
-                  url: item.apply_url || item.url || "#",
-                  is_featured: Boolean(item.is_featured),
-                  views_count: item.views_count || 0,
-                  ...(item as any),
-                };
-                localMap.set(item.id, normalized);
-              }
-            });
-            const merged = Array.from(localMap.values());
-            localStorage.setItem(SCHOLARSHIPS_STORAGE_KEY, JSON.stringify(merged));
-            window.dispatchEvent(new CustomEvent("foras:data-updated", { detail: { type: "scholarship" } }));
-          }
+          // Handle real-time removals
+          schSnap.docChanges().forEach((change) => {
+            if (change.type === "removed") {
+              localMap.delete(change.doc.id);
+            }
+          });
+
+          // Handle real-time additions and modifications
+          schSnap.forEach((docSnap) => {
+            const item = docSnap.data();
+            if (item && item.id) {
+              const normalized: Scholarship = {
+                id: item.id,
+                title: item.title_ar || item.title || "منحة دراسية معتمدة",
+                titleEn: item.title_en || item.titleEn || item.title || "Scholarship Opportunity",
+                org: item.university || item.org || "جامعة معتمدة",
+                country: item.country || "دولي",
+                flag: item.flag || "🌍",
+                coverage: item.coverage || "full",
+                category: item.category || "global",
+                deadline: item.deadline || new Date().toISOString().split("T")[0],
+                tags: Array.isArray(item.majors) && item.majors.length > 0 ? item.majors : (Array.isArray(item.tags) ? item.tags : ["منح"]),
+                description: item.description_ar || item.description || "",
+                descriptionEn: item.description_en || item.descriptionEn || "",
+                url: item.apply_url || item.url || "#",
+                is_featured: Boolean(item.is_featured),
+                views_count: item.views_count || 0,
+                ...(item as any),
+              };
+              localMap.set(item.id, normalized);
+            }
+          });
+
+          const merged = Array.from(localMap.values());
+          localStorage.setItem(SCHOLARSHIPS_STORAGE_KEY, JSON.stringify(merged));
+          window.dispatchEvent(new CustomEvent("foras:data-updated", { detail: { type: "scholarship" } }));
         }, (err) => console.info("Firestore scholarships live listener note:", err));
       } catch (subErr) {
         console.info("Firestore scholarships subscription note:", subErr);
       }
     }
 
+    // 2. Setup realtime jobs listener
     if (!realtimeJobsUnsub) {
       try {
         realtimeJobsUnsub = onSnapshot(collection(db, "jobs"), (jobsSnap) => {
-          if (!jobsSnap.empty) {
-            const customRaw = localStorage.getItem(JOBS_STORAGE_KEY);
-            const parsed = customRaw ? JSON.parse(customRaw) : [];
-            const localList: CustomJobItem[] = Array.isArray(parsed) ? parsed : [];
-            const localMap = new Map(localList.filter(j => j && j.id).map(j => [j.id, j]));
-            jobsSnap.forEach((docSnap) => {
-              const item = docSnap.data() as CustomJobItem;
-              if (item && item.id) {
-                localMap.set(item.id, item);
-              }
-            });
-            const merged = Array.from(localMap.values());
-            localStorage.setItem(JOBS_STORAGE_KEY, JSON.stringify(merged));
-            window.dispatchEvent(new CustomEvent("foras:data-updated", { detail: { type: "job" } }));
-          }
+          const customRaw = localStorage.getItem(JOBS_STORAGE_KEY);
+          const parsed = customRaw ? JSON.parse(customRaw) : [];
+          const localList: CustomJobItem[] = Array.isArray(parsed) ? parsed : [];
+          const localMap = new Map(localList.filter(j => j && j.id).map(j => [j.id, j]));
+
+          // Handle real-time removals
+          jobsSnap.docChanges().forEach((change) => {
+            if (change.type === "removed") {
+              localMap.delete(change.doc.id);
+            }
+          });
+
+          // Handle real-time additions and modifications
+          jobsSnap.forEach((docSnap) => {
+            const item = docSnap.data() as CustomJobItem;
+            if (item && item.id) {
+              localMap.set(item.id, item);
+            }
+          });
+
+          const merged = Array.from(localMap.values());
+          localStorage.setItem(JOBS_STORAGE_KEY, JSON.stringify(merged));
+          window.dispatchEvent(new CustomEvent("foras:data-updated", { detail: { type: "job" } }));
         }, (err) => console.info("Firestore jobs live listener note:", err));
       } catch (subErr) {
         console.info("Firestore jobs subscription note:", subErr);
       }
     }
 
-    // 2. Initial fetch from server database (/api/opportunities) as backup sync
+    // 3. Setup realtime archive vault listener
+    if (!realtimeArchiveUnsub) {
+      try {
+        realtimeArchiveUnsub = onSnapshot(collection(db, "archived_opportunities"), (archiveSnap) => {
+          const archiveMap = new Map<string, ArchivedItem>();
+          const raw = localStorage.getItem(ARCHIVE_VAULT_KEY);
+          const localArchive: ArchivedItem[] = raw ? JSON.parse(raw) : [];
+          localArchive.forEach(a => { if (a && a.id) archiveMap.set(a.id, a); });
+
+          // Handle removals from archive
+          archiveSnap.docChanges().forEach((change) => {
+            if (change.type === "removed") {
+              archiveMap.delete(change.doc.id);
+            }
+          });
+
+          // Handle additions and modifications in archive
+          archiveSnap.forEach((docSnap) => {
+            const item = docSnap.data() as ArchivedItem;
+            if (item && item.id) {
+              archiveMap.set(item.id, item);
+            }
+          });
+
+          const merged = Array.from(archiveMap.values());
+          localStorage.setItem(ARCHIVE_VAULT_KEY, JSON.stringify(merged));
+          window.dispatchEvent(new CustomEvent("foras:archive-updated"));
+        }, (err) => console.info("Firestore archive live listener note:", err));
+      } catch (subErr) {
+        console.info("Firestore archive subscription note:", subErr);
+      }
+    }
+
+    // 4. Initial fetch from server database (/api/opportunities) as backup sync
     try {
       const res = await fetch("/api/opportunities");
       if (res.ok) {
@@ -259,24 +311,27 @@ export const dynamicStore = {
         interests: Array.isArray(item.interests) ? item.interests : (Array.isArray(item.tags) ? item.tags : []),
       };
 
+      // Strict sanitization against XSS & dangerous links
+      const cleanNormalized = sanitizeScholarship(normalized);
+
       const customRaw = localStorage.getItem(SCHOLARSHIPS_STORAGE_KEY);
       const list: Scholarship[] = customRaw ? JSON.parse(customRaw) : [];
       
-      const existingIdx = list.findIndex(s => s.id === normalized.id);
+      const existingIdx = list.findIndex(s => s.id === cleanNormalized.id);
       if (existingIdx >= 0) {
-        list[existingIdx] = normalized;
+        list[existingIdx] = cleanNormalized;
       } else {
-        list.unshift(normalized);
+        list.unshift(cleanNormalized);
       }
       localStorage.setItem(SCHOLARSHIPS_STORAGE_KEY, JSON.stringify(list));
       
       // If previously deleted or archived, un-delete it
-      this.undeleteItem(normalized.id);
-      window.dispatchEvent(new CustomEvent("foras:data-updated", { detail: { type: "scholarship", item: normalized } }));
+      this.undeleteItem(cleanNormalized.id);
+      window.dispatchEvent(new CustomEvent("foras:data-updated", { detail: { type: "scholarship", item: cleanNormalized } }));
 
       // 1. Asynchronously persist to Cloud Firestore for global synchronization across all user devices
       try {
-        setDoc(doc(db, "scholarships", normalized.id), normalized, { merge: true })
+        setDoc(doc(db, "scholarships", cleanNormalized.id), cleanNormalized, { merge: true })
           .catch(err => console.warn("Firestore scholarship save note:", err));
       } catch (fsErr) {
         console.warn("Firestore scholarship write error:", fsErr);
@@ -287,11 +342,14 @@ export const dynamicStore = {
         fetch("/api/opportunities/scholarships", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(normalized),
+          body: JSON.stringify(cleanNormalized),
         }).catch(err => console.info("Server scholarship sync note:", err));
       } catch (cloudErr) {
         console.info("Server write note:", cloudErr);
       }
+
+      // 3. Broadcast real-time notification to all users worldwide
+      notificationsStore.broadcastOpportunityNotification("scholarship", cleanNormalized).catch(() => {});
     } catch (e) {
       console.error("Failed to save scholarship", e);
     }
@@ -315,21 +373,24 @@ export const dynamicStore = {
   saveJob(job: CustomJobItem): void {
     if (typeof window === "undefined") return;
     try {
+      // Strict sanitization against XSS & dangerous links
+      const cleanJob = sanitizeJob(job);
+
       const customRaw = localStorage.getItem(JOBS_STORAGE_KEY);
       const list: CustomJobItem[] = customRaw ? JSON.parse(customRaw) : [];
-      const idx = list.findIndex(j => j.id === job.id);
+      const idx = list.findIndex(j => j.id === cleanJob.id);
       if (idx >= 0) {
-        list[idx] = job;
+        list[idx] = cleanJob;
       } else {
-        list.unshift(job);
+        list.unshift(cleanJob);
       }
       localStorage.setItem(JOBS_STORAGE_KEY, JSON.stringify(list));
-      this.undeleteItem(job.id);
+      this.undeleteItem(cleanJob.id);
       window.dispatchEvent(new CustomEvent("foras:data-updated", { detail: { type: "job" } }));
 
       // 1. Asynchronously persist to Cloud Firestore for global synchronization across all user devices
       try {
-        setDoc(doc(db, "jobs", job.id), job, { merge: true })
+        setDoc(doc(db, "jobs", cleanJob.id), cleanJob, { merge: true })
           .catch(err => console.warn("Firestore job save note:", err));
       } catch (fsErr) {
         console.warn("Firestore job write error:", fsErr);
@@ -340,11 +401,14 @@ export const dynamicStore = {
         fetch("/api/opportunities/jobs", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(job),
+          body: JSON.stringify(cleanJob),
         }).catch(err => console.info("Server job sync note:", err));
       } catch (cloudErr) {
         console.info("Server write note:", cloudErr);
       }
+
+      // 3. Broadcast real-time notification to all users worldwide
+      notificationsStore.broadcastOpportunityNotification("job", cleanJob).catch(() => {});
     } catch (e) {
       console.error("Failed to save job", e);
     }
@@ -418,7 +482,15 @@ export const dynamicStore = {
       // Mark ID as deleted in active list
       this.markIdDeleted(id);
 
-      // 1. Delete from Cloud Firestore for global real-time synchronization
+      // 1. Save to Cloud Firestore archive vault
+      try {
+        setDoc(doc(db, "archived_opportunities", id), archivedItem, { merge: true })
+          .catch(err => console.warn("Firestore archive write note:", err));
+      } catch (fsArcErr) {
+        console.warn("Firestore archive error:", fsArcErr);
+      }
+
+      // 2. Delete from active Cloud Firestore collection
       try {
         deleteDoc(doc(db, type === "scholarship" ? "scholarships" : "jobs", id))
           .catch(err => console.warn("Firestore delete note:", err));
@@ -525,6 +597,12 @@ export const dynamicStore = {
         }
         this.markIdDeleted(item.id);
         archivedCount++;
+
+        // Sync to Cloud Firestore archive vault and remove from active collection
+        try {
+          setDoc(doc(db, "archived_opportunities", item.id), archivedItem, { merge: true }).catch(() => {});
+          deleteDoc(doc(db, item.type === "scholarship" ? "scholarships" : "jobs", item.id)).catch(() => {});
+        } catch {}
       });
 
       localStorage.setItem(ARCHIVE_VAULT_KEY, JSON.stringify(archive));
@@ -583,6 +661,14 @@ export const dynamicStore = {
         }
       }
 
+      // Remove from Cloud Firestore archived_opportunities
+      try {
+        deleteDoc(doc(db, "archived_opportunities", id))
+          .catch(err => console.warn("Firestore archive delete note:", err));
+      } catch (fsDelArc) {
+        console.warn("Firestore archive delete error:", fsDelArc);
+      }
+
       const activeUser = adminAuthStore.getCurrentSession();
       if (activeUser) {
         adminAuthStore.logActivity(
@@ -611,7 +697,16 @@ export const dynamicStore = {
       const remaining = archive.filter(a => !idSet.has(a.id));
       localStorage.setItem(ARCHIVE_VAULT_KEY, JSON.stringify(remaining));
 
-      ids.forEach(id => this.undeleteItem(id));
+      ids.forEach(id => {
+        this.undeleteItem(id);
+        const item = archive.find(a => a.id === id);
+        if (item && item.itemData) {
+          try {
+            setDoc(doc(db, item.type === "scholarship" ? "scholarships" : "jobs", id), item.itemData, { merge: true }).catch(() => {});
+            deleteDoc(doc(db, "archived_opportunities", id)).catch(() => {});
+          } catch {}
+        }
+      });
 
       const activeUser = adminAuthStore.getCurrentSession();
       if (activeUser) {
@@ -643,6 +738,15 @@ export const dynamicStore = {
       const target = archive.find(a => a.id === id);
       localStorage.setItem(ARCHIVE_VAULT_KEY, JSON.stringify(archive.filter(a => a.id !== id)));
 
+      // Delete permanently from Cloud Firestore archive and collections
+      try {
+        deleteDoc(doc(db, "archived_opportunities", id)).catch(() => {});
+        deleteDoc(doc(db, "scholarships", id)).catch(() => {});
+        deleteDoc(doc(db, "jobs", id)).catch(() => {});
+      } catch (e) {
+        console.warn("Firestore permanent delete error:", e);
+      }
+
       adminAuthStore.logActivity(
         user,
         "permanent_delete",
@@ -669,6 +773,17 @@ export const dynamicStore = {
       const archive = this.getArchivedItems();
       const count = archive.length;
       localStorage.removeItem(ARCHIVE_VAULT_KEY);
+
+      // Empty Cloud Firestore archive vault
+      try {
+        getDocs(collection(db, "archived_opportunities")).then(snap => {
+          snap.docs.forEach(d => {
+            deleteDoc(doc(db, "archived_opportunities", d.id)).catch(() => {});
+          });
+        }).catch(() => {});
+      } catch (e) {
+        console.warn("Firestore emptyArchive error:", e);
+      }
 
       adminAuthStore.logActivity(
         user,
@@ -795,9 +910,10 @@ export const dynamicStore = {
   },
 };
 
-// Automatically sync with server database on client boot
+// Automatically sync with Cloud Firestore and server database on client boot
 if (typeof window !== "undefined") {
   setTimeout(() => {
+    dynamicStore.syncWithCloud().catch(console.error);
     dynamicStore.syncWithServer().catch(console.error);
-  }, 1000);
+  }, 300);
 }
