@@ -652,6 +652,74 @@
   ],
   "jobs": [
     {
+      "id": "remotive_2091158_ktdc",
+      "title_ar": "Software Engineer, AI Coding Tasks - Askable",
+      "title_en": "Software Engineer, AI Coding Tasks",
+      "company": "Askable",
+      "location": "Worldwide",
+      "salary": "$1000 per task",
+      "category": "tech",
+      "type": "contract",
+      "country": "عن بعد / Global Remote",
+      "flag": "💻",
+      "deadline": "مستمر حتى اكتمال العدد",
+      "apply_url": "https://remotive.com/remote-jobs/software-development/software-engineer-ai-coding-tasks-2091158",
+      "company_url": "https://remotive.com/job/2091158/logo",
+      "skills": [
+        "C++",
+        "docker",
+        "git",
+        "go",
+        "java"
+      ],
+      "description_ar": " We're looking for experienced software engineers to build AI coding tasks from a codebase they know well. US$1,000 per task, and you can do as many tasks as you want. \n   \n You turn a real change from a repository you know into a task that today's best AI coding models struggle with: hard for the models, but fair for a skilled engineer. Your tasks",
+      "description_en": " We're looking for experienced software engineers to build AI coding tasks from a codebase they know well. US$1,000 per task, and you can do as many tasks as you want. \n   \n You turn a real change from a repository you know into a task that today's best AI coding models struggle with: hard for the models, but fair for a skilled engineer. Your tasks",
+      "benefits_ar": [
+        "مرونة كاملة في أوقات العمل",
+        "عقد عمل دولي عن بعد",
+        "تأمين وبدلات بيئة العمل"
+      ],
+      "verified": true,
+      "featured": true,
+      "source": "Remotive Verified Feed",
+      "createdAt": "2026-11-06T13:09:43.703Z",
+      "updatedAt": "2026-11-06T13:09:43.703Z"
+    },
+    {
+      "id": "remotive_2091165_jdmh",
+      "title_ar": "Full-Stack Developer - Fluence International, Inc.",
+      "title_en": "Full-Stack Developer",
+      "company": "Fluence International, Inc.",
+      "location": "Worldwide",
+      "salary": "$3.5k–$5k/month",
+      "category": "tech",
+      "type": "contract",
+      "country": "عن بعد / Global Remote",
+      "flag": "💻",
+      "deadline": "مستمر حتى اكتمال العدد",
+      "apply_url": "https://remotive.com/remote-jobs/software-development/full-stack-developer-2091165",
+      "company_url": "https://remotive.com/job/2091165/logo",
+      "skills": [
+        "admin",
+        "api",
+        "AWS",
+        "backend",
+        "cloud"
+      ],
+      "description_ar": "  We’re looking for a pragmatic, security-minded Full-Stack Developer to help build and scale Fluence’s B2B products used by clinicians, researchers, and organizations in psychedelic-assisted therapy and mental health. You’ll work closely with and report to our Senior AI &amp; Design Lead to turn product requirements into robust, secure, and well-d",
+      "description_en": "  We’re looking for a pragmatic, security-minded Full-Stack Developer to help build and scale Fluence’s B2B products used by clinicians, researchers, and organizations in psychedelic-assisted therapy and mental health. You’ll work closely with and report to our Senior AI &amp; Design Lead to turn product requirements into robust, secure, and well-d",
+      "benefits_ar": [
+        "مرونة كاملة في أوقات العمل",
+        "عقد عمل دولي عن بعد",
+        "تأمين وبدلات بيئة العمل"
+      ],
+      "verified": true,
+      "featured": true,
+      "source": "Remotive Verified Feed",
+      "createdAt": "2026-11-06T13:09:43.341Z",
+      "updatedAt": "2026-11-06T13:09:43.341Z"
+    },
+    {
       "id": "upwork-001",
       "title_ar": "مطور برمجيات وتطبيقات ومواقع",
       "title_en": "Software & Web Developer",
@@ -2417,13 +2485,53 @@
       "reason": "Test cleanup"
     }
   ],
-  "lastUpdated": "2026-10-15T09:19:39.671Z",
+  "lastUpdated": "2026-11-06T13:09:45.704Z",
   "automation": {
     "isRunning": false,
-    "lastRun": "2026-10-15T09:19:36.922Z",
+    "lastRun": "2026-11-06T13:09:41.436Z",
     "lastStatus": "completed",
-    "totalIngested": 27,
+    "totalIngested": 29,
     "logs": [
+      {
+        "timestamp": "2026-11-06T13:09:45.704Z",
+        "level": "success",
+        "message": "اكتمل الفحص بنجاح! نُشر فورا: 0 منح و 2 وظائف. محتجز للمراجعة: 0 فرص. عاجل/حرج: 0. المزامنة السحابية مع Firebase نشطة 100%."
+      },
+      {
+        "timestamp": "2026-11-06T13:09:45.698Z",
+        "level": "info",
+        "message": "تمت المزامنة السحابية الشاملة مع Firebase Firestore: 19 منحة، 49 وظيفة منشورة لجميع المستخدمين."
+      },
+      {
+        "timestamp": "2026-11-06T13:09:43.716Z",
+        "level": "info",
+        "message": "جاري فحص وتحديث المنح الدراسية الدولية والعربية المعتمدة..."
+      },
+      {
+        "timestamp": "2026-11-06T13:09:43.711Z",
+        "level": "success",
+        "message": "[نشر تلقائي فوري] تمت إضافة وظيفة معتمدة: Software Engineer, AI Coding Tasks - Askable"
+      },
+      {
+        "timestamp": "2026-11-06T13:09:43.354Z",
+        "level": "success",
+        "message": "[نشر تلقائي فوري] تمت إضافة وظيفة معتمدة: Full-Stack Developer - Fluence International, Inc."
+      },
+      {
+        "timestamp": "2026-11-06T13:09:42.978Z",
+        "level": "info",
+        "message": "تم استلام 12 فرصة عمل من المصدر. جاري التدقيق والتقييم..."
+      },
+      {
+        "timestamp": "2026-11-06T13:09:41.445Z",
+        "level": "info",
+        "message": "جاري الاتصال بمصادر وظائف العمل عن بعد المعتمدة دولياً (Remotive)..."
+      },
+      {
+        "timestamp": "2026-11-06T13:09:41.441Z",
+        "level": "info",
+        "message": "بدء جولة الفحص الآلي الذكي (وضع النشر: النشر التلقائي الذكي مع التحقق من المعايير 100%)..."
+      },
       {
         "timestamp": "2026-10-15T09:19:39.671Z",
         "level": "success",
@@ -2883,46 +2991,6 @@
         "timestamp": "2026-10-04T10:30:28.906Z",
         "level": "info",
         "message": "جاري فحص وتحديث المنح الدراسية الدولية والعربية المعتمدة..."
-      },
-      {
-        "timestamp": "2026-10-04T10:30:28.904Z",
-        "level": "info",
-        "message": "تم استلام 16 فرصة عمل من المصدر. جاري التدقيق والتقييم..."
-      },
-      {
-        "timestamp": "2026-10-04T10:30:28.802Z",
-        "level": "info",
-        "message": "جاري الاتصال بمصادر وظائف العمل عن بعد المعتمدة دولياً (Remotive)..."
-      },
-      {
-        "timestamp": "2026-10-04T10:30:28.800Z",
-        "level": "info",
-        "message": "بدء جولة الفحص الآلي الذكي (وضع النشر: النشر التلقائي الذكي مع التحقق من المعايير 100%)..."
-      },
-      {
-        "timestamp": "2026-10-04T09:38:51.652Z",
-        "level": "success",
-        "message": "اكتمل الفحص بنجاح! نُشر فورا: 0 منح و 4 وظائف. محتجز للمراجعة: 0 فرص. عاجل/حرج: 0."
-      },
-      {
-        "timestamp": "2026-10-04T09:38:51.549Z",
-        "level": "info",
-        "message": "جاري فحص وتحديث المنح الدراسية الدولية والعربية المعتمدة..."
-      },
-      {
-        "timestamp": "2026-10-04T09:38:51.547Z",
-        "level": "success",
-        "message": "[نشر تلقائي فوري] تمت إضافة وظيفة معتمدة: AI Response Evaluator - iMerit Technology"
-      },
-      {
-        "timestamp": "2026-10-04T09:38:51.284Z",
-        "level": "success",
-        "message": "[نشر تلقائي فوري] تمت إضافة وظيفة معتمدة: 🇩🇪 Kundenservice Mobilfunk Inbound - innerhalb der EU (ausgenommen: Deutschland) - hey contact heroes GmbH"
-      },
-      {
-        "timestamp": "2026-10-04T09:38:51.014Z",
-        "level": "success",
-        "message": "[نشر تلقائي فوري] تمت إضافة وظيفة معتمدة: Senior Shopify Developer - Sanctuary Computer Inc"
       }
     ]
   },
@@ -2958,6 +3026,46 @@
     "autoScheduleIntervalHours": 24
   },
   "notifications": [
+    {
+      "channel": "email",
+      "recipient": "إدارة المنصة الرسمية (Alforas) <alforas.one@gmail.com>",
+      "title": "تقرير الفحص الدوري ومراجعة المنح والفرص",
+      "summary": "تقرير أوتوميشن الفرص: تم نشر 0 منح و 2 وظائف، ويوجد 0 فرصة في انتظار المراجعة. عدد الفرص الحرجة: 0. (تم تجهيز التقرير واعتماده بسجل الإشعارات الإدارية)",
+      "status": "simulated",
+      "itemsCount": 1,
+      "id": "notif_1793970583777_sglt",
+      "timestamp": "2026-11-06T13:09:43.777Z"
+    },
+    {
+      "channel": "whatsapp",
+      "recipient": "إدارة المنصة الرسمية (Alforas) (+249900713251)",
+      "title": "تجهيز رسالة واتساب (رابط مباشر متاح للمشرف)",
+      "summary": "تقرير أوتوميشن الفرص: تم نشر 0 منح و 2 وظائف، ويوجد 0 فرصة في انتظار المراجعة. عدد الفرص الحرجة: 0.",
+      "status": "simulated",
+      "itemsCount": 1,
+      "id": "notif_1793970583772_r4f9",
+      "timestamp": "2026-11-06T13:09:43.772Z"
+    },
+    {
+      "channel": "email",
+      "recipient": "المشرف العام (محسن) <mohsentiben@gmail.com>",
+      "title": "تقرير الفحص الدوري ومراجعة المنح والفرص",
+      "summary": "تقرير أوتوميشن الفرص: تم نشر 0 منح و 2 وظائف، ويوجد 0 فرصة في انتظار المراجعة. عدد الفرص الحرجة: 0. (تم تجهيز التقرير واعتماده بسجل الإشعارات الإدارية)",
+      "status": "simulated",
+      "itemsCount": 1,
+      "id": "notif_1793970583767_l4sk",
+      "timestamp": "2026-11-06T13:09:43.767Z"
+    },
+    {
+      "channel": "whatsapp",
+      "recipient": "المشرف العام (محسن) (+249900713251)",
+      "title": "تجهيز رسالة واتساب (رابط مباشر متاح للمشرف)",
+      "summary": "تقرير أوتوميشن الفرص: تم نشر 0 منح و 2 وظائف، ويوجد 0 فرصة في انتظار المراجعة. عدد الفرص الحرجة: 0.",
+      "status": "simulated",
+      "itemsCount": 1,
+      "id": "notif_1793970583761_n4k4",
+      "timestamp": "2026-11-06T13:09:43.761Z"
+    },
     {
       "channel": "email",
       "recipient": "إدارة المنصة الرسمية (Alforas) <alforas.one@gmail.com>",

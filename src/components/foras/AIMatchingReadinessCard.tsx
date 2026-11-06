@@ -176,19 +176,25 @@ export const AIMatchingReadinessCard: React.FC<AIMatchingReadinessCardProps> = (
           </div>
         </div>
 
-        {/* Critical Missing Signals Spotlight (Primary Action Area) */}
-        {readiness.missingCritical.length > 0 && !hideDetails && (
-          <div className="bg-background/70 border border-primary/25 rounded-2xl p-3.5 sm:p-4 space-y-2.5 backdrop-blur-sm">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
-                <ShieldAlert className="w-4 h-4 text-amber-400 animate-pulse" />
-                <span>
-                  {ar
-                    ? "معلومات حاسمة مطلوبة لضمان دقة خوارزمية الذكاء الاصطناعي:"
-                    : "Crucial information required for AI matching algorithm:"}
-                </span>
+        {/* Collapsible Action Area - Keeps Profile completely clean by default */}
+        <AnimatePresence>
+          {expanded && readiness.missingCritical.length > 0 && !hideDetails && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="bg-background/70 border border-primary/25 rounded-2xl p-3.5 sm:p-4 space-y-2.5 backdrop-blur-sm overflow-hidden"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+                  <ShieldAlert className="w-4 h-4 text-amber-400 animate-pulse" />
+                  <span>
+                    {ar
+                      ? "معلومات حاسمة مطلوبة لضمان دقة خوارزمية الذكاء الاصطناعي:"
+                      : "Crucial information required for AI matching algorithm:"}
+                  </span>
+                </div>
               </div>
-            </div>
 
             {/* Top Critical Recommendation */}
             {readiness.missingCritical.slice(0, 2).map((signal) => (
@@ -230,8 +236,9 @@ export const AIMatchingReadinessCard: React.FC<AIMatchingReadinessCardProps> = (
                 </Button>
               </div>
             ))}
-          </div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Accordion / Drawer for all signals preview */}
         {!hideDetails && (

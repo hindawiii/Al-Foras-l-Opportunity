@@ -159,14 +159,14 @@ export const ScholarshipCard = ({
           <span className="text-destructive font-bold text-2xl">{t("dismissed")}</span>
         </motion.div>
 
-        <div className="p-4 sm:p-5 pt-4 flex flex-col flex-1 relative z-10 overflow-hidden" dir={dir}>
-          {/* Scrollable Card Body (Ensures content never overflows or pushes buttons off) */}
-          <div className="flex-1 overflow-y-auto pe-1 space-y-3 overscroll-contain">
+        <div className="p-4 sm:p-5 pt-3.5 flex flex-col justify-between flex-1 relative z-10 overflow-hidden" dir={dir}>
+          {/* Card Face: Distilled, clear, zero internal scroll */}
+          <div className="space-y-3">
             {/* Top row: flag avatar + match pill (start) | badges + share (end) */}
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-2 flex-shrink-0">
                 <div
-                  className={`w-10 h-10 rounded-full flex items-center justify-center text-xl bg-background/70 border ${
+                  className={`w-9 h-9 rounded-full flex items-center justify-center text-lg bg-background/80 border ${
                     isArab ? "border-primary/50" : "border-[hsl(210_70%_60%/0.5)]"
                   } shadow-inner`}
                   aria-label={countryText}
@@ -174,111 +174,92 @@ export const ScholarshipCard = ({
                   <span>{scholarship.flag}</span>
                 </div>
                 <span
-                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border backdrop-blur-md
-                    ${
-                      isArab
-                        ? "bg-primary/15 border-primary/40 text-primary shadow-[0_0_18px_-2px_hsl(43_74%_45%/0.55)]"
-                        : "bg-[hsl(210_70%_55%/0.15)] border-[hsl(210_70%_60%/0.5)] text-[hsl(210_90%_75%)] shadow-[0_0_18px_-2px_hsl(210_70%_55%/0.55)]"
-                    }`}
+                  className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border backdrop-blur-md ${
+                    isArab
+                      ? "bg-primary/15 border-primary/40 text-primary"
+                      : "bg-[hsl(210_70%_55%/0.15)] border-[hsl(210_70%_60%/0.5)] text-[hsl(210_90%_75%)]"
+                  }`}
                 >
-                  <Sparkles className="w-3 h-3" /> {matchScore}%
+                  {matchScore}% {ar ? "توافق" : "Match"}
                 </span>
               </div>
-              <div className="flex flex-wrap gap-1.5 items-center">
+              <div className="flex gap-1.5 items-center">
                 {scholarship.verified && (
-                  <span className="flex items-center gap-1 bg-verified/15 border border-verified/40 text-verified px-2 py-0.5 rounded-full text-[11px] font-medium">
+                  <span className="flex items-center gap-1 bg-verified/15 border border-verified/40 text-verified px-2 py-0.5 rounded-full text-[10px] font-medium">
                     <BadgeCheck className="w-3 h-3" /> {t("verified")}
-                  </span>
-                )}
-                {scholarship.manualReview && (
-                  <span className="flex items-center gap-1 bg-review/15 border border-review/40 text-review px-2 py-0.5 rounded-full text-[11px] font-medium">
-                    <Search className="w-3 h-3" /> {t("manualReview")}
                   </span>
                 )}
                 <button
                   type="button"
                   onClick={handleShare}
-                  className="w-8 h-8 rounded-full bg-background/60 backdrop-blur-sm border border-primary/30 hover:bg-primary/20 flex items-center justify-center flex-shrink-0 cursor-pointer"
+                  className="w-7 h-7 rounded-full bg-background/60 backdrop-blur-sm border border-primary/30 hover:bg-primary/20 flex items-center justify-center flex-shrink-0 cursor-pointer transition-colors"
                   aria-label="share"
                 >
-                  <Share2 className="w-3.5 h-3.5 text-primary" />
+                  <Share2 className="w-3 h-3 text-primary" />
                 </button>
               </div>
             </div>
 
-            {/* Title block */}
+            {/* Title block with safe spacing and relaxed line height */}
             <div className="text-start">
-              <p className="text-primary text-xs sm:text-sm font-extrabold mb-1">{orgText}</p>
-              <h3 className="font-display text-xl sm:text-2xl text-foreground leading-tight line-clamp-2">
+              <p className="text-primary text-xs font-black truncate">{orgText}</p>
+              <h3 className="font-display text-lg sm:text-xl text-foreground font-bold leading-relaxed line-clamp-2 mt-1.5">
                 {titleText}
               </h3>
             </div>
 
-            {/* Luxe Pro AI Guidance Micro-Banner */}
+            {/* AI Guidance Micro-Banner (1 line max) */}
             {matchReasonText && (
               <div
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border backdrop-blur-md text-[11px] sm:text-xs font-semibold text-start shadow-sm transition-all ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border backdrop-blur-md text-[11px] font-medium text-start ${
                   isArab
                     ? "bg-primary/10 border-primary/25 text-primary"
                     : "bg-[hsl(210_70%_55%/0.12)] border-[hsl(210_70%_60%/0.3)] text-[hsl(210_90%_75%)]"
                 }`}
               >
-                <Sparkles className="w-3.5 h-3.5 flex-shrink-0 animate-pulse text-primary" />
                 <span className="truncate">{matchReasonText}</span>
               </div>
             )}
 
-            <p className="text-muted-foreground text-xs sm:text-sm leading-relaxed line-clamp-3 text-start">
-              {descText}
-            </p>
-
-            {/* Detail rows - only render if value exists and is non-empty */}
-            <div className="space-y-1.5">
-              {countryText && <Row icon={MapPin} label={t("country")} value={countryText} />}
-              {amountText && <Row icon={Award} label={t("amount")} value={amountText} />}
-              {levelText && <Row icon={GraduationCap} label={t("level")} value={levelText} />}
+            {/* Essential 4 Luxe Badges with 8pt grid safe spacing */}
+            <div className="grid grid-cols-2 gap-2 pt-1 text-xs">
+              {countryText && (
+                <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-background/70 border border-border text-foreground font-medium truncate">
+                  <MapPin className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                  <span className="truncate text-[11px]">{countryText}</span>
+                </div>
+              )}
+              {amountText && (
+                <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 font-bold truncate">
+                  <Award className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                  <span className="truncate text-[11px]">{amountText}</span>
+                </div>
+              )}
+              {levelText && (
+                <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-background/70 border border-border text-foreground font-medium truncate">
+                  <GraduationCap className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                  <span className="truncate text-[11px]">{levelText}</span>
+                </div>
+              )}
               {scholarship.deadline && (
-                <Row
-                  icon={Clock}
-                  label={t("deadline")}
-                  value={new Date(scholarship.deadline).toLocaleDateString(isRtl ? "ar-EG" : "en-US")}
-                />
+                <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-primary/10 border border-primary/25 text-primary font-medium truncate">
+                  <Clock className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                  <span className="truncate text-[11px]">{new Date(scholarship.deadline).toLocaleDateString(isRtl ? "ar-EG" : "en-US")}</span>
+                </div>
               )}
             </div>
-
-            {/* Tags + study language */}
-            <div className="flex flex-wrap gap-1.5">
-              <span className="inline-flex items-center gap-1 text-[11px] bg-background/60 border border-primary/30 text-primary px-2.5 py-1 rounded-full font-medium">
-                <Languages className="w-3 h-3" /> {t("studyLanguage")}: {studyLangLabel}
-              </span>
-              {(scholarship.tags || []).map((tag) => (
-                <span
-                  key={tag}
-                  className="text-[11px] bg-primary/10 border border-primary/20 text-primary px-2.5 py-1 rounded-full"
-                >
-                  {ar ? tag : (TAG_TRANSLATIONS[tag] || tag)}
-                </span>
-              ))}
-            </div>
-
-            {scholarship.sourceUrl && (
-              <a
-                href={scholarship.sourceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="flex items-center gap-1.5 text-[10px] text-muted-foreground hover:text-primary transition-colors truncate"
-              >
-                <Link2 className="w-3 h-3 flex-shrink-0" />
-                <span className="truncate" dir="ltr">
-                  {scholarship.sourceUrl}
-                </span>
-              </a>
-            )}
           </div>
 
-          {/* Guaranteed Sticky Bottom Action Bar with X & Heart (dir="ltr" ensures physical Left=Dismiss ❌ and physical Right=Save ❤️ matching swipe physics) */}
-          <div dir="ltr" className="shrink-0 pt-3 pb-2 border-t border-border/60 bg-card/60 backdrop-blur-md flex items-center justify-center gap-6 z-30">
+          {/* Integrated Interactive Hint Bar (Sits right above the action bar) */}
+          <div className="py-2 px-3 -mx-4 sm:-mx-5 bg-primary/[0.04] border-t border-b border-primary/15 text-center transition-colors hover:bg-primary/[0.08]">
+            <span className="text-[11px] font-semibold text-primary/80 hover:text-primary flex items-center justify-center gap-1.5">
+              <span>{ar ? "انقر على الكرت لمعاينة الشروط والتقديم الرسمي" : "Tap card for full requirements & official apply"}</span>
+              <span className="text-primary text-xs">↗</span>
+            </span>
+          </div>
+
+          {/* Sticky Bottom Action Bar with X & Heart - Safe Distance */}
+          <div dir="ltr" className="shrink-0 pt-2.5 pb-1 bg-transparent flex items-center justify-center gap-8 z-30">
             <button
               type="button"
               onPointerDown={(e) => e.stopPropagation()}
@@ -289,9 +270,9 @@ export const ScholarshipCard = ({
               }}
               title={t("dismissed")}
               aria-label={t("dismissed")}
-              className="w-14 h-14 sm:w-15 sm:h-15 rounded-full bg-card border-2 border-destructive/50 hover:bg-destructive/20 hover:border-destructive active:scale-90 flex items-center justify-center transition-all shadow-luxe cursor-pointer group"
+              className="w-12 h-12 rounded-full bg-card border-2 border-destructive/50 hover:bg-destructive/20 hover:border-destructive active:scale-90 flex items-center justify-center transition-all shadow-luxe cursor-pointer group"
             >
-              <X className="w-6 h-6 text-destructive group-hover:scale-110 transition-transform" />
+              <X className="w-5 h-5 text-destructive group-hover:scale-110 transition-transform" />
             </button>
             <button
               type="button"
@@ -303,9 +284,9 @@ export const ScholarshipCard = ({
               }}
               title={t("saved")}
               aria-label={t("saved")}
-              className="w-14 h-14 sm:w-15 sm:h-15 rounded-full bg-gold-gradient hover:opacity-95 active:scale-90 flex items-center justify-center shadow-gold hover:scale-105 transition-all cursor-pointer group"
+              className="w-12 h-12 rounded-full bg-gold-gradient hover:opacity-95 active:scale-90 flex items-center justify-center shadow-gold hover:scale-105 transition-all cursor-pointer group"
             >
-              <Heart className="w-6 h-6 text-primary-foreground fill-current drop-shadow-sm group-hover:scale-110 transition-transform" />
+              <Heart className="w-5 h-5 text-primary-foreground fill-current drop-shadow-sm group-hover:scale-110 transition-transform" />
             </button>
           </div>
         </div>

@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import {
   ExternalLink, BadgeCheck, Search, Award, MapPin, Clock, Link2, Share2,
   Sparkles, Globe, Star, GraduationCap, Briefcase, ArrowLeft, ArrowRight,
-  Layers, List, Heart, X, Mic, FileText, Bot, RotateCcw, Info, WifiOff
+  Layers, List, Heart, X, Mic, FileText, Bot, RotateCcw, Info, WifiOff, Eye
 } from "lucide-react";
 import { ScholarshipCard } from "@/components/foras/ScholarshipCard";
 import { SCHOLARSHIPS, Scholarship, computeMatchScore, computeScholarshipMatch, MatchAnalysis } from "@/lib/mockData";
@@ -62,8 +62,9 @@ export const ScholarshipsTab = () => {
 
   const [filter, setFilter] = useState<"all" | "arab" | "global">("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<"deck" | "list">("deck");
+  const [viewMode, setViewMode] = useState<"deck" | "list">("list");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   const [liveScholarships, setLiveScholarships] = useState<Scholarship[]>(() => {
     const init = dynamicStore.getScholarships();
@@ -88,6 +89,25 @@ export const ScholarshipsTab = () => {
     window.addEventListener("foras:data-updated", handleUpdate);
     return () => window.removeEventListener("foras:data-updated", handleUpdate);
   }, []);
+
+  // Compute live count of opportunities per category for smart dashboard badges
+  const categoryCounts = useMemo(() => {
+    const safeList = Array.isArray(liveScholarships) ? liveScholarships : [];
+    let arab = 0;
+    let global = 0;
+    for (const s of safeList) {
+      if (!s) continue;
+      const cat =
+        s.category === "arab" || s.category === "global"
+          ? s.category
+          : isArabCountry(s.country, s.title || (s as any).title_ar)
+          ? "arab"
+          : "global";
+      if (cat === "arab") arab++;
+      else global++;
+    }
+    return { all: safeList.length, arab, global };
+  }, [liveScholarships]);
 
   // Filter by category, search query, selected tag, then prioritise newly published and matching country
   const orderedDeck = useMemo(() => {
@@ -213,7 +233,7 @@ export const ScholarshipsTab = () => {
       addDismissedId(s.id);
       toast(t("dismissed"), { description: titleText });
     }
-    setDeck(prev => prev.slice(1));
+    setDeck(prev => prev.filter(item => item.id !== s.id));
   };
 
   const shareDetail = async () => {
@@ -238,7 +258,7 @@ export const ScholarshipsTab = () => {
   const detailDesc = detail ? (ar ? detail.description : (detail.descriptionEn || detail.description)) : "";
 
   return (
-    <div className="relative flex flex-col w-full pb-28 sm:pb-32">
+    <div className="relative flex flex-col w-full pb-16 sm:pb-20">
       {/* Premium Luminous Gold Search Bar */}
       <div className="mb-3.5 px-1">
         <div className="relative group">
@@ -257,6 +277,8 @@ export const ScholarshipsTab = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setTimeout(() => setIsSearchFocused(false), 250)}
               placeholder={ar ? "ابحث عن منحة، جامعة، تخصص، دولة..." : "Search scholarship, university, major, country..."}
               className="w-full h-12 py-2.5 ps-2 pe-10 text-xs sm:text-sm bg-transparent font-medium text-foreground placeholder:text-muted-foreground/80 focus:outline-none"
             />
@@ -280,52 +302,64 @@ export const ScholarshipsTab = () => {
           </div>
         </div>
 
-        {/* Popular quick filter pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto py-2 px-0.5 scrollbar-hide text-[11px]">
-          <span className="text-[10px] text-muted-foreground font-semibold flex-shrink-0">
-            {ar ? "رائج:" : "Popular:"}
-          </span>
-          {[
-            { ar: "ممولة بالكامل", en: "Fully Funded" },
-            { ar: "طب", en: "Medicine" },
-            { ar: "هندسة", en: "Engineering" },
-            { ar: "ماجستير", en: "Master's" },
-            { ar: "دكتوراه", en: "PhD" },
-            { ar: "بريطانيا", en: "UK" },
-            { ar: "ألمانيا", en: "Germany" },
-          ].map((tag) => {
-            const isTagActive = selectedTag === tag.ar;
-            return (
-              <button
-                key={tag.ar}
-                onClick={() => {
-                  if (selectedTag === tag.ar) setSelectedTag(null);
-                  else setSelectedTag(tag.ar);
-                }}
-                className={`px-2.5 py-0.5 rounded-full border whitespace-nowrap transition-all font-medium ${
-                  isTagActive
-                    ? "bg-gold-gradient text-primary-foreground border-transparent shadow-gold"
-                    : "bg-card/60 border-primary/20 text-muted-foreground hover:text-primary hover:border-primary/50"
-                }`}
-              >
-                {ar ? tag.ar : tag.en}
-              </button>
-            );
-          })}
-          {selectedTag && (
-            <button
-              onClick={() => setSelectedTag(null)}
-              className="text-[10px] text-destructive hover:underline flex-shrink-0"
+        {/* Dynamic Trending Tags (Expands seamlessly on search focus or when a filter is active) */}
+        <AnimatePresence>
+          {(isSearchFocused || selectedTag) && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+              className="overflow-hidden"
             >
-              {ar ? "إلغاء الفلتر" : "Reset"}
-            </button>
+              <div className="flex items-center gap-1.5 overflow-x-auto py-2 px-0.5 scrollbar-hide text-[11px]">
+                <span className="text-[10px] text-muted-foreground font-semibold flex-shrink-0">
+                  {ar ? "رائج:" : "Popular:"}
+                </span>
+                {[
+                  { ar: "ممولة بالكامل", en: "Fully Funded" },
+                  { ar: "طب", en: "Medicine" },
+                  { ar: "هندسة", en: "Engineering" },
+                  { ar: "ماجستير", en: "Master's" },
+                  { ar: "دكتوراه", en: "PhD" },
+                  { ar: "بريطانيا", en: "UK" },
+                  { ar: "ألمانيا", en: "Germany" },
+                ].map((tag) => {
+                  const isTagActive = selectedTag === tag.ar;
+                  return (
+                    <button
+                      key={tag.ar}
+                      onClick={() => {
+                        if (selectedTag === tag.ar) setSelectedTag(null);
+                        else setSelectedTag(tag.ar);
+                      }}
+                      className={`px-2.5 py-0.5 rounded-full border whitespace-nowrap transition-all font-medium ${
+                        isTagActive
+                          ? "bg-gold-gradient text-primary-foreground border-transparent shadow-gold font-bold"
+                          : "bg-card/60 border-primary/20 text-muted-foreground hover:text-primary hover:border-primary/50"
+                      }`}
+                    >
+                      {ar ? tag.ar : tag.en}
+                    </button>
+                  );
+                })}
+                {selectedTag && (
+                  <button
+                    onClick={() => setSelectedTag(null)}
+                    className="text-[10px] text-destructive hover:underline flex-shrink-0 font-bold px-1"
+                  >
+                    {ar ? "إلغاء الفلتر ✕" : "Reset ✕"}
+                  </button>
+                )}
+              </div>
+            </motion.div>
           )}
-        </div>
+        </AnimatePresence>
       </div>
 
-      {/* Segmented filter — All vs Arab vs Global */}
-      <div className="mb-3 px-1">
-        <div className="relative inline-flex w-full p-1 rounded-2xl bg-card/60 backdrop-blur-md border border-border overflow-hidden">
+      {/* Ultra-Luxe Symmetric Squircle Segmented Filter — Consistent 16px Design Language */}
+      <div className="mb-3.5 px-1 max-w-xl mx-auto w-full">
+        <div className="relative inline-flex w-full p-1 sm:p-1.5 rounded-2xl bg-card/85 backdrop-blur-2xl border border-primary/25 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.5)] overflow-hidden">
           {(["all", "arab", "global"] as const).map((key) => {
             const active = filter === key;
             const isAll = key === "all";
@@ -334,42 +368,54 @@ export const ScholarshipsTab = () => {
               <button
                 key={key}
                 onClick={() => setFilter(key)}
-                className={`relative flex-1 z-10 px-2 sm:px-3 py-2 text-xs sm:text-sm font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all duration-300
-                  ${active
-                    ? isAll
-                      ? "bg-primary/20 text-primary border border-primary/50 shadow-sm"
-                      : isArab
-                      ? "bg-gold-gradient text-primary-foreground shadow-gold"
-                      : "bg-gradient-to-r from-[hsl(210_70%_50%)] to-[hsl(220_60%_45%)] text-white shadow-[0_8px_24px_-8px_hsl(210_70%_50%/0.6)]"
-                    : "text-muted-foreground hover:text-foreground"}`}
+                className={`relative flex-1 z-10 py-[clamp(7px,1.8vw,10px)] px-3 text-[clamp(12px,2.8vw,14px)] font-bold rounded-xl flex items-center justify-center transition-colors duration-200 select-none min-h-[40px] ${
+                  active
+                    ? isArab
+                      ? "text-primary-foreground font-black"
+                      : isAll
+                      ? "text-primary font-black"
+                      : "text-white font-black"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
               >
-                {isAll ? <Sparkles className="w-3.5 h-3.5" /> : isArab ? <Star className="w-3.5 h-3.5" /> : <Globe className="w-3.5 h-3.5" />}
-                {isAll ? t("filterAllScholarships") : isArab ? t("filterArabScholarships") : t("filterGlobalScholarships")}
+                {active && (
+                  <motion.div
+                    layoutId="activeScholarshipFilterPill"
+                    transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                    className={`absolute inset-0.5 sm:inset-1 rounded-xl z-[-1] ${
+                      isAll
+                        ? "bg-primary/20 border border-primary/50 shadow-[0_0_20px_-3px_hsl(43_74%_49%/0.45)]"
+                        : isArab
+                        ? "bg-gold-gradient shadow-gold border border-amber-300/40"
+                        : "bg-gradient-to-r from-[hsl(210_70%_50%)] to-[hsl(220_60%_45%)] text-white shadow-[0_8px_24px_-8px_hsl(210_70%_50%/0.6)] border border-blue-400/30"
+                    }`}
+                  />
+                )}
+                <span className="relative z-10 whitespace-nowrap tracking-wide">
+                  {isAll ? (ar ? "الكل" : "All") : isArab ? (ar ? "المنح العربية" : "Arab") : (ar ? "المنح العالمية" : "Global")}
+                </span>
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* AI matching notice */}
+      {/* Refined AI matching status badge - compact and non-intrusive */}
       <AnimatePresence>
         {aiNotice && (
           <motion.div
-            initial={{ y: -10, opacity: 0 }}
+            initial={{ y: -8, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -10, opacity: 0 }}
-            className="mx-1 mb-3 glass border-gold rounded-2xl p-3 flex items-start gap-3 shadow-gold"
+            exit={{ y: -8, opacity: 0 }}
+            className="mx-1 mb-3 rounded-xl p-2.5 px-3.5 bg-primary/10 border border-primary/25 flex items-center justify-between gap-3 text-xs"
           >
-            <div className="w-9 h-9 rounded-xl bg-gold-gradient flex items-center justify-center flex-shrink-0">
-              <span className="text-primary-foreground font-bold text-xs">AI</span>
-            </div>
-            <div className="flex-1">
-              <p className="text-xs text-primary font-bold mb-0.5">{t("aiMatchBadge")}</p>
-              <p className="text-sm text-foreground leading-snug">{t("aiMatchBody")}</p>
+            <div className="flex items-center gap-2 text-primary font-semibold">
+              <Sparkles className="w-4 h-4 flex-shrink-0" />
+              <span>{t("aiMatchBadge")}: {t("aiMatchBody")}</span>
             </div>
             <button
               onClick={() => { setAiNotice(false); sessionStorage.setItem("aiNoticeDismissed", "1"); }}
-              className="text-muted-foreground text-xs hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground text-xs p-1"
               aria-label="إغلاق"
             >
               ✕
@@ -378,101 +424,62 @@ export const ScholarshipsTab = () => {
         )}
       </AnimatePresence>
 
-      {/* Quick access cards: Arab Universities Guide + Jobs */}
-      <div className="grid grid-cols-2 gap-2.5 mb-3 mx-1">
-        <button
-          onClick={() => window.dispatchEvent(new CustomEvent("foras:navigate", { detail: { tab: "arabUnis" } }))}
-          className={`group relative overflow-hidden rounded-2xl p-3.5 bg-card/60 backdrop-blur-md border border-primary/30 hover:border-primary/60 hover:bg-primary/5 transition-all flex flex-col items-start gap-2 ${
-            isRtl ? "text-right" : "text-left"
-          }`}
-        >
-          <div className="w-10 h-10 rounded-xl bg-gold-gradient flex items-center justify-center shadow-gold">
-            <GraduationCap className="w-5 h-5 text-primary-foreground" strokeWidth={2} />
-          </div>
-          <div className="flex-1 w-full">
-            <p className="text-sm font-bold text-gold-gradient leading-tight">{t("quickUnisGuideTitle")}</p>
-          </div>
-          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-primary mt-1">
-            {t("discover")} {isRtl ? <ArrowLeft className="w-3 h-3" /> : <ArrowRight className="w-3 h-3" />}
-          </span>
-        </button>
-
-        <button
-          onClick={() => window.dispatchEvent(new CustomEvent("foras:navigate", { detail: { tab: "jobs" } }))}
-          className={`group relative overflow-hidden rounded-2xl p-3.5 bg-card/60 backdrop-blur-md border border-primary/30 hover:border-primary/60 hover:bg-primary/5 transition-all flex flex-col items-start gap-2 ${
-            isRtl ? "text-right" : "text-left"
-          }`}
-        >
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[hsl(210_70%_50%)] to-[hsl(220_60%_45%)] flex items-center justify-center shadow-[0_8px_24px_-8px_hsl(210_70%_50%/0.6)]">
-            <Briefcase className="w-5 h-5 text-white" strokeWidth={2} />
-          </div>
-          <div className="flex-1 w-full">
-            <p className="text-sm font-bold bg-gradient-to-r from-[hsl(210_70%_60%)] to-[hsl(220_60%_55%)] bg-clip-text text-transparent leading-tight">
-              {t("jobOpportunitiesTitle")}
-            </p>
-            <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">
-              {t("jobOpportunitiesSub")}
-            </p>
-          </div>
-          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[hsl(210_70%_60%)] mt-1">
-            {t("discover")} {isRtl ? <ArrowLeft className="w-3 h-3" /> : <ArrowRight className="w-3 h-3" />}
-          </span>
-        </button>
-      </div>
-
-      <div className="mb-3 px-1 text-[11px] text-muted-foreground flex items-center gap-1.5 leading-relaxed">
-        <Globe className="w-3.5 h-3.5 text-primary flex-shrink-0" />
-        <span>{t("scholarshipsHint")}</span>
-      </div>
-
-      {/* View mode toggle: swipe deck vs vertical scrollable list */}
-      <div className="mb-3 px-1 flex items-center gap-2">
-        {([
-          { key: "deck" as const, icon: Layers, label: t("scholarshipsSwipe") },
-          { key: "list" as const, icon: List, label: t("scholarshipsList") },
-        ]).map(({ key, icon: Icon, label }) => (
-          <button
-            key={key}
-            onClick={() => setViewMode(key)}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all
-              ${viewMode === key
-                ? "bg-primary/15 border-primary/50 text-primary"
-                : "bg-card/50 border-border text-muted-foreground hover:text-foreground"}`}
-          >
-            <Icon className="w-3.5 h-3.5" /> {label}
-          </button>
-        ))}
-        <div className="ms-auto flex items-center gap-2">
-          {!isOnline && (
-            <span
-              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
-                !isGlobalOfflineEnabled
-                  ? "bg-rose-500/15 text-rose-300 border-rose-500/30"
-                  : !isUserOfflineEnabled
-                  ? "bg-slate-700/50 text-slate-300 border-slate-600"
-                  : "bg-amber-500/15 text-amber-300 border-amber-500/30"
-              }`}
-            >
-              <WifiOff className="w-2.5 h-2.5" />
-              <span>
-                {!isGlobalOfflineEnabled
-                  ? ar
-                    ? "معطل إدارياً"
-                    : "Admin Locked"
-                  : !isUserOfflineEnabled
-                  ? ar
-                    ? "الأوفلاين موقوف"
-                    : "Offline Paused"
-                  : ar
-                  ? "مخزنة دون اتصال"
-                  : "Offline Cached"}
-              </span>
-            </span>
-          )}
-          <span className="text-[11px] text-muted-foreground">
-            {deck.length} {t("opportunityResults")}
-          </span>
+      {/* View mode toggle: Unified Symmetric Segmented Switcher (50% / 50%) */}
+      <div className="mb-2 px-1 max-w-xl mx-auto w-full">
+        <div className="relative inline-flex w-full p-1 rounded-2xl bg-card/80 backdrop-blur-xl border border-primary/20 shadow-sm overflow-hidden">
+          {([
+            { key: "list" as const, icon: List, label: isRtl ? "عرض القائمة" : "List View" },
+            { key: "deck" as const, icon: Layers, label: isRtl ? "بطاقات النخبة" : "Elite Cards" },
+          ]).map(({ key, icon: Icon, label }) => {
+            const active = viewMode === key;
+            return (
+              <button
+                key={key}
+                onClick={() => setViewMode(key)}
+                className={`relative flex-1 z-10 py-2 px-3 text-xs sm:text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors duration-200 select-none ${
+                  active
+                    ? "text-primary font-black"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {active && (
+                  <motion.div
+                    layoutId="activeViewModeSwitcher"
+                    transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                    className="absolute inset-0.5 rounded-xl z-[-1] bg-primary/20 border border-primary/50 shadow-sm"
+                  />
+                )}
+                <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+                <span className="whitespace-nowrap">{label}</span>
+              </button>
+            );
+          })}
         </div>
+      </div>
+
+      {/* Subtle Results & Offline Status Info */}
+      <div className="mb-2 px-2 max-w-xl mx-auto w-full flex items-center justify-between text-xs text-muted-foreground">
+        <span>{deck.length} {t("opportunityResults")}</span>
+        {!isOnline && (
+          <span
+            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+              !isGlobalOfflineEnabled
+                ? "bg-rose-500/15 text-rose-300 border-rose-500/30"
+                : !isUserOfflineEnabled
+                ? "bg-slate-700/50 text-slate-300 border-slate-600"
+                : "bg-amber-500/15 text-amber-300 border-amber-500/30"
+            }`}
+          >
+            <WifiOff className="w-2.5 h-2.5" />
+            <span>
+              {!isGlobalOfflineEnabled
+                ? ar ? "معطل إدارياً" : "Admin Locked"
+                : !isUserOfflineEnabled
+                ? ar ? "الأوفلاين موقوف" : "Offline Paused"
+                : ar ? "مخزنة دون اتصال" : "Offline Cached"}
+            </span>
+          </span>
+        )}
       </div>
 
       {viewMode === "list" ? (
@@ -487,6 +494,8 @@ export const ScholarshipsTab = () => {
               const itemOrg = ar ? s.org : (s.orgEn || s.org);
               const itemCountry = ar ? s.country : (s.countryEn || s.country);
               const itemAmount = ar ? s.amount : (s.amountEn || s.amount);
+              const match = computeScholarshipMatch(s, profile, extras);
+              const isArabItem = s.category === "arab";
 
               return (
                 <motion.div
@@ -494,71 +503,90 @@ export const ScholarshipsTab = () => {
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   onClick={() => setDetail(s)}
-                  className={`cursor-pointer rounded-2xl p-3.5 bg-card/75 backdrop-blur-md border transition-all hover:bg-card
-                    ${s.category === "arab" ? "border-gold/35 hover:border-gold/70 shadow-sm" : "border-border hover:border-primary/50"} ${alignClass}`}
+                  className={`cursor-pointer rounded-2xl p-3.5 bg-card/80 backdrop-blur-md border transition-all hover:bg-card
+                    ${isArabItem ? "border-gold/35 hover:border-gold/70 shadow-sm" : "border-border hover:border-primary/50"} ${alignClass}`}
                 >
+                  {/* Card Body: Flag + Full-Width Content */}
                   <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-full bg-background/80 border border-border flex items-center justify-center text-xl flex-shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-background/80 border border-border flex items-center justify-center text-xl flex-shrink-0 mt-0.5">
                       <span>{s.flag}</span>
                     </div>
+
                     <div className="flex-1 min-w-0">
-                      <p className={`text-xs font-extrabold truncate ${s.category === "arab" ? "text-gold" : "text-primary"}`}>{itemOrg}</p>
-                      <h4 className="text-sm font-bold text-foreground leading-snug line-clamp-2 mt-0.5">{itemTitle}</h4>
-                      <div className="flex flex-wrap items-center gap-2 mt-1.5 text-[10px] text-muted-foreground">
-                        <span className="inline-flex items-center gap-1">
-                          <MapPin className="w-3 h-3 text-muted-foreground" />
-                          {itemCountry}
-                        </span>
-                        <span className="inline-flex items-center gap-1">
-                          <Award className="w-3 h-3 text-gold" />
-                          {itemAmount}
-                        </span>
-                        <span className="inline-flex items-center gap-1">
-                          <Clock className="w-3 h-3 text-muted-foreground" />
-                          {new Date(s.deadline).toLocaleDateString(isRtl ? "ar-EG" : "en-US")}
+                      {/* Organization & Match Badge */}
+                      <div className="flex items-center justify-between gap-2">
+                        <p className={`text-xs font-black truncate ${isArabItem ? "text-gold" : "text-primary"}`}>{itemOrg}</p>
+                        <span
+                          title={isRtl ? match.reasonAr : match.reasonEn}
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold flex-shrink-0 cursor-help ${
+                            isArabItem
+                              ? "bg-gold/15 border border-gold/40 text-gold"
+                              : "bg-primary/15 border border-primary/40 text-primary"
+                          }`}
+                        >
+                          <Sparkles className="w-2.5 h-2.5" />
+                          {match.score}%
                         </span>
                       </div>
-                    </div>
-                    {(() => {
-                      const match = computeScholarshipMatch(s, profile, extras);
-                      return (
-                        <div className="flex flex-col items-center gap-2 flex-shrink-0">
-                          <span
-                            title={isRtl ? match.reasonAr : match.reasonEn}
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold cursor-help ${
-                              s.category === "arab"
-                                ? "bg-gold/15 border border-gold/40 text-gold"
-                                : "bg-primary/15 border border-primary/40 text-primary"
-                            }`}
-                          >
-                            <Sparkles className="w-3 h-3" />
-                            {match.score}%
-                          </span>
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleSwipe("left", s);
-                              }}
-                              className="w-8 h-8 rounded-full border border-destructive/40 hover:bg-destructive/10 flex items-center justify-center"
-                              aria-label="dismiss"
-                            >
-                              <X className="w-3.5 h-3.5 text-destructive" />
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleSwipe("right", s);
-                              }}
-                              className="w-8 h-8 rounded-full bg-gold-gradient flex items-center justify-center shadow-gold"
-                              aria-label="save"
-                            >
-                              <Heart className="w-3.5 h-3.5 text-primary-foreground fill-current" />
-                            </button>
-                          </div>
+
+                      {/* Full-width Title */}
+                      <h4 className="text-sm font-bold text-foreground leading-relaxed line-clamp-2 mt-1">{itemTitle}</h4>
+
+                      {/* Clean Vertical Metadata List (like original, perfectly readable) */}
+                      <div className="space-y-1 mt-2 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-1.5 text-[11px]">
+                          <MapPin className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                          <span className="truncate">{itemCountry}</span>
                         </div>
-                      );
-                    })()}
+                        <div className="flex items-center gap-1.5 text-[11px] text-amber-400/90 font-medium">
+                          <Award className="w-3 h-3 text-amber-400 flex-shrink-0" />
+                          <span className="truncate">{itemAmount}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[11px]">
+                          <Clock className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                          <span>{new Date(s.deadline).toLocaleDateString(isRtl ? "ar-EG" : "en-US")}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Clean Bottom Action Strip */}
+                  <div className="pt-2.5 mt-2.5 border-t border-border/40 flex items-center justify-between gap-2">
+                    {/* Dedicated Preview Button */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDetail(s);
+                      }}
+                      className="h-8 px-3 rounded-lg bg-primary/10 hover:bg-primary/20 border border-primary/25 text-primary text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>{ar ? "معاينة المنحة" : "View Details"}</span>
+                      <span className="text-[10px]">↗</span>
+                    </button>
+
+                    {/* Original Circular Compact Action Buttons (❌ & ❤️) */}
+                    <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={() => handleSwipe("left", s)}
+                        className="w-8 h-8 rounded-full border border-destructive/40 hover:bg-destructive/15 active:scale-90 flex items-center justify-center transition-all cursor-pointer"
+                        title={ar ? "استبعاد" : "Dismiss"}
+                        aria-label={ar ? "استبعاد" : "Dismiss"}
+                      >
+                        <X className="w-3.5 h-3.5 text-destructive" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSwipe("right", s)}
+                        className="w-8 h-8 rounded-full bg-gold-gradient hover:opacity-95 active:scale-90 flex items-center justify-center shadow-gold transition-all cursor-pointer"
+                        title={ar ? "حفظ" : "Save"}
+                        aria-label={ar ? "حفظ" : "Save"}
+                      >
+                        <Heart className="w-3.5 h-3.5 text-primary-foreground fill-current" />
+                      </button>
+                    </div>
                   </div>
                 </motion.div>
               );
@@ -566,7 +594,7 @@ export const ScholarshipsTab = () => {
           )}
         </div>
       ) : (
-        <div className="relative flex-1 min-h-[590px] sm:min-h-[630px] w-full max-w-lg mx-auto">
+        <div className="relative flex-1 w-full max-w-md mx-auto" style={{ minHeight: "480px", height: "clamp(480px, 68vh, 560px)" }}>
           {liveScholarships.length === 0 ? (
             <OpportunitySkeleton count={1} viewMode="deck" />
           ) : deck.length === 0 ? (

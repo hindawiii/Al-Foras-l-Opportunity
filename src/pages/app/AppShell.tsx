@@ -13,6 +13,7 @@ import { ApplicationsTab } from "./ApplicationsTab";
 import { ProfileTab } from "./ProfileTab";
 import { JobsTab } from "./JobsTab";
 import { ArabUniversitiesTab } from "./ArabUniversitiesTab";
+import { PWAInstallBanner } from "@/components/foras/PWAInstallBanner";
 import { useLiveNotifications } from "@/hooks/useLiveNotifications";
 import { useGeoSync } from "@/hooks/useGeoSync";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -233,6 +234,7 @@ export const AppShell = () => {
       />
       <AIAdvisor />
       <UndoBanner />
+      <PWAInstallBanner />
       {adminOpen && <AdminDashboardModal isOpen={adminOpen} onClose={() => setAdminOpen(false)} />}
     </div>
   );
