@@ -324,7 +324,7 @@ ${isCareerEmployee ? "🎯 **Mode:** Professional Career / Job Interview" : "�
       }
 
       if (userTurns === 2) {
-        return `🌟 **Evaluation of Response 1 (Score: 8.8 / 10):**
+        return `**Evaluation of Response 1 (Score: 8.8 / 10):**
 - **Strengths:** Structured introduction and clear alignment with your background ${userMajorEn}.
 - **Pro Advice:** Mention one specific data metric or measurable outcome from your past experience to add extra credibility.
 
@@ -335,7 +335,7 @@ ${isCareerEmployee ? "🎯 **Mode:** Professional Career / Job Interview" : "�
       }
 
       if (userTurns === 3) {
-        return `🌟 **Evaluation of Response 2 (Score: 9.1 / 10):**
+        return `**Evaluation of Response 2 (Score: 9.1 / 10):**
 - **Strengths:** Excellent demonstration of composure, diplomatic collaboration, and initiative.
 - **Pro Advice:** Conclude with the lesson learned and how you prevent similar bottlenecks.
 
@@ -346,7 +346,7 @@ ${isCareerEmployee ? "🎯 **Mode:** Professional Career / Job Interview" : "�
       }
 
       if (userTurns === 4) {
-        return `🌟 **Evaluation of Response 3 (Score: 8.9 / 10):**
+        return `**Evaluation of Response 3 (Score: 8.9 / 10):**
 - **Strengths:** Mature self-reflection paired with tangible self-development courses.
 
 ---
@@ -363,7 +363,7 @@ ${isCareerEmployee ? "🎯 **Mode:** Professional Career / Job Interview" : "�
   2. Emphasize your unique research or operational footprint.
   3. Maintain a confident, friendly posture during visual or in-person sessions.
 
-You are thoroughly equipped to excel in your real interview! 🌟`;
+You are thoroughly equipped to excel in your real interview!`;
     }
 
     // ARABIC MULTI-DIALECT INTERVIEW
@@ -384,7 +384,7 @@ ${isCareerEmployee ? "🎯 **المسار المحدد:** مقابلة عمل و
     }
 
     if (userTurns === 2) {
-      return `🌟 **تقييم إجابتك الأولى (8.7 / 10):**
+      return `**تقييم إجابتك الأولى (8.7 / 10):**
 - **نقاط القوة:** الترتيب المنطقي ووضوح الطموح والربط بالتخصص.
 - **توصية التطوير:** ادعم إجابتك برقم أو نتيجة ملموسة (مثل: نسبة تحسن، مشروع تخرج محدد، أو تكريم نلته).
 
@@ -395,7 +395,7 @@ ${isCareerEmployee ? "🎯 **المسار المحدد:** مقابلة عمل و
     }
 
     if (userTurns === 3) {
-      return `🌟 **تقييم إجابتك الثانية (9.0 / 10):**
+      return `**تقييم إجابتك الثانية (9.0 / 10):**
 - **نقاط القوة:** إظهار المرونة والعمل الجماعي وحسن التصرف.
 - **توصية التطوير:** اختم دائماً بالأثر الإيجابي الذي تركته التجربة على مهاراتك.
 
@@ -406,7 +406,7 @@ ${isCareerEmployee ? "🎯 **المسار المحدد:** مقابلة عمل و
     }
 
     if (userTurns === 4) {
-      return `🌟 **تقييم إجابتك الثالثة (8.9 / 10):**
+      return `**تقييم إجابتك الثالثة (8.9 / 10):**
 - **نقاط القوة:** المصداقية وعرض خطة واضحة للتعلم الذاتي.
 
 ---
@@ -423,7 +423,7 @@ ${isCareerEmployee ? "🎯 **المسار المحدد:** مقابلة عمل و
   2. تحدث بنبرة صوت واثقة ومريحة وابتسم بهدوء.
   3. ركز على القيمة التي ستضيفها بعد التخرج أو التوظيف.
 
-أنت الآن جاهز ومستعد لخوض المقابلات الرسمية بثبات كامل! 🌟`;
+أنت الآن جاهز ومستعد لخوض المقابلات الرسمية بثبات كامل!`;
   }
 
   // ==========================================
@@ -591,7 +591,7 @@ You can browse, filter, and track applications directly inside the **«Scholarsh
   // 4. DEFAULT COMPREHENSIVE GREETING & MULTI-DIALECT
   // ==========================================
   if (isEn) {
-    return `${userNameEn}! 🌟 I am your dedicated AI Academic & Career Advisor on **Al-Foras**.
+    return `${userNameEn}! I am your dedicated AI Academic & Career Advisor on **Al-Foras**.
 
 Here is how I can assist you right now:
 1. 🎯 **Scholarship & University Matching:** Tell me your GPA, field, and preferred country to get matched opportunities.
@@ -606,7 +606,7 @@ What would you like to explore today? Type your question or choose an option abo
     ? `حبابك يا زول يا طيب في تطبيق **«الفُرَص»**! أنا مستشارك الذكي هنا لمساعدتك في كل ما يخص دراستك، منحك، وتطويرك المهني:`
     : isEgyptian
     ? `أهلاً بحضرتك في **«الفُرَص»**! أنا مستشارك الذكي وجاهز أساعدك خطوة بخطوة في القبول بالمنح وفرص العمل الاحترافية:`
-    : `${userNameAr}! 🌟 بصفتي مستشارك الأكاديمي والمهني في منصة **«الفُرَص»**، يسعدني تقديم المساعدة الشاملة لك في:`;
+    : `${userNameAr}! بصفتي مستشارك الأكاديمي والمهني في منصة **«الفُرَص»**، يسعدني تقديم المساعدة الشاملة لك في:`;
 
   return `${defaultGreeting}
 

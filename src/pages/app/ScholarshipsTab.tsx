@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
   ExternalLink, BadgeCheck, Search, Award, MapPin, Clock, Link2, Share2,
-  Sparkles, Globe, Star, GraduationCap, Briefcase, ArrowLeft, ArrowRight,
+  Sparkles, Globe, GraduationCap, Briefcase, ArrowLeft, ArrowRight,
   Layers, List, Heart, X, Mic, FileText, Bot, RotateCcw, Info, WifiOff, Eye
 } from "lucide-react";
 import { ScholarshipCard } from "@/components/foras/ScholarshipCard";
@@ -258,7 +258,7 @@ export const ScholarshipsTab = () => {
   const detailDesc = detail ? (ar ? detail.description : (detail.descriptionEn || detail.description)) : "";
 
   return (
-    <div className="relative flex flex-col w-full pb-16 sm:pb-20">
+    <div className="relative flex flex-col w-full pb-16 sm:pb-20" dir={dir}>
       {/* Premium Luminous Gold Search Bar */}
       <div className="mb-3.5 px-1">
         <div className="relative group">
@@ -424,19 +424,20 @@ export const ScholarshipsTab = () => {
         )}
       </AnimatePresence>
 
-      {/* View mode toggle: Unified Symmetric Segmented Switcher (50% / 50%) */}
-      <div className="mb-2 px-1 max-w-xl mx-auto w-full">
-        <div className="relative inline-flex w-full p-1 rounded-2xl bg-card/80 backdrop-blur-xl border border-primary/20 shadow-sm overflow-hidden">
+      {/* Unified View Switcher & Live Count in a Single Sleek Horizontal Row */}
+      <div className="mb-2.5 px-1 max-w-xl mx-auto w-full flex items-center justify-between gap-2.5">
+        {/* Shortened Segmented Switcher (القائمة / بطاقات) */}
+        <div className="relative inline-flex p-1 rounded-xl bg-card/85 backdrop-blur-xl border border-primary/25 shadow-sm overflow-hidden flex-shrink-0">
           {([
-            { key: "list" as const, icon: List, label: isRtl ? "عرض القائمة" : "List View" },
-            { key: "deck" as const, icon: Layers, label: isRtl ? "بطاقات النخبة" : "Elite Cards" },
+            { key: "list" as const, icon: List, label: isRtl ? "القائمة" : "List" },
+            { key: "deck" as const, icon: Layers, label: isRtl ? "بطاقات" : "Cards" },
           ]).map(({ key, icon: Icon, label }) => {
             const active = viewMode === key;
             return (
               <button
                 key={key}
                 onClick={() => setViewMode(key)}
-                className={`relative flex-1 z-10 py-2 px-3 text-xs sm:text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors duration-200 select-none ${
+                className={`relative z-10 py-1.5 px-3 text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 transition-colors duration-200 select-none ${
                   active
                     ? "text-primary font-black"
                     : "text-muted-foreground hover:text-foreground"
@@ -446,7 +447,7 @@ export const ScholarshipsTab = () => {
                   <motion.div
                     layoutId="activeViewModeSwitcher"
                     transition={{ type: "spring", stiffness: 450, damping: 32 }}
-                    className="absolute inset-0.5 rounded-xl z-[-1] bg-primary/20 border border-primary/50 shadow-sm"
+                    className="absolute inset-0.5 rounded-lg z-[-1] bg-primary/20 border border-primary/50 shadow-sm"
                   />
                 )}
                 <Icon className="w-3.5 h-3.5 flex-shrink-0" />
@@ -455,31 +456,37 @@ export const ScholarshipsTab = () => {
             );
           })}
         </div>
-      </div>
 
-      {/* Subtle Results & Offline Status Info */}
-      <div className="mb-2 px-2 max-w-xl mx-auto w-full flex items-center justify-between text-xs text-muted-foreground">
-        <span>{deck.length} {t("opportunityResults")}</span>
-        {!isOnline && (
-          <span
-            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
-              !isGlobalOfflineEnabled
-                ? "bg-rose-500/15 text-rose-300 border-rose-500/30"
-                : !isUserOfflineEnabled
-                ? "bg-slate-700/50 text-slate-300 border-slate-600"
-                : "bg-amber-500/15 text-amber-300 border-amber-500/30"
-            }`}
-          >
-            <WifiOff className="w-2.5 h-2.5" />
-            <span>
-              {!isGlobalOfflineEnabled
-                ? ar ? "معطل إدارياً" : "Admin Locked"
-                : !isUserOfflineEnabled
-                ? ar ? "الأوفلاين موقوف" : "Offline Paused"
-                : ar ? "مخزنة دون اتصال" : "Offline Cached"}
+        {/* Integrated Counter Chip & Offline Indicator in the same row */}
+        <div className="flex items-center gap-1.5 overflow-hidden">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-card/75 border border-primary/25 text-xs text-primary font-bold backdrop-blur-md shadow-sm">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse flex-shrink-0" />
+            <span className="whitespace-nowrap">
+              {deck.length} {ar ? "فرصة" : "opportunities"}
             </span>
-          </span>
-        )}
+          </div>
+
+          {!isOnline && (
+            <span
+              className={`inline-flex items-center gap-1 px-2 py-1 rounded-xl text-[10px] font-semibold border ${
+                !isGlobalOfflineEnabled
+                  ? "bg-rose-500/15 text-rose-300 border-rose-500/30"
+                  : !isUserOfflineEnabled
+                  ? "bg-slate-700/50 text-slate-300 border-slate-600"
+                  : "bg-amber-500/15 text-amber-300 border-amber-500/30"
+              }`}
+            >
+              <WifiOff className="w-2.5 h-2.5 flex-shrink-0" />
+              <span className="hidden sm:inline">
+                {!isGlobalOfflineEnabled
+                  ? ar ? "معطل" : "Locked"
+                  : !isUserOfflineEnabled
+                  ? ar ? "موقوف" : "Paused"
+                  : ar ? "مخزنة" : "Cached"}
+              </span>
+            </span>
+          )}
+        </div>
       </div>
 
       {viewMode === "list" ? (

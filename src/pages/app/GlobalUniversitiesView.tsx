@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Globe2, ExternalLink, MapPin, Sparkles, ShieldCheck,
@@ -79,7 +79,7 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
     {
       id: "arab_popular",
       label: t("globalUniCategoryArabPopular"),
-      icon: "⭐",
+      icon: "🎯",
       count: GLOBAL_COUNTRIES.filter((g) => g.category === "arab_popular").length,
       badgeVariant: "emerald"
     },
@@ -154,36 +154,46 @@ export const GlobalUniversitiesView = ({ initialCountry }: GlobalUniversitiesVie
 
       // Deep search: active scholarship details
       if (activeScholarship) {
+        const stipend = (activeScholarship as any).monthlyStipend || activeScholarship.coverageSummary || "";
+        const stipendEn = (activeScholarship as any).monthlyStipendEn || activeScholarship.coverageSummaryEn || "";
         if (
-          activeScholarship.name.toLowerCase().includes(q) ||
-          (activeScholarship.nameEn && activeScholarship.nameEn.toLowerCase().includes(q)) ||
-          activeScholarship.monthlyStipend.toLowerCase().includes(q) ||
-          (activeScholarship.monthlyStipendEn && activeScholarship.monthlyStipendEn.toLowerCase().includes(q))
+          activeScholarship.name?.toLowerCase().includes(q) ||
+          activeScholarship.nameEn?.toLowerCase().includes(q) ||
+          stipend.toLowerCase().includes(q) ||
+          stipendEn.toLowerCase().includes(q)
         ) return true;
       }
 
       // Deep search: notable alumni pioneers and roles
       if (notableAlumni && notableAlumni.length > 0) {
-        const matchesAlumni = notableAlumni.some((a) =>
-          a.pioneerName.toLowerCase().includes(q) ||
-          a.pioneerNameEn.toLowerCase().includes(q) ||
-          a.currentRole.toLowerCase().includes(q) ||
-          a.currentRoleEn.toLowerCase().includes(q) ||
-          a.achievementShort.toLowerCase().includes(q) ||
-          a.achievementShortEn.toLowerCase().includes(q) ||
-          a.globalPeerName.toLowerCase().includes(q) ||
-          a.globalPeerNameEn.toLowerCase().includes(q)
-        );
+        const matchesAlumni = notableAlumni.some((a) => {
+          const role = (a as any).currentRole || a.roleOrAchievement || "";
+          const roleEn = (a as any).currentRoleEn || a.roleOrAchievementEn || "";
+          const ach = (a as any).achievementShort || a.roleOrAchievement || "";
+          const achEn = (a as any).achievementShortEn || a.roleOrAchievementEn || "";
+          return (
+            a.pioneerName?.toLowerCase().includes(q) ||
+            a.pioneerNameEn?.toLowerCase().includes(q) ||
+            role.toLowerCase().includes(q) ||
+            roleEn.toLowerCase().includes(q) ||
+            ach.toLowerCase().includes(q) ||
+            achEn.toLowerCase().includes(q) ||
+            a.globalPeerName?.toLowerCase().includes(q) ||
+            a.globalPeerNameEn?.toLowerCase().includes(q)
+          );
+        });
         if (matchesAlumni) return true;
       }
 
       // Deep search: student presence club and highlights
       if (studentPresence) {
+        const highlight = (studentPresence as any).communityHighlight || studentPresence.presenceNote || "";
+        const highlightEn = (studentPresence as any).communityHighlightEn || studentPresence.presenceNoteEn || "";
         if (
           (studentPresence.studentUnionOrClub && studentPresence.studentUnionOrClub.toLowerCase().includes(q)) ||
           (studentPresence.studentUnionOrClubEn && studentPresence.studentUnionOrClubEn.toLowerCase().includes(q)) ||
-          (studentPresence.communityHighlight && studentPresence.communityHighlight.toLowerCase().includes(q)) ||
-          (studentPresence.communityHighlightEn && studentPresence.communityHighlightEn.toLowerCase().includes(q))
+          highlight.toLowerCase().includes(q) ||
+          highlightEn.toLowerCase().includes(q)
         ) return true;
       }
 

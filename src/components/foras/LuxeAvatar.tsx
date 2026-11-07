@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { User } from "lucide-react";
 
-export type AvatarSize = "xs" | "sm" | "md" | "lg" | "xl" | "hero";
+export type AvatarSize = "xs" | "sm" | "md" | "lg" | "xl" | "hero" | "executive";
 
 export interface LuxeAvatarProps {
   src?: string | null;
@@ -61,6 +61,7 @@ const SIZE_CONFIG: Record<AvatarSize, { px: number; text: string; icon: number; 
   lg: { px: 52, text: "text-base font-bold", icon: 24, ringStroke: 3, radius: "rounded-[18px]", cornerRx: 18 },
   xl: { px: 80, text: "text-2xl font-bold", icon: 34, ringStroke: 4, radius: "rounded-[24px]", cornerRx: 24 },
   hero: { px: 130, text: "text-4xl font-bold", icon: 54, ringStroke: 4.5, radius: "rounded-[28px]", cornerRx: 30 },
+  executive: { px: 88, text: "text-2xl font-bold", icon: 38, ringStroke: 4, radius: "rounded-[24px]", cornerRx: 24 },
 };
 
 export const LuxeAvatar: React.FC<LuxeAvatarProps> = ({
@@ -92,7 +93,7 @@ export const LuxeAvatar: React.FC<LuxeAvatarProps> = ({
   const hasInitials = Boolean(!hasImage && initials);
 
   // Exact geometric padding for the progress frame
-  const outerPad = showRing ? (size === "hero" ? 8 : size === "xl" ? 6 : 4) : 0;
+  const outerPad = showRing ? (size === "hero" ? 8 : (size === "xl" || size === "executive") ? 6 : 4) : 0;
   const totalSize = cfg.px + outerPad * 2;
   const strokeW = cfg.ringStroke;
 
@@ -136,10 +137,17 @@ export const LuxeAvatar: React.FC<LuxeAvatarProps> = ({
       {/* Integrated Progress Frame (Matching Squircle/Rounded-Rect Shape perfectly) */}
       {showRing && (
         <svg
-          className="absolute inset-0 w-full h-full pointer-events-none drop-shadow-[0_0_8px_hsl(var(--primary)/0.35)]"
+          className="absolute inset-0 w-full h-full pointer-events-none drop-shadow-[0_0_10px_rgba(245,158,11,0.45)]"
           viewBox={`0 0 ${totalSize} ${totalSize}`}
           style={{ transform: "rotate(-90deg)" }}
         >
+          <defs>
+            <linearGradient id="luxeGoldRingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#F59E0B" />
+              <stop offset="50%" stopColor="#D97706" />
+              <stop offset="100%" stopColor="#FCD34D" />
+            </linearGradient>
+          </defs>
           {isSquircle ? (
             <>
               {/* Background Track Frame */}
@@ -151,7 +159,7 @@ export const LuxeAvatar: React.FC<LuxeAvatarProps> = ({
                 rx={cornerR}
                 ry={cornerR}
                 fill="none"
-                stroke="hsl(var(--border) / 0.45)"
+                stroke="hsl(var(--primary) / 0.18)"
                 strokeWidth={strokeW}
               />
               {/* Active Animated Progress Frame */}
@@ -163,7 +171,8 @@ export const LuxeAvatar: React.FC<LuxeAvatarProps> = ({
                 rx={cornerR}
                 ry={cornerR}
                 fill="none"
-                className={`${ringColorClass} transition-all duration-700 ease-out`}
+                stroke={ringStatus === "online" ? "#34D399" : ringStatus === "away" ? "#FBBF24" : ringStatus === "offline" ? "#64748B" : "url(#luxeGoldRingGrad)"}
+                className="transition-all duration-700 ease-out"
                 strokeWidth={strokeW}
                 strokeDasharray={totalPerimeter}
                 strokeDashoffset={strokeDashoffset}
@@ -178,7 +187,7 @@ export const LuxeAvatar: React.FC<LuxeAvatarProps> = ({
                 cy={totalSize / 2}
                 r={circleRadius}
                 fill="none"
-                stroke="hsl(var(--border) / 0.45)"
+                stroke="hsl(var(--primary) / 0.18)"
                 strokeWidth={strokeW}
               />
               {/* Circular Active Progress Arc */}
@@ -187,7 +196,8 @@ export const LuxeAvatar: React.FC<LuxeAvatarProps> = ({
                 cy={totalSize / 2}
                 r={circleRadius}
                 fill="none"
-                className={`${ringColorClass} transition-all duration-700 ease-out`}
+                stroke={ringStatus === "online" ? "#34D399" : ringStatus === "away" ? "#FBBF24" : ringStatus === "offline" ? "#64748B" : "url(#luxeGoldRingGrad)"}
+                className="transition-all duration-700 ease-out"
                 strokeWidth={strokeW}
                 strokeDasharray={totalPerimeter}
                 strokeDashoffset={strokeDashoffset}

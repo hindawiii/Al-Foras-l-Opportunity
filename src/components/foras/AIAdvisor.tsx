@@ -3,7 +3,7 @@ import { motion, AnimatePresence, useMotionValue } from "framer-motion";
 import {
   Sparkles, X, Send, Loader2, Trash2, Bot, GraduationCap, Calculator,
   University, FileText, Mic, MicOff, Volume2, VolumeX, Upload, Download,
-  CheckCircle2, AlertTriangle, ArrowRight, RefreshCw, Star, Search, ShieldCheck,
+  CheckCircle2, AlertTriangle, ArrowRight, RefreshCw, Search, ShieldCheck,
   Maximize2, Minimize2, Phone, PhoneOff, Briefcase, Languages, HelpCircle, Info,
   ChevronDown, ChevronUp, WifiOff, Wifi, Copy, Check
 } from "lucide-react";
@@ -207,21 +207,36 @@ export const AIAdvisor = () => {
         }
         const pos = await chatStorage.loadFabPosition();
         if (pos && typeof pos.x === "number" && typeof pos.y === "number") {
-          // Strict bounds check against live window dimensions to prevent jumping offscreen
-          const maxLeft = typeof window !== "undefined" ? -window.innerWidth + 80 : -500;
-          const maxTop = typeof window !== "undefined" ? -window.innerHeight + 120 : -500;
-          const safeX = Math.max(maxLeft, Math.min(20, pos.x));
-          const safeY = Math.max(maxTop, Math.min(20, pos.y));
+          const w = typeof window !== "undefined" ? window.innerWidth : 1200;
+          const h = typeof window !== "undefined" ? window.innerHeight : 800;
+          const maxTop = -h + 120;
+          const safeY = Math.max(maxTop, Math.min(24, pos.y));
+
+          let safeX = 0;
+          if (isRtl) {
+            // In RTL, end-4 is anchored on the left (left: 16px).
+            // A negative X throws it offscreen to the left!
+            safeX = Math.max(-16, Math.min(w - 72, pos.x));
+            if (safeX < 0) safeX = 0;
+          } else {
+            // In LTR, end-4 is anchored on the right (right: 16px).
+            safeX = Math.max(-w + 72, Math.min(16, pos.x));
+            if (safeX > 0) safeX = 0;
+          }
           x.set(safeX);
           y.set(safeY);
         }
       } catch {
-        // Fallback to default (0, 0)
         x.set(0);
         y.set(0);
       }
     })();
-  }, [x, y]);
+  }, [x, y, isRtl]);
+
+  // Reset horizontal offset when switching language direction to prevent offscreen jumping
+  useEffect(() => {
+    x.set(0);
+  }, [isRtl, x]);
 
   // Always keep FAB visible when advisor drawer is closed
   const isFabVisible = !open;
@@ -664,14 +679,28 @@ export const AIAdvisor = () => {
   const dragConstraints = useMemo(() => {
     const w = windowDimensions.width;
     const h = windowDimensions.height;
-    // Allow dragging freely to all 4 corners across mobile, tablet, and desktop
-    return {
-      left: -w + 72,
-      right: 16,
-      top: -h + 120,
-      bottom: 24,
-    };
-  }, [windowDimensions]);
+    if (isRtl) {
+      // In RTL, end-4 places FAB at bottom-LEFT (left: 16px).
+      // Left constraint is -16 (screen left edge).
+      // Right constraint is w - 72 (full freedom to drag all the way right across screen).
+      return {
+        left: -16,
+        right: w - 72,
+        top: -h + 120,
+        bottom: 24,
+      };
+    } else {
+      // In LTR, end-4 places FAB at bottom-RIGHT (right: 16px).
+      // Left constraint is -w + 72 (full freedom to drag all the way left across screen).
+      // Right constraint is 16 (screen right edge).
+      return {
+        left: -w + 72,
+        right: 16,
+        top: -h + 120,
+        bottom: 24,
+      };
+    }
+  }, [windowDimensions, isRtl]);
 
   // Track whether dragging occurred to differentiate click vs drag
   const isDraggingRef = useRef(false);
@@ -1207,7 +1236,7 @@ export const AIAdvisor = () => {
                         className="w-full px-3 py-2 flex items-center justify-between text-muted-foreground hover:text-foreground transition-colors"
                       >
                         <span className="flex items-center gap-1.5 font-bold text-primary">
-                          <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                          <HelpCircle className="w-3.5 h-3.5 text-primary" />
                           {isRtl ? "كيف تجيب باحترافية؟ دليل نموذج STAR" : "How to answer: STAR Framework Guide"}
                         </span>
                         {showStarGuide ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -1470,8 +1499,8 @@ export const AIAdvisor = () => {
                     {/* Smart Opportunity Matcher based on CV */}
                     {atsResult.matchedScholarships.length > 0 && (
                       <div className="p-3 rounded-2xl bg-primary/10 border border-primary/30 space-y-2">
-                        <p className="text-xs font-bold text-primary flex items-center gap-1">
-                          <Star className="w-3.5 h-3.5 text-primary fill-primary" />
+                        <p className="text-xs font-bold text-primary flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-primary" />
                           {isRtl ? "تنبيهات ذكية: منح تطابق مهارات سيرتك الذاتية" : "Smart Alerts: Scholarships Matching Your CV"}
                         </p>
                         <div className="space-y-1.5">

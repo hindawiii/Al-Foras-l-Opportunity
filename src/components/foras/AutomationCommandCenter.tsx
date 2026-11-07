@@ -714,7 +714,7 @@ export const AutomationCommandCenter: React.FC<AutomationCommandCenterProps> = (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                      {isRtl ? "⭐ الوضع الموصى به" : "Recommended"}
+                      {isRtl ? "الوضع الموصى به" : "Recommended"}
                     </span>
                     <div className={`w-5 h-5 rounded-full flex items-center justify-center border ${
                       settings.publishMode === "smart_auto" ? "bg-emerald-500 border-emerald-500 text-black font-bold" : "border-gray-500"

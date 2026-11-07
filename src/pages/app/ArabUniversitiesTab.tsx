@@ -277,11 +277,11 @@ export const ArabUniversitiesTab = () => {
       <div className="rounded-3xl border border-primary/30 bg-card/70 backdrop-blur-xl p-4 sm:p-5 shadow-sm">
         <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${isRtl ? "" : "sm:flex-row-reverse"}`}>
           <div className={`flex items-center gap-3 ${isRtl ? "" : "flex-row-reverse"}`}>
-            <div className="w-12 h-12 rounded-2xl bg-gold-gradient flex items-center justify-center shadow-gold flex-shrink-0">
-              <GraduationCap className="w-6 h-6 text-primary-foreground" strokeWidth={2} />
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/20 via-primary/15 to-transparent border border-primary/35 flex items-center justify-center shadow-xs flex-shrink-0">
+              <GraduationCap className="w-5 h-5 text-amber-300 drop-shadow-[0_0_6px_rgba(245,158,11,0.5)]" strokeWidth={2.2} />
             </div>
             <div className={`flex-1 ${alignClass}`}>
-              <h1 className="text-lg sm:text-xl font-bold font-display text-gold-gradient leading-tight">
+              <h1 className="text-lg sm:text-xl font-black font-sans text-amber-100 tracking-tight leading-tight drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
                 {t("arabUniTitle")}
               </h1>
             </div>

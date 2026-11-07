@@ -47,7 +47,16 @@ export const ApplicationsTab = () => {
   const [savedJobIds, setSavedJobIds] = useState<string[]>(() => jobsStore.savedIds());
   const [savedUniIds, setSavedUniIds] = useState<string[]>(() => universitiesStore.savedIds());
 
-  const load = () => setItems(applicationsStore.all());
+  const load = () => {
+    const raw = applicationsStore.all();
+    const uniqueMap = new Map<string, AppRecord>();
+    for (const item of raw) {
+      if (item && item.id && !uniqueMap.has(item.id)) {
+        uniqueMap.set(item.id, item);
+      }
+    }
+    setItems(Array.from(uniqueMap.values()));
+  };
   useEffect(() => {
     load();
     const handleUpdate = () => load();
@@ -257,7 +266,7 @@ export const ApplicationsTab = () => {
 
   return (
     <div className="space-y-4 w-full pb-10">
-      {/* 🌟 LUXE SEGMENTED TRACKER SWITCHER 🌟 */}
+      {/*  LUXE SEGMENTED TRACKER SWITCHER  */}
       <div className="p-1.5 bg-card/90 backdrop-blur-xl border border-border/80 rounded-2xl shadow-luxe flex items-center justify-between gap-1.5">
         <button
           onClick={() => setActiveTabSection("scholarships")}
@@ -297,146 +306,135 @@ export const ApplicationsTab = () => {
       </div>
 
       {activeTabSection === "scholarships" ? (
-        <div className="space-y-4">
-          {/* Header stats banner */}
-          <div className="rounded-3xl border border-primary/25 bg-gradient-to-br from-primary/10 via-transparent to-transparent p-4">
-        <div className="flex items-center justify-between gap-3 mb-3">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-gold-gradient flex items-center justify-center shadow-gold flex-shrink-0">
-              <ClipboardList className="w-5 h-5 text-primary-foreground" strokeWidth={2.2} />
+        <div className="space-y-3">
+          {/* Streamlined Applications Header & Action Control */}
+          <div className="flex items-center justify-between gap-3 px-1">
+            <div className={`flex items-center gap-2.5 ${alignClass}`}>
+              <div className="w-8 h-8 rounded-xl bg-gold-gradient/20 border border-primary/40 flex items-center justify-center shadow-gold">
+                <ClipboardList className="w-4 h-4 text-primary" strokeWidth={2.2} />
+              </div>
+              <div>
+                <h2 className="font-display text-sm sm:text-base font-bold text-foreground">
+                  {ar ? "متابعة الطلبات والمنح" : "Applications Tracker"}
+                </h2>
+                <p className="text-[10.5px] text-muted-foreground">
+                  {ar ? `إجمالي الفرص المسجلة: ${items.length}` : `Total tracked items: ${items.length}`}
+                </p>
+              </div>
             </div>
-            <div className={alignClass}>
-              <h2 className="font-display text-lg text-gold-gradient leading-tight">
-                {ar ? "قائمة تحقق التقديم والطلبات" : "My Applications & Checklist"}
-              </h2>
-              <p className="text-[11px] text-muted-foreground">
-                {ar ? "تابع مسار كل منحة من الحفظ إلى القبول النهائي" : "Track every scholarship from saved to final acceptance"}
-              </p>
-            </div>
+
+            {items.length > 0 && (
+              <button
+                onClick={() => {
+                  setSelectionMode(!selectionMode);
+                  setSelectedIds(new Set());
+                }}
+                className={`text-xs px-3 py-1.5 rounded-xl border transition-all font-semibold flex items-center gap-1.5 ${
+                  selectionMode
+                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                    : "bg-card/70 border-border text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <CheckSquare className="w-3.5 h-3.5" />
+                <span>{selectionMode ? (ar ? "إلغاء التحديد" : "Done") : (ar ? "تحديد متعدد" : "Select")}</span>
+              </button>
+            )}
           </div>
 
-          {items.length > 0 && (
-            <button
-              onClick={() => {
-                setSelectionMode(!selectionMode);
-                setSelectedIds(new Set());
-              }}
-              className={`text-xs px-3 py-1.5 rounded-xl border transition-all font-semibold flex items-center gap-1.5 ${
-                selectionMode
-                  ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                  : "bg-card/70 border-border text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <CheckSquare className="w-3.5 h-3.5" />
-              <span>{selectionMode ? (ar ? "إنهاء التحديد" : "Cancel Select") : (ar ? "تحديد متعدد" : "Select")}</span>
-            </button>
-          )}
-        </div>
-
-        {/* Real-time Cloud Sync Status Banner */}
-        <div className="mb-3">
-          {!isGuest ? (
-            <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs">
-              <div className="flex items-center gap-2 font-bold">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-                <span>{ar ? "متزامن سحابياً مع حسابك في Cloud Firestore" : "Live Synced with your Cloud Account"}</span>
-              </div>
-              <span className="text-[11px] opacity-80 font-mono hidden sm:inline">{user?.email || (ar ? "حساب معتمد" : "Verified Account")}</span>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs flex-wrap">
-              <div className="flex items-center gap-1.5 font-medium">
+          {/* Compact Cloud Sync / Guest Status Alert */}
+          {isGuest ? (
+            <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-[11px]">
+              <div className="flex items-center gap-1.5 truncate">
                 <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                <span>{ar ? "وضع الحفظ المحلي (ضيف) — سجّل الدخول لحفظ طلباتك سحابياً ومزامنتها عبر أجهزتك" : "Guest Mode (Local) — Sign in to save and sync your applications across all devices"}</span>
+                <span className="truncate">{ar ? "وضع الحفظ المحلي (ضيف) — سجّل الدخول لحفظ ومزامنة طلباتك" : "Guest Mode — Sign in to sync across all devices"}</span>
               </div>
               <button
                 type="button"
                 onClick={() => nav("/auth")}
-                className="text-xs font-bold text-amber-400 underline hover:text-amber-200 cursor-pointer"
+                className="font-bold underline text-amber-300 hover:text-amber-100 shrink-0 cursor-pointer"
               >
-                {ar ? "تسجيل الدخول / إنشاء حساب ↗" : "Sign In / Register ↗"}
+                {ar ? "تسجيل الدخول ↗" : "Sign In ↗"}
               </button>
             </div>
-          )}
-        </div>
-
-        {/* Status Counts */}
-        <div className="grid grid-cols-4 gap-2">
-          {STATUS_ORDER.map((s) => {
-            const meta = STATUS_META[s];
-            return (
-              <div key={s} className={`rounded-xl border p-2 text-center transition-all ${meta.classes}`}>
-                <div className="text-lg font-bold leading-none">{counts[s] ?? 0}</div>
-                <div className="text-[10px] mt-1 opacity-90 font-medium">
-                  {ar ? meta.label.ar : meta.label.en}
-                </div>
+          ) : (
+            <div className="flex items-center justify-between gap-2 px-3 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10.5px]">
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                <span>{ar ? "متزامن سحابياً مع حسابك في Cloud Firestore" : "Live Synced with your Cloud Account"}</span>
               </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Batch Selection Action Bar */}
-      {selectionMode && (
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between p-3 rounded-2xl bg-card border border-primary/40 shadow-gold"
-        >
-          <button
-            onClick={selectAll}
-            className="flex items-center gap-2 text-xs font-bold text-primary hover:underline"
-          >
-            {selectedIds.size === filtered.length ? (
-              <CheckSquare className="w-4 h-4 text-primary" />
-            ) : (
-              <Square className="w-4 h-4 text-muted-foreground" />
-            )}
-            <span>{selectedIds.size === filtered.length ? (ar ? "إلغاء تحديد الكل" : "Deselect All") : (ar ? "تحديد الكل" : "Select All")}</span>
-            <span className="text-muted-foreground">({selectedIds.size})</span>
-          </button>
-
-          {selectedIds.size > 0 && (
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={deleteSelected}
-              className="h-8 text-xs font-bold gap-1.5"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>{ar ? `حذف المحدد (${selectedIds.size})` : `Delete Selected (${selectedIds.size})`}</span>
-            </Button>
+              <span className="opacity-80 font-mono hidden sm:inline">{user?.email}</span>
+            </div>
           )}
-        </motion.div>
-      )}
 
-      {/* Filters Bar */}
-      <div
-        dir={isRtl ? "rtl" : "ltr"}
-        className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1"
-      >
-        <Filter className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-        {(["all", ...STATUS_ORDER] as const).map((k) => {
-          const active = filter === k;
-          const label =
-            k === "all"
-              ? (ar ? "الكل" : "All")
-              : (ar ? STATUS_META[k].label.ar : STATUS_META[k].label.en);
-          return (
-            <button
-              key={k}
-              onClick={() => setFilter(k)}
-              className={`text-[11px] font-bold px-3 py-1.5 rounded-full border whitespace-nowrap transition-all ${
-                active
-                  ? "bg-gold-gradient text-primary-foreground border-transparent shadow-gold scale-[1.02]"
-                  : "bg-card/40 border-border text-muted-foreground hover:text-foreground hover:bg-card"
-              }`}
+          {/*  Unified Interactive Filter Bar (Eliminates Duplicate KPI Boxes & Saves 140px)  */}
+          <div
+            dir={isRtl ? "rtl" : "ltr"}
+            className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1"
+          >
+            {(["all", ...STATUS_ORDER] as const).map((k) => {
+              const active = filter === k;
+              const label =
+                k === "all"
+                  ? (ar ? "الكل" : "All")
+                  : (ar ? STATUS_META[k].label.ar : STATUS_META[k].label.en);
+              const meta = k !== "all" ? STATUS_META[k] : null;
+              const Icon = meta?.icon;
+
+              return (
+                <button
+                  key={k}
+                  onClick={() => setFilter(k)}
+                  className={`text-xs font-bold px-3 py-1.5 rounded-xl border whitespace-nowrap transition-all flex items-center gap-1.5 shadow-sm select-none ${
+                    active
+                      ? "bg-gold-gradient text-primary-foreground border-transparent shadow-gold scale-[1.02]"
+                      : "bg-card/70 border-border text-muted-foreground hover:text-foreground hover:bg-card"
+                  }`}
+                >
+                  {Icon && <Icon className="w-3.5 h-3.5 flex-shrink-0" />}
+                  <span>{label}</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                    active ? "bg-black/25 text-white" : "bg-muted text-muted-foreground font-semibold"
+                  }`}>
+                    {counts[k] ?? 0}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Batch Selection Action Bar */}
+          {selectionMode && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center justify-between p-3 rounded-2xl bg-card border border-primary/40 shadow-gold"
             >
-              {label} · {counts[k] ?? 0}
-            </button>
-          );
-        })}
-      </div>
+              <button
+                onClick={selectAll}
+                className="flex items-center gap-2 text-xs font-bold text-primary hover:underline"
+              >
+                {selectedIds.size === filtered.length ? (
+                  <CheckSquare className="w-4 h-4 text-primary" />
+                ) : (
+                  <Square className="w-4 h-4 text-muted-foreground" />
+                )}
+                <span>{selectedIds.size === filtered.length ? (ar ? "إلغاء تحديد الكل" : "Deselect All") : (ar ? "تحديد الكل" : "Select All")}</span>
+                <span className="text-muted-foreground">({selectedIds.size})</span>
+              </button>
+
+              {selectedIds.size > 0 && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={deleteSelected}
+                  className="h-8 text-xs font-bold gap-1.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>{ar ? `حذف المحدد (${selectedIds.size})` : `Delete Selected (${selectedIds.size})`}</span>
+                </Button>
+              )}
+            </motion.div>
+          )}
 
       {/* Applications List */}
       {filtered.length === 0 ? (
@@ -536,26 +534,30 @@ export const ApplicationsTab = () => {
                     </div>
                   </div>
 
-                  {/* Status switcher buttons */}
-                  <div className="flex flex-wrap gap-1.5 mt-3 pt-2.5 border-t border-border/70">
-                    <span className="text-[10px] font-bold text-muted-foreground self-center me-1">
-                      {ar ? "تغيير الحالة:" : "Change Status:"}
+                  {/* Compact Status Selector Row */}
+                  <div className="flex items-center justify-between gap-2 mt-2.5 pt-2 border-t border-border/50 text-xs">
+                    <span className="text-[10.5px] font-semibold text-muted-foreground">
+                      {ar ? "الحالة:" : "Status:"}
                     </span>
-                    {STATUS_ORDER.map((s) => {
-                      const on = r.status === s;
-                      const m = STATUS_META[s];
-                      return (
-                        <button
-                          key={s}
-                          onClick={() => setStatus(r.id, s)}
-                          className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border transition-all ${
-                            on ? `${m.classes} scale-105 shadow-sm` : "bg-card/40 border-border text-muted-foreground hover:text-foreground hover:bg-card"
-                          }`}
-                        >
-                          {ar ? m.label.ar : m.label.en}
-                        </button>
-                      );
-                    })}
+                    <div className="inline-flex p-0.5 rounded-lg bg-background/70 border border-border/80 gap-0.5">
+                      {STATUS_ORDER.map((s) => {
+                        const on = r.status === s;
+                        const m = STATUS_META[s];
+                        return (
+                          <button
+                            key={s}
+                            onClick={() => setStatus(r.id, s)}
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-md transition-all ${
+                              on
+                                ? `${m.classes} shadow-sm font-black`
+                                : "text-muted-foreground hover:text-foreground hover:bg-card/40"
+                            }`}
+                          >
+                            {ar ? m.label.ar : m.label.en}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
 
                   {/* Notes Editor Section */}
@@ -747,8 +749,8 @@ export const ApplicationsTab = () => {
               </h3>
               <p className="text-muted-foreground text-xs max-w-md mx-auto leading-relaxed">
                 {ar
-                  ? "تصفح دليل الجامعات العربية والعالمية واحفظ الجامعات التي تود استهدافها بالنقر على أيقونة الإشارة المرجعية (حفظ)، وستتزامن هنا سحابياً وتلقائياً عبر جميع أجهزتك."
-                  : "Explore Arab & Global universities and bookmark target institutions to track them here across all devices."}
+                  ? "تصفح دليل الجامعات واحفظ الجامعات التي تود استهدافها بالنقر على أيقونة الإشارة المرجعية (حفظ)، وستتزامن هنا سحابياً وتلقائياً عبر جميع أجهزتك."
+                  : "Explore the Universities Directory and bookmark target institutions to track them here across all devices."}
               </p>
               <Button
                 variant="luxe"

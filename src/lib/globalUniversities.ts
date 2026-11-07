@@ -56,6 +56,7 @@ export interface ActiveScholarshipProgram {
 }
 
 export interface GlobalUniversity {
+  id?: string;
   name: string;
   nameEn: string;
   city: string;

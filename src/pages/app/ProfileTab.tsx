@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Save, Plus, X, GraduationCap, MapPin, Mail, Phone, User as UserIcon,
   Edit3, Sparkles, Check, Camera, Loader2, Link as LinkIcon, Trash2,
-  Star, Briefcase, ChevronDown, Maximize2, Compass, HelpCircle, CheckCircle2,
+  Briefcase, ChevronDown, Maximize2, Compass, HelpCircle, CheckCircle2,
   ExternalLink, Award, Globe, BookOpen, Clock, Building, Copy, AlertCircle
 } from "lucide-react";
 import { toast } from "sonner";
@@ -79,6 +80,7 @@ const SKILL_CATEGORY_META: Record<SkillEntry["category"], { labelAr: string; lab
 };
 
 export const ProfileTab = () => {
+  const navigate = useNavigate();
   const { user, isGuest } = useAuth();
   const { t, lang, dir } = useLanguage();
   const { hideProfile } = useSettings();
@@ -344,6 +346,20 @@ export const ProfileTab = () => {
     reader.readAsDataURL(file);
   };
 
+  const handleRemoveAvatar = async () => {
+    const next = { ...draft, avatar_url: "" };
+    setDraft(next);
+    setProfile(next);
+    if (!isGuest && user) {
+      try {
+        await setDoc(doc(db, "users", user.id), { avatar_url: "" }, { merge: true });
+      } catch {}
+    } else {
+      guestStorage.set("profile", next);
+    }
+    toast.success(isRtl ? "تمت إزالة الصورة بنجاح" : "Profile photo removed");
+  };
+
   const handleSave = async () => {
     if (phoneLocal && !validatePhone(extrasDraft.phoneCountryIso, phoneLocal)) {
       toast.error(t("invalidPhoneForCountry"));
@@ -438,178 +454,219 @@ export const ProfileTab = () => {
 
     return (
       <div className="space-y-4 w-full pb-10">
-        {/* === Panoramic Gold Dashboard Hero with Integrated Squircle Avatar & Completion Bar === */}
+        {/* === Executive Profile Card: Unified Cohesive Layout with Smart Embedded Avatar === */}
         <motion.div
-          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-          className="relative rounded-3xl overflow-hidden border border-primary/30 shadow-luxe"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="relative rounded-3xl overflow-hidden border border-primary/30 bg-card/90 backdrop-blur-xl shadow-luxe p-4 sm:p-5"
+          dir={dir}
         >
-          {/* Panoramic gold backdrop */}
-          <div className="absolute inset-0 bg-[radial-gradient(120%_80%_at_50%_0%,hsl(var(--primary)/0.25),transparent_60%),linear-gradient(180deg,hsl(var(--primary)/0.08),hsl(var(--card)))]" />
-          <div className="absolute -top-20 -right-16 w-72 h-72 bg-primary/15 rounded-full blur-3xl" />
-          <div className="absolute -bottom-24 -left-16 w-72 h-72 bg-primary-glow/10 rounded-full blur-3xl" />
+          {/* Subtle Ambient Backdrop */}
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_80%_at_50%_0%,hsl(var(--primary)/0.18),transparent_70%),linear-gradient(180deg,hsl(var(--primary)/0.05),hsl(var(--card)))]" />
           <div className="pointer-events-none absolute inset-x-0 top-0 h-[2px] bg-gold-gradient opacity-70" />
 
-          {/* Edit Button */}
-          <button
-            onClick={startEdit}
-            className="absolute top-4 start-4 z-10 flex items-center gap-1.5 text-xs bg-background/70 backdrop-blur-md border border-primary/35 hover:bg-primary/20 text-primary px-3.5 py-1.5 rounded-full font-bold shadow-gold transition-all"
-          >
-            <Edit3 className="w-3.5 h-3.5" />
-            <span>{t("edit")}</span>
-          </button>
+          {/* Top-End Floating Executive Action Button (Circular Glass Edit Button) */}
+          <div className="absolute top-3.5 end-3.5 z-10">
+            <button
+              onClick={startEdit}
+              className="w-9 h-9 rounded-full bg-background/70 hover:bg-primary/20 text-primary border border-primary/30 flex items-center justify-center shadow-xs transition-all cursor-pointer active:scale-90"
+              title={t("edit")}
+              aria-label={t("edit")}
+            >
+              <Edit3 className="w-4 h-4" />
+            </button>
+          </div>
 
-          <div className="relative px-6 pt-10 pb-6 flex flex-col items-center text-center">
-            {/* Integrated Avatar with Progress Ring following Video Guidelines */}
-            <div className="relative group flex flex-col items-center">
-              {/* Outer Glow */}
-              <div className="absolute -inset-2 bg-gradient-to-tr from-[hsl(var(--gold)/0.4)] via-[hsl(var(--primary)/0.3)] to-[hsl(var(--gold)/0.4)] rounded-[36px] blur-lg opacity-40 group-hover:opacity-75 transition-opacity pointer-events-none" />
-
-              {/* Modern Avatar with Full Fallback Chain + Progress Ring */}
+          {/* Unified Identity Row: 88px Avatar with Carved Camera Button + Tightly Aligned Info Stack with Safe Spacing */}
+          <div className="relative flex items-center gap-4 sm:gap-5 pe-12">
+            {/* 88px Satisfying Avatar with Gold Progress Ring + Carved Camera Action */}
+            <div className="relative flex-shrink-0">
               <div
                 onClick={() => setPreviewOpen(true)}
-                className="relative cursor-pointer transition-transform duration-300 group-hover:scale-[1.02]"
-                title={ar ? "اضغط للمعاينة بالحجم الكامل" : "Click to preview full size"}
+                className="relative cursor-pointer transition-transform duration-200 hover:scale-[1.02] active:scale-95"
+                title={ar ? "انقر للمعاينة بملء الشاشة" : "Click for full screen preview"}
               >
                 <LuxeAvatar
                   src={profile.avatar_url && !hideProfile ? profile.avatar_url : null}
                   name={hideProfile ? "•" : (profile.full_name || user?.email || "User")}
-                  size="hero"
+                  size="executive"
                   shape="squircle"
                   showRing={true}
                   ringProgress={completion}
                   ringStatus="gold"
                 />
 
-                {/* Hover overlay hint */}
-                <div className="absolute inset-2.5 rounded-[26px] bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px] pointer-events-none">
-                  <Maximize2 className="w-6 h-6 text-white drop-shadow-md" />
-                </div>
-              </div>
-
-              {/* Completion Percentage Badge integrated under the Ring */}
-              <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-background/80 border border-primary/40 backdrop-blur-md shadow-sm">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-[11px] font-bold text-foreground font-mono">
-                  {ar ? `اكتمال الملف ${completion}%` : `Profile ${completion}%`}
-                </span>
-              </div>
-
-              {/* Smaller, refined camera button on the squircle corner */}
-              <label
-                className="absolute bottom-6 -end-1 w-8 h-8 rounded-xl bg-gold-gradient border-2 border-background flex items-center justify-center shadow-gold cursor-pointer hover:scale-110 active:scale-95 transition-transform z-20"
-                title={ar ? "تغيير الصورة الشخصية" : "Change photo"}
-              >
-                {uploading
-                  ? <Loader2 className="w-3.5 h-3.5 text-primary-foreground animate-spin" />
-                  : <Camera className="w-3.5 h-3.5 text-primary-foreground" />}
-                <input type="file" accept="image/*" className="hidden"
-                  onChange={handleAvatarUpload} disabled={uploading} />
-              </label>
-            </div>
-
-            {/* Profile Name & Primary Identity */}
-            <h2 className="font-display text-2xl sm:text-3xl font-bold text-gold-gradient mt-4 truncate max-w-full">
-              {hideProfile ? "•••••" : (profile.full_name || t("yourFullName"))}
-            </h2>
-
-            {extras.major && !hideProfile && (
-              <p className="text-xs sm:text-sm font-bold text-primary mt-1">
-                {extras.major}
-              </p>
-            )}
-
-            <p className="text-xs sm:text-sm font-medium text-foreground/80 truncate max-w-full flex items-center gap-1.5 mt-1.5 justify-center" dir="ltr">
-              <Mail className="w-3.5 h-3.5 text-primary" />
-              <span>
-                {hideProfile ? "•••••@•••••" : (user?.email || t("guestUserLabel"))}
-              </span>
-            </p>
-
-            <div className="flex flex-wrap items-center justify-center gap-3 mt-2.5 text-xs text-muted-foreground">
-              {profile.location && !hideProfile && (
-                <span className="inline-flex items-center gap-1 bg-background/50 border border-border/80 px-2.5 py-1 rounded-full text-foreground font-medium">
-                  <MapPin className="w-3.5 h-3.5 text-primary" /> {profile.location}
-                </span>
-              )}
-              {profile.phone && !hideProfile && (
-                <button
-                  type="button"
-                  onClick={() => handleCopyPhone(profile.phone)}
-                  title={ar ? "انقر لنسخ رقم الهاتف" : "Click to copy phone number"}
-                  className="inline-flex items-center gap-1.5 bg-background/60 hover:bg-primary/15 active:scale-95 border border-border/80 hover:border-primary/40 px-3 py-1 rounded-full text-foreground font-medium transition-all cursor-pointer group shadow-sm"
-                  dir="ltr"
+                {/* Smart Embedded Camera Badge (Carved Anchor Cutout) */}
+                <label
+                  onClick={(e) => e.stopPropagation()}
+                  className="absolute bottom-0 end-0 w-8 h-8 rounded-full bg-gold-gradient border-2 border-card flex items-center justify-center shadow-gold cursor-pointer hover:scale-110 active:scale-90 transition-transform z-20"
+                  title={ar ? "تغيير الصورة الشخصية" : "Change photo"}
                 >
-                  <Phone className="w-3.5 h-3.5 text-primary group-hover:scale-110 transition-transform" />
-                  <span>{profile.phone}</span>
-                  {copiedPhone ? (
-                    <Check className="w-3 h-3 text-emerald-400 shrink-0" />
+                  {uploading ? (
+                    <Loader2 className="w-3.5 h-3.5 text-primary-foreground animate-spin" />
                   ) : (
-                    <Copy className="w-3 h-3 text-muted-foreground opacity-60 group-hover:opacity-100 group-hover:text-primary transition-all shrink-0" />
+                    <Camera className="w-3.5 h-3.5 text-primary-foreground" />
                   )}
-                </button>
-              )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarUpload}
+                    disabled={uploading}
+                  />
+                </label>
+              </div>
             </div>
 
-            {/* Cloud Firestore Sync Status Badge */}
-            <div className="mt-3.5 flex items-center justify-center">
-              {!isGuest ? (
-                <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-semibold">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>{ar ? "متزامن لحظياً مع Cloud Firestore" : "Live Synced with Cloud Firestore"}</span>
-                </div>
-              ) : (
-                <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-medium">
-                  <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                  <span>{ar ? "بيانات محلية مؤقتة — سجّل الدخول لحفظ ملفك سحابياً" : "Guest Mode (Local) — Sign in to save profile to cloud"}</span>
-                </div>
-              )}
+            {/* Profile Identity Details (Full Name, Sub-info, Badges) - Safe Spacing: 6px & 10px */}
+            <div className={`flex-1 min-w-0 flex flex-col justify-center ${alignClass}`}>
+              {/* Line 1: Full Name */}
+              <h2 className="font-display text-lg sm:text-xl font-bold text-gold-gradient truncate leading-tight">
+                {hideProfile ? "•••••" : (profile.full_name || t("yourFullName"))}
+              </h2>
+
+              {/* Safe Spacing (mt-1.5 = 6px) - Line 2: Sub-identity (Major/Role or Email/Guest) */}
+              <div className="mt-1.5 text-xs text-muted-foreground truncate">
+                {(extras.major || extras.university) && !hideProfile ? (
+                  <p className="font-semibold text-primary truncate">
+                    {extras.major || extras.university}
+                    {extras.university && extras.major ? ` • ${extras.university}` : ""}
+                  </p>
+                ) : !isGuest && user?.email ? (
+                  <div className="flex items-center gap-1.5 truncate">
+                    <Mail className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                    <span className="truncate">{hideProfile ? "•••••@•••••" : user.email}</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-xs truncate">
+                    <span className="inline-flex items-center gap-1 text-amber-300 font-medium">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse flex-shrink-0" />
+                      <span>{ar ? "حساب زائر محلي" : "Guest Account"}</span>
+                    </span>
+                    <span className="text-muted-foreground/40">•</span>
+                    <button
+                      type="button"
+                      onClick={() => navigate("/auth")}
+                      className="text-primary hover:underline font-bold text-xs cursor-pointer transition-colors"
+                    >
+                      {ar ? "تسجيل الدخول" : "Sign in"}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Safe Spacing (mt-2.5 = 10px) - Line 3: Metadata Badges (Location / Phone) */}
+              <div className="flex flex-wrap items-center gap-2 mt-2.5 text-[11px]">
+                {profile.location && !hideProfile && (
+                  <span className="inline-flex items-center gap-1 bg-background/80 border border-border/80 px-2.5 py-1 rounded-lg text-foreground font-medium truncate max-w-[150px]">
+                    <MapPin className="w-3 h-3 text-primary flex-shrink-0" />
+                    <span className="truncate">{profile.location}</span>
+                  </span>
+                )}
+                {profile.phone && !hideProfile && (
+                  <button
+                    type="button"
+                    onClick={() => handleCopyPhone(profile.phone)}
+                    title={ar ? "انقر لنسخ رقم الهاتف" : "Click to copy"}
+                    className="inline-flex items-center gap-1 bg-background/80 hover:bg-primary/15 border border-border/80 px-2.5 py-1 rounded-lg text-foreground font-medium transition-colors cursor-pointer"
+                    dir="ltr"
+                  >
+                    <Phone className="w-3 h-3 text-primary flex-shrink-0" />
+                    <span>{profile.phone}</span>
+                    {copiedPhone ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-2.5 h-2.5 opacity-60" />}
+                  </button>
+                )}
+                {!isGuest && (
+                  <span className="inline-flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1 rounded-lg text-emerald-400 text-[10px] font-semibold">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>{ar ? "حساب موثق ومزامن" : "Verified Account"}</span>
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </motion.div>
 
-        {/* Modal: Full Image Preview */}
-        <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-          <DialogContent hideCloseButton className="max-w-md bg-card/95 border border-primary/40 backdrop-blur-2xl p-4 sm:p-5 rounded-3xl text-center">
-            <div className="flex items-center justify-between pb-3 border-b border-primary/20 gap-3">
-              <h3 className="font-display text-base text-gold-gradient font-bold truncate">
-                {ar ? "معاينة الصورة الشخصية" : "Profile Picture Preview"}
-              </h3>
-              <button
-                onClick={() => setPreviewOpen(false)}
-                className="w-10 h-10 rounded-xl hover:bg-primary/10 border border-primary/25 text-foreground flex items-center justify-center transition-all active:scale-95 cursor-pointer shrink-0"
-                aria-label={ar ? "إغلاق" : "Close"}
-                title={ar ? "إغلاق" : "Close"}
+        {/* === Full-Screen Immersive Cinema Lightbox (Telegram / iOS Photos Style) === */}
+        <AnimatePresence>
+          {previewOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-50 bg-black/95 backdrop-blur-2xl flex flex-col justify-between p-4 sm:p-6"
+              onClick={() => setPreviewOpen(false)}
+            >
+              {/* Top Floating Controls: Pure Close Button */}
+              <div className="w-full flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
+                <button
+                  type="button"
+                  onClick={() => setPreviewOpen(false)}
+                  className="w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 active:scale-90 border border-white/20 text-white flex items-center justify-center transition-all cursor-pointer shadow-lg"
+                  title={ar ? "إغلاق" : "Close"}
+                  aria-label={ar ? "إغلاق" : "Close"}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Center: Full-Dimension Cinema Media Display */}
+              <div
+                className="flex-1 w-full flex items-center justify-center p-2"
+                onClick={(e) => e.stopPropagation()}
               >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="py-4 flex justify-center">
-              <div className="w-64 h-64 sm:w-72 sm:h-72 rounded-3xl overflow-hidden border-2 border-primary/60 shadow-2xl bg-black/40 flex items-center justify-center">
-                {profile.avatar_url ? (
+                {profile.avatar_url && !hideProfile ? (
                   <img
                     src={profile.avatar_url}
-                    alt="avatar-preview"
-                    className="w-full h-full object-cover"
+                    alt="avatar-full"
+                    className="max-w-[92vw] max-h-[72vh] object-contain rounded-3xl shadow-[0_0_60px_rgba(0,0,0,0.9)] border border-primary/40"
                   />
                 ) : (
-                  <div className="w-full h-full bg-gold-gradient flex items-center justify-center font-display text-7xl text-primary-foreground font-bold">
-                    {initial}
+                  <div className="w-64 h-64 sm:w-80 sm:h-80 rounded-[32px] bg-gradient-to-br from-[#3D2C04] via-[#5C4308] to-[#1E2530] border-2 border-primary/60 flex items-center justify-center shadow-2xl">
+                    <span className="font-display text-8xl text-amber-200 font-bold">
+                      {initial}
+                    </span>
                   </div>
                 )}
               </div>
-            </div>
-            <div className="flex justify-center gap-2 pt-2">
-              <label className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gold-gradient text-primary-foreground text-xs font-bold cursor-pointer hover:opacity-90 shadow-gold">
-                <Camera className="w-3.5 h-3.5" />
-                {ar ? "تغيير الصورة" : "Change Photo"}
-                <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
-              </label>
-              <Button variant="ghostGold" size="sm" onClick={() => setPreviewOpen(false)}>
-                {ar ? "إغلاق" : "Close"}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+
+              {/* Bottom Action Bar: Crisp actions */}
+              <div
+                className="w-full max-w-sm mx-auto flex items-center justify-center gap-3 pb-4"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <label className="flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gold-gradient text-primary-foreground font-bold text-sm cursor-pointer shadow-gold hover:brightness-110 active:scale-95 transition-all">
+                  {uploading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Camera className="w-4 h-4" />
+                  )}
+                  <span>{ar ? "تغيير الصورة" : "Change Photo"}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarUpload}
+                    disabled={uploading}
+                  />
+                </label>
+
+                {profile.avatar_url && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveAvatar}
+                    className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-white/10 hover:bg-rose-500/20 text-white hover:text-rose-300 border border-white/15 text-sm font-bold transition-all cursor-pointer active:scale-95"
+                    title={ar ? "إزالة الصورة" : "Remove photo"}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>{ar ? "حذف" : "Delete"}</span>
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* === AI MATCHING PRECISION & READINESS CARD (PRO AI ADVISOR) === */}
         {!hideProfile && (
@@ -672,11 +729,11 @@ export const ProfileTab = () => {
                             <p className="text-[10px] text-muted-foreground truncate">{ar ? cat?.labelAr : cat?.labelEn}</p>
                           </div>
                         </div>
-                        <div className="flex gap-0.5 flex-shrink-0">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <Star
-                              key={star}
-                              className={`w-3 h-3 ${star <= sk.level ? "fill-primary text-primary" : "text-muted-foreground/30"}`}
+                        <div className="flex gap-1 items-center flex-shrink-0" title={`Level: ${sk.level} / 5`}>
+                          {[1, 2, 3, 4, 5].map((lvl) => (
+                            <div
+                              key={lvl}
+                              className={`h-1.5 w-3 rounded-full transition-colors ${lvl <= sk.level ? "bg-primary" : "bg-muted/70"}`}
                             />
                           ))}
                         </div>
@@ -988,11 +1045,11 @@ export const ProfileTab = () => {
                             <p className="text-[10px] text-muted-foreground truncate">{ar ? cat?.labelAr : cat?.labelEn}</p>
                           </div>
                         </div>
-                        <div className="flex gap-0.5 flex-shrink-0">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <Star
-                              key={star}
-                              className={`w-3 h-3 ${star <= sk.level ? "fill-primary text-primary" : "text-muted-foreground/30"}`}
+                        <div className="flex gap-1 items-center flex-shrink-0" title={`Level: ${sk.level} / 5`}>
+                          {[1, 2, 3, 4, 5].map((lvl) => (
+                            <div
+                              key={lvl}
+                              className={`h-1.5 w-3 rounded-full transition-colors ${lvl <= sk.level ? "bg-primary" : "bg-muted/70"}`}
                             />
                           ))}
                         </div>
@@ -1110,7 +1167,7 @@ export const ProfileTab = () => {
           <LuxeAvatar
             src={draft.avatar_url || null}
             name={draft.full_name || user?.email || "User"}
-            size="lg"
+            size="executive"
             shape="squircle"
             showRing={true}
             ringStatus="gold"
@@ -1279,7 +1336,7 @@ export const ProfileTab = () => {
 
           {/* PROFESSIONAL EDIT 2: DETAILED SKILLS WITH RATINGS */}
           <div id="field-skills">
-            <Section title={ar ? "المهارات المتقدمة ومستوى الإتقان (1 - 5 نجوم)" : "Detailed Skills & Proficiency (1 - 5 Stars)"} alignClass={alignClass}>
+            <Section title={ar ? "المهارات المتقدمة ومستوى الإتقان (1 - 5)" : "Detailed Skills & Proficiency (Level 1 - 5)"} alignClass={alignClass}>
               <div className="space-y-2.5">
                 {extrasDraft.detailedSkills.map((sk, idx) => (
                   <div key={idx} className="flex flex-wrap sm:flex-nowrap gap-2 items-center bg-background/50 p-2.5 rounded-2xl border border-border/80">
@@ -1305,18 +1362,19 @@ export const ProfileTab = () => {
                       </SelectContent>
                     </Select>
 
-                    <div className="flex gap-1 items-center px-2">
-                      {[1, 2, 3, 4, 5].map((star) => (
+                    <div className="flex gap-1.5 items-center px-2">
+                      {[1, 2, 3, 4, 5].map((lvl) => (
                         <button
-                          key={star}
+                          key={lvl}
                           type="button"
-                          onClick={() => updateDetailedSkill(idx, { level: star })}
-                          className="p-0.5 hover:scale-125 transition-transform"
-                        >
-                          <Star
-                            className={`w-4 h-4 ${star <= sk.level ? "fill-primary text-primary" : "text-muted-foreground/30"}`}
-                          />
-                        </button>
+                          onClick={() => updateDetailedSkill(idx, { level: lvl })}
+                          className={`h-3 w-3 rounded-full border transition-all ${
+                            lvl <= sk.level
+                              ? "bg-primary border-primary shadow-2xs"
+                              : "bg-muted/40 border-border/80 hover:border-primary/50"
+                          }`}
+                          title={`${lvl} / 5`}
+                        />
                       ))}
                     </div>
 
@@ -1571,18 +1629,19 @@ export const ProfileTab = () => {
                       </SelectContent>
                     </Select>
 
-                    <div className="flex gap-1 items-center px-2">
-                      {[1, 2, 3, 4, 5].map((star) => (
+                    <div className="flex gap-1.5 items-center px-2">
+                      {[1, 2, 3, 4, 5].map((lvl) => (
                         <button
-                          key={star}
+                          key={lvl}
                           type="button"
-                          onClick={() => updateDetailedSkill(idx, { level: star })}
-                          className="p-0.5 hover:scale-125 transition-transform"
-                        >
-                          <Star
-                            className={`w-4 h-4 ${star <= sk.level ? "fill-primary text-primary" : "text-muted-foreground/30"}`}
-                          />
-                        </button>
+                          onClick={() => updateDetailedSkill(idx, { level: lvl })}
+                          className={`h-3 w-3 rounded-full border transition-all ${
+                            lvl <= sk.level
+                              ? "bg-primary border-primary shadow-2xs"
+                              : "bg-muted/40 border-border/80 hover:border-primary/50"
+                          }`}
+                          title={`${lvl} / 5`}
+                        />
                       ))}
                     </div>
 

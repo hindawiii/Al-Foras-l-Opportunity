@@ -2,11 +2,11 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, Briefcase, Globe, ExternalLink, Sparkles, Filter, Clock,
-  DollarSign, CheckCircle2, ShieldAlert, Award, Star, ArrowRight, ArrowLeft,
+  DollarSign, CheckCircle2, ShieldAlert, Award, ArrowRight, ArrowLeft,
   BookOpen, HelpCircle, ChevronDown, ChevronUp, MapPin, Building2,
   TrendingUp, Wallet, Check, AlertCircle, Share2, Layers, RefreshCw,
   ShieldCheck, Info, FileText, CreditCard, Smartphone, Zap, ArrowUpRight,
-  Download, QrCode, Shield, CheckCircle, Copy, WifiOff, Bookmark
+  Download, QrCode, Shield, CheckCircle, Copy, WifiOff
 } from "lucide-react";
 import { JOBS, JOB_CATEGORIES, REGIONS_LIST, Job, JobCategory, JobRegion } from "@/lib/jobsData";
 import {
@@ -16,7 +16,6 @@ import {
   PaymentCategory
 } from "@/lib/paymentMethodsData";
 import { dynamicStore } from "@/lib/dynamicStore";
-import { jobsStore } from "@/lib/jobsStorage";
 import { toast } from "sonner";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -42,21 +41,11 @@ export const JobsTab = () => {
   // Jobs section filters and state
   const [selectedCategory, setSelectedCategory] = useState<JobCategory | "all">("all");
   const [selectedRegion, setSelectedRegion] = useState<JobRegion>("all");
+  const [isRegionPickerOpen, setIsRegionPickerOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [eligibilityModalJob, setEligibilityModalJob] = useState<Job | null>(null);
   const [activeTab, setActiveTab] = useState<"overview" | "guide" | "stories" | "payment">("overview");
-  const [savedJobIds, setSavedJobIds] = useState<string[]>(() => jobsStore.savedIds());
-  const [onlySaved, setOnlySaved] = useState(false);
-
-  // Reactive listener for Cloud Firestore saved jobs updates
-  useEffect(() => {
-    const handleSavedUpdated = () => {
-      setSavedJobIds(jobsStore.savedIds());
-    };
-    window.addEventListener("foras:jobs-saved-updated", handleSavedUpdated);
-    return () => window.removeEventListener("foras:jobs-saved-updated", handleSavedUpdated);
-  }, []);
 
   // Payments section filters and state
   const [selectedPaymentCat, setSelectedPaymentCat] = useState<PaymentCategory>("all");
@@ -195,9 +184,6 @@ export const JobsTab = () => {
   const filteredJobs = useMemo(() => {
     return liveJobs.filter((job) => {
       if (!job) return false;
-      if (onlySaved && !savedJobIds.includes(job.id)) {
-        return false;
-      }
       if (selectedCategory !== "all" && job.category !== selectedCategory) {
         return false;
       }
@@ -217,7 +203,7 @@ export const JobsTab = () => {
       }
       return true;
     });
-  }, [selectedCategory, selectedRegion, searchQuery, liveJobs, onlySaved, savedJobIds]);
+  }, [selectedCategory, selectedRegion, searchQuery, liveJobs]);
 
   // Filtered payment methods list
   const filteredPaymentMethods = useMemo(() => {
@@ -257,8 +243,8 @@ export const JobsTab = () => {
   };
 
   return (
-    <div className="space-y-5 w-full pb-12">
-      {/* 🌟 LUXE PRO TWO-PILLAR SEGMENTED SWITCHER 🌟 */}
+    <div className="space-y-5 w-full pb-28">
+      {/*  LUXE PRO TWO-PILLAR SEGMENTED SWITCHER  */}
       <div className="p-1.5 bg-card/90 backdrop-blur-xl border border-border/80 rounded-2xl shadow-luxe flex items-center justify-between gap-1.5">
         <button
           onClick={() => setMainPillar("jobs")}
@@ -273,7 +259,7 @@ export const JobsTab = () => {
           <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
             mainPillar === "jobs" ? "bg-primary-foreground/20 text-primary-foreground" : "bg-primary/10 text-primary"
           }`}>
-            {liveJobs.length}
+            {filteredJobs.length}
           </span>
         </button>
 
@@ -290,7 +276,7 @@ export const JobsTab = () => {
           <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
             mainPillar === "payments" ? "bg-primary-foreground/20 text-primary-foreground" : "bg-amber-500/10 text-amber-500"
           }`}>
-            {PAYMENT_METHODS.length}
+            {filteredPaymentMethods.length}
           </span>
         </button>
       </div>
@@ -299,74 +285,56 @@ export const JobsTab = () => {
       {/* 💼 PILLAR 1: FREELANCE PLATFORMS (منصات العمل الحر)                       */}
       {/* ======================================================================= */}
       {mainPillar === "jobs" && (
-        <div className="space-y-4">
-            {/* Radiant Search Bar */}
-            <div className="relative group">
-              <div className="absolute -inset-0.5 bg-primary/20 rounded-2xl blur-md opacity-20 group-hover:opacity-40 group-focus-within:opacity-60 transition-all duration-300" />
-              <div className="relative flex items-center w-full bg-card/90 backdrop-blur-xl border border-border/80 rounded-2xl shadow-luxe focus-within:border-primary/70 transition-all">
-                <div className="flex items-center justify-center w-11 h-11 ps-1 text-primary flex-shrink-0">
-                  <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center">
-                    <Search className="w-4 h-4 text-primary" strokeWidth={2.5} />
-                  </div>
-                </div>
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={ar ? "ابحث عن منصة، مهارة، شركة..." : "Search platform, skill, company..."}
-                  className="w-full h-12 py-2.5 ps-2 pe-10 text-xs sm:text-sm bg-transparent font-medium text-foreground placeholder:text-muted-foreground/80 focus:outline-none"
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery("")}
-                    className="absolute end-3 w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-bold"
-                  >
-                    ✕
-                  </button>
-                )}
+        <div className="space-y-3">
+          {/* 🔍 100% Full-Width Control Bar: Search with Embedded Geographic Scope */}
+          <div className="relative group w-full">
+            <div className="absolute -inset-0.5 bg-primary/20 rounded-2xl blur-md opacity-20 group-hover:opacity-40 group-focus-within:opacity-60 transition-all duration-300" />
+            <div className="relative flex items-center w-full bg-card/90 backdrop-blur-xl border border-border/80 rounded-2xl shadow-luxe focus-within:border-primary/70 transition-all p-1">
+              <div className="flex items-center justify-center w-9 h-9 text-primary flex-shrink-0 ps-1">
+                <Search className="w-4 h-4 text-primary" strokeWidth={2.5} />
               </div>
-            </div>
-
-          {/* Region Filter (Continents & Arab World) */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
-            <span className="text-[11px] font-bold text-muted-foreground flex-shrink-0 flex items-center gap-1">
-              <Globe className="w-3.5 h-3.5 text-primary" />
-              {ar ? "النطاق الجغرافي:" : "Region:"}
-            </span>
-            {REGIONS_LIST.map((r) => {
-              const active = selectedRegion === r.id;
-              return (
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={ar ? "ابحث عن منصة، مهارة، شركة..." : "Search platform, skill, company..."}
+                className="flex-1 h-9 py-1 px-2 text-xs sm:text-sm bg-transparent font-medium text-foreground placeholder:text-muted-foreground/70 focus:outline-none min-w-0"
+              />
+              {searchQuery && (
                 <button
-                  key={r.id}
-                  onClick={() => setSelectedRegion(r.id)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border flex items-center gap-1 ${
-                    active
-                      ? "bg-gold-gradient text-primary-foreground border-transparent shadow-gold scale-[1.02]"
-                      : "bg-card/60 border-border text-muted-foreground hover:text-foreground hover:bg-card"
-                  }`}
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="w-5 h-5 rounded-full bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center text-[10px] font-bold me-1 flex-shrink-0"
+                  aria-label={ar ? "مسح البحث" : "Clear search"}
                 >
-                  <span>{r.flag}</span>
-                  <span>{ar ? r.labelAr : r.labelEn}</span>
+                  ✕
                 </button>
-              );
-            })}
+              )}
+
+              {/* Embedded Geographic Scope Chip */}
+              <button
+                type="button"
+                onClick={() => setIsRegionPickerOpen(true)}
+                className={`h-8 px-2.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all flex-shrink-0 shadow-2xs hover:scale-[1.02] active:scale-[0.98] ${
+                  selectedRegion !== "all"
+                    ? "bg-gold-gradient text-primary-foreground border-transparent shadow-gold"
+                    : "bg-muted/60 border-border/70 text-foreground hover:bg-muted hover:border-primary/40"
+                }`}
+                title={ar ? "تصفية حسب النطاق الجغرافي" : "Filter by geographic region"}
+              >
+                <span className="text-sm">{REGIONS_LIST.find((r) => r.id === selectedRegion)?.flag || "🌍"}</span>
+                <span className="text-[11px] font-bold">
+                  {selectedRegion === "all"
+                    ? (ar ? "الكل" : "All")
+                    : (REGIONS_LIST.find((r) => r.id === selectedRegion)?.[ar ? "labelAr" : "labelEn"] || (ar ? "النطاق" : "Region"))}
+                </span>
+                <ChevronDown className="w-3 h-3 opacity-60" />
+              </button>
+            </div>
           </div>
 
-          {/* Category Pills Filter */}
+          {/* 🏷️ Pure Professional Categories Row (Row 2) */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
-            {/* Quick Saved Filter Pill */}
-            <button
-              onClick={() => setOnlySaved(!onlySaved)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all border flex items-center gap-1.5 ${
-                onlySaved
-                  ? "bg-primary text-primary-foreground border-primary/50 shadow-gold scale-[1.02]"
-                  : "bg-card/70 border-border/80 text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-card"
-              }`}
-            >
-              <Bookmark className={`w-3.5 h-3.5 ${onlySaved ? "fill-current" : ""}`} />
-              <span>{ar ? `المحفوظة (${savedJobIds.length})` : `Saved (${savedJobIds.length})`}</span>
-            </button>
-
             {JOB_CATEGORIES.map((cat) => {
               const active = selectedCategory === cat.id;
               return (
@@ -379,49 +347,26 @@ export const JobsTab = () => {
                       : "bg-card/70 border-border/80 text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-card"
                   }`}
                 >
-                  <span>{cat.emoji}</span>
+                  {cat.emoji ? <span>{cat.emoji}</span> : null}
                   <span>{ar ? cat.label : cat.labelEn}</span>
                 </button>
               );
             })}
           </div>
 
-          {/* Platform Count Header */}
-          <div className="flex items-center justify-between px-1 text-xs text-muted-foreground font-semibold">
-            <span className="flex items-center gap-1.5 flex-wrap">
-              <Sparkles className="w-3.5 h-3.5 text-primary flex-shrink-0" />
-              <span>{ar ? `تم العثور على ${filteredJobs.length} منصة وفرصة عمل حر` : `Found ${filteredJobs.length} freelance platforms`}</span>
-              {!isOnline && (
-                <span
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
-                    !isGlobalOfflineEnabled
-                      ? "bg-rose-500/15 text-rose-300 border-rose-500/30"
-                      : !isUserOfflineEnabled
-                      ? "bg-slate-700/50 text-slate-300 border-slate-600"
-                      : "bg-amber-500/15 text-amber-300 border-amber-500/30"
-                  }`}
-                >
-                  <WifiOff className="w-2.5 h-2.5" />
-                  <span>
-                    {!isGlobalOfflineEnabled
-                      ? ar
-                        ? "معطل إدارياً"
-                        : "Admin Locked"
-                      : !isUserOfflineEnabled
-                      ? ar
-                        ? "الأوفلاين موقوف"
-                        : "Offline Paused"
-                      : ar
-                      ? "مخزنة دون اتصال"
-                      : "Cached Offline"}
-                  </span>
-                </span>
-              )}
-            </span>
-            <span className="text-[11px] text-primary/80 font-normal hidden sm:inline">
-              {ar ? "مرتبة وفق الأولوية الدقيقة (القمة العالمية ثم الريادة العربية)" : "Ranked by Global Giants & Arab Leaders"}
-            </span>
-          </div>
+          {/* Offline indicator if disconnected */}
+          {!isOnline && (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-500 text-xs font-semibold">
+              <WifiOff className="w-3.5 h-3.5 flex-shrink-0" />
+              <span>
+                {!isGlobalOfflineEnabled
+                  ? ar ? "الأوفلاين معطل إدارياً" : "Offline mode admin locked"
+                  : !isUserOfflineEnabled
+                  ? ar ? "الأوفلاين موقوف" : "Offline paused"
+                  : ar ? "تصفح دون اتصال (منصات مخزنة)" : "Offline browsing (cached)"}
+              </span>
+            </div>
+          )}
 
           {/* Platforms Grid */}
           {liveJobs.length === 0 ? (
@@ -486,31 +431,6 @@ export const JobsTab = () => {
                             {region}
                           </span>
                         )}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const isNowSaved = jobsStore.toggle(job.id);
-                            setSavedJobIds(jobsStore.savedIds());
-                            toast.success(
-                              isNowSaved
-                                ? (ar ? "تم حفظ المنصة في المفضلة ومزامنتها سحابياً" : "Platform saved & synced to cloud")
-                                : (ar ? "تمت إزالة المنصة من المحفوظات" : "Platform removed from saved")
-                            );
-                          }}
-                          className={`p-1.5 rounded-lg border transition-all ${
-                            savedJobIds.includes(job.id)
-                              ? "bg-primary/15 border-primary/40 text-primary"
-                              : "bg-card/50 border-border text-muted-foreground hover:text-foreground hover:border-primary/30"
-                          }`}
-                          title={ar ? "حفظ ومزامنة سحابية" : "Save & Sync"}
-                        >
-                          <Bookmark
-                            className={`w-3.5 h-3.5 ${
-                              savedJobIds.includes(job.id) ? "fill-primary text-primary" : ""
-                            }`}
-                          />
-                        </button>
                       </div>
                     </div>
 
@@ -651,18 +571,6 @@ export const JobsTab = () => {
             })}
           </div>
 
-          {/* Payments Results Count */}
-          <div className="flex items-center justify-between px-1 text-xs text-muted-foreground font-semibold">
-            <span className="flex items-center gap-1">
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              {ar ? `تم إيجاد ${filteredPaymentMethods.length} وسيلة ومحفظة دفع معتمدة` : `Found ${filteredPaymentMethods.length} verified payout options`}
-            </span>
-            <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
-              <CheckCircle className="w-3 h-3" />
-              {ar ? "روابط وتطبيقات رسمية 100%" : "100% Official Links & Apps"}
-            </span>
-          </div>
-
           {/* Payment Methods Luxe Grid */}
           {filteredPaymentMethods.length === 0 ? (
             <div className="py-12 text-center rounded-2xl border border-dashed border-border bg-card/40 p-8 space-y-3">
@@ -711,9 +619,10 @@ export const JobsTab = () => {
                             <span className="text-xs font-bold text-muted-foreground/80">#{idx + 1}</span>
                             <h3 className="font-bold text-sm text-foreground">{name}</h3>
                           </div>
-                          <div className="flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 font-semibold">
-                            <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
-                            <span>{method.rating}</span>
+                          <div className="flex items-center gap-1.5 text-[11px] font-semibold">
+                            <span className="px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-500 font-bold text-[10px] border border-amber-500/30">
+                              {method.rating} / 5.0
+                            </span>
                             <span className="text-[10px] text-muted-foreground">({method.reviewCount.toLocaleString()})</span>
                           </div>
                         </div>
@@ -798,28 +707,6 @@ export const JobsTab = () => {
                   </div>
 
                   <div className="flex items-center gap-1.5">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        const isNowSaved = jobsStore.toggle(selectedJob.id);
-                        setSavedJobIds(jobsStore.savedIds());
-                        toast.success(
-                          isNowSaved
-                            ? (ar ? "تم حفظ المنصة في المفضلة ومزامنتها سحابياً" : "Platform saved & synced to cloud")
-                            : (ar ? "تمت إزالة المنصة من المحفوظات" : "Platform removed from saved")
-                        );
-                      }}
-                      className={`h-8 w-8 transition-colors ${
-                        savedJobIds.includes(selectedJob.id)
-                          ? "text-primary bg-primary/10"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                      title={ar ? "حفظ ومزامنة سحابية" : "Save & Cloud Sync"}
-                    >
-                      <Bookmark className={`w-4 h-4 ${savedJobIds.includes(selectedJob.id) ? "fill-primary" : ""}`} />
-                    </Button>
-
                     <Button
                       variant="ghost"
                       size="icon"
@@ -1326,6 +1213,51 @@ export const JobsTab = () => {
               </Button>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ======================================================================= */}
+      {/* 🌍 MODAL: GEOGRAPHIC SCOPE SELECTOR                                    */}
+      {/* ======================================================================= */}
+      <Dialog open={isRegionPickerOpen} onOpenChange={setIsRegionPickerOpen}>
+        <DialogContent className="sm:max-w-md p-5 rounded-2xl bg-card border border-border shadow-luxe">
+          <DialogHeader className={alignClass}>
+            <DialogTitle className="text-sm sm:text-base font-bold flex items-center gap-2 text-foreground">
+              <Globe className="w-4 h-4 text-primary" />
+              <span>{ar ? "تحديد النطاق الجغرافي للمنصات" : "Select Geographic Region"}</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              {ar
+                ? "اختر النطاق الجغرافي لعرض المنصات المتاحة للعمل والقبول في منطقتك:"
+                : "Filter freelance platforms accepted in your geographic region:"}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
+            {REGIONS_LIST.map((r) => {
+              const active = selectedRegion === r.id;
+              return (
+                <button
+                  key={r.id}
+                  onClick={() => {
+                    setSelectedRegion(r.id);
+                    setIsRegionPickerOpen(false);
+                  }}
+                  className={`p-3 rounded-xl border text-xs font-bold flex items-center justify-between transition-all ${
+                    active
+                      ? "bg-gold-gradient text-primary-foreground border-transparent shadow-gold scale-[1.01]"
+                      : "bg-background/60 border-border text-foreground hover:bg-card hover:border-primary/40"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">{r.flag}</span>
+                    <span>{ar ? r.labelAr : r.labelEn}</span>
+                  </div>
+                  {active && <Check className="w-4 h-4 text-primary-foreground flex-shrink-0" />}
+                </button>
+              );
+            })}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

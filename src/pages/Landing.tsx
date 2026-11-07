@@ -26,7 +26,6 @@ import {
   Building2,
   DollarSign,
   TrendingUp,
-  Star,
   CheckCircle2,
   BookmarkCheck,
   ChevronRight,
@@ -266,20 +265,20 @@ const Landing = () => {
         </motion.div>
       </section>
 
-      {/* 🌟 UNIFIED CURIOSITY SECTION: ركن الجامعات والمنح المعتمدة (Metrics Ticker + Interactive Action Hook) */}
-      <section className="relative z-10 px-5 sm:px-10 py-10 max-w-5xl mx-auto">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-primary/10 border border-primary/30 text-primary text-2xs font-bold mb-2.5 shadow-sm">
+      {/* UNIFIED CURIOSITY SECTION: ركن الجامعات والمنح المعتمدة (Metrics Ticker + Interactive Action Hook) */}
+      <section className="relative z-10 px-5 sm:px-10 py-12 sm:py-16 max-w-5xl mx-auto">
+        <div className="text-center mb-8 pt-2">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-primary/10 border border-primary/30 text-primary text-2xs font-bold mb-3 shadow-sm">
             <GraduationCap className="w-3.5 h-3.5" />
             <span>{isRtl ? "دليل الجامعات والمنح المعتمدة" : "Accredited Universities & Grants Guide"}</span>
           </div>
           <h2
-            className="font-bold text-2xl sm:text-3xl text-gold-gradient"
-            style={{ fontFamily: "'Tajawal', sans-serif" }}
+            className="font-bold text-2xl sm:text-3xl text-gold-gradient leading-relaxed max-w-2xl mx-auto [text-wrap:balance]"
+            style={{ fontFamily: "'Cairo', 'Tajawal', sans-serif" }}
           >
             {lang === "ar" ? <TashkeelText>{t("landingArabHubTitle")}</TashkeelText> : t("landingArabHubTitle")}
           </h2>
-          <p className="text-muted-foreground text-xs sm:text-sm mt-1.5 max-w-xl mx-auto leading-relaxed">
+          <p className="text-muted-foreground text-xs sm:text-sm mt-2 max-w-xl mx-auto leading-relaxed">
             {t("landingArabHubSubtitle")}
           </p>
         </div>
@@ -324,9 +323,9 @@ const Landing = () => {
                 variant="luxe"
                 size="lg"
                 onClick={() => goApp("arabUnis")}
-                className="px-8 py-3 text-sm font-bold shadow-gold hover:scale-105 transition-transform inline-flex items-center gap-2"
+                className="px-8 py-3 text-sm font-bold shadow-gold hover:scale-105 transition-transform inline-flex items-center gap-2 whitespace-nowrap"
               >
-                <span>{isRtl ? "فحص الجامعات والمنح المطابقة لمعدلي ←" : "Check Universities Matching My GPA ←"}</span>
+                <span>{isRtl ? "فحص ومطابقة معدلي ←" : "Match My GPA Now ←"}</span>
               </Button>
             </div>
           </div>
@@ -430,7 +429,7 @@ const Landing = () => {
         </div>
 
         <div className="mt-6 text-center">
-          <Button variant="luxe" size="lg" onClick={() => goApp("scholarships")} className="px-8 shadow-gold">
+          <Button variant="luxe" size="lg" onClick={() => goApp("scholarships")} className="px-8 shadow-gold inline-flex items-center gap-2 whitespace-nowrap font-bold">
             <span>{t("landingViewAll")}</span>
             <ArrowRight className={`w-4 h-4 ${isRtl ? "rotate-180" : ""}`} />
           </Button>
@@ -512,7 +511,7 @@ const Landing = () => {
         </div>
 
         <div className="mt-6 text-center">
-          <Button variant="luxe" size="lg" onClick={() => goApp("jobs")} className="px-8 shadow-gold">
+          <Button variant="luxe" size="lg" onClick={() => goApp("jobs")} className="px-8 shadow-gold inline-flex items-center gap-2 whitespace-nowrap font-bold">
             <span>{t("landingFreelanceViewAll")}</span>
             <ArrowRight className={`w-4 h-4 ${isRtl ? "rotate-180" : ""}`} />
           </Button>
