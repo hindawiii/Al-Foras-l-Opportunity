@@ -33,6 +33,7 @@ import {
   ChevronDown,
   ChevronUp,
   ExternalLink,
+  Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BrandMark } from "@/components/foras/Logo";
@@ -396,63 +397,68 @@ const Landing = () => {
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.08 }}
                 whileHover={{ y: -3 }}
-                className="glass rounded-2xl p-4 sm:p-5 border-primary/25 cursor-pointer transition-all hover:border-primary/60 shadow-luxe flex flex-col justify-between bg-card/85 group"
+                className="cursor-pointer rounded-2xl p-4 sm:p-5 bg-card/85 hover:bg-card backdrop-blur-md border border-primary/25 hover:border-primary/60 transition-all shadow-luxe flex flex-col justify-between group"
                 onClick={() => goApp("scholarships", { scholarship: s.id })}
               >
                 <div>
-                  {/* Top Header: Flag + Organization & Country (Start) vs Funding Badge (End) */}
+                  {/* Card Header: Flag + Organization Title (start) & Match Score Badge (end) */}
                   <div className="flex items-center justify-between gap-2 mb-2">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-10 h-10 rounded-full bg-card/90 border border-primary/20 flex items-center justify-center text-xl flex-shrink-0 shadow-sm">
+                      <div className="w-10 h-10 rounded-full bg-background/90 border border-border/80 flex items-center justify-center text-xl flex-shrink-0 shadow-xs">
                         <span>{s.flag}</span>
                       </div>
                       <div className="min-w-0">
-                        <div className="flex items-center gap-1 min-w-0">
-                          {s.verified && <BadgeCheck className="w-3.5 h-3.5 text-[hsl(var(--verified))] flex-shrink-0" />}
-                          <span className="text-xs sm:text-sm font-bold text-primary block truncate">{displayOrg}</span>
-                        </div>
+                        <p className="text-xs sm:text-sm font-black truncate text-gold">{displayOrg}</p>
                         <span className="text-[10px] text-muted-foreground whitespace-nowrap block truncate">
-                          {displayCountry} {s.category === "arab" ? (isRtl ? "· منحة عربية" : "· Arab") : (isRtl ? "· دولية" : "· Global")}
+                          {s.category === "arab" ? (isRtl ? "منحة دراسية عربية" : "Arab Scholarship") : (isRtl ? "منحة دراسية عالمية" : "Global Scholarship")}
                         </span>
                       </div>
                     </div>
 
-                    {/* Concise Funding Badge (mirrors the salary badge in Jobs cards) */}
-                    <span className="px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-2xs sm:text-xs font-bold whitespace-nowrap flex-shrink-0">
-                      🏷️ {displayAmount ? (displayAmount.includes("(") ? displayAmount.split("(")[0].trim() : displayAmount) : (isRtl ? "ممولة بالكامل" : "Fully Funded")}
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] sm:text-2xs font-bold bg-gold/15 border border-gold/40 text-gold flex-shrink-0 shadow-xs">
+                      <Sparkles className="w-3 h-3 text-gold" />
+                      <span>{s.match_score || 95}%</span>
                     </span>
                   </div>
 
-                  {/* Full-Width Title (100% width, no lateral squeezing or Bidi clipping) */}
-                  <h3 className="font-bold text-foreground text-sm sm:text-base line-clamp-2 leading-relaxed [text-wrap:pretty] mb-1.5 group-hover:text-primary transition-colors">
+                  {/* Full-width Title */}
+                  <h3 className="text-sm sm:text-base font-bold text-foreground leading-relaxed line-clamp-2 mt-1 mb-2 group-hover:text-primary transition-colors">
                     {displayTitle}
                   </h3>
 
-                  {/* Full-Width Description */}
-                  <p className="text-xs text-gray-300/90 line-clamp-2 leading-relaxed [text-wrap:pretty]">
-                    {displayDesc}
-                  </p>
-                </div>
-
-                {/* Symmetric Footer Strip: Deadline & Match (Start) vs Action Link (End) */}
-                <div className="mt-4 pt-2.5 border-t border-primary/10 flex items-center justify-between gap-2 text-2xs">
-                  <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                    {s.deadline && (
-                      <span className="px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20 flex items-center gap-1 whitespace-nowrap">
-                        <Clock className="w-3 h-3 text-primary flex-shrink-0" />
-                        <span>{s.deadline}</span>
-                      </span>
+                  {/* Clean Vertical Metadata List (identical to in-app list card) */}
+                  <div className="space-y-1.5 mt-2.5 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-2 text-xs">
+                      <MapPin className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                      <span className="truncate text-foreground/90 font-medium">{displayCountry}</span>
+                    </div>
+                    {displayAmount && (
+                      <div className="flex items-center gap-2 text-xs text-amber-400 font-semibold">
+                        <Award className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+                        <span className="truncate">{displayAmount}</span>
+                      </div>
                     )}
-                    {s.match_score && (
-                      <span className="px-2 py-0.5 rounded-md bg-gold/10 text-gold border border-gold/25 font-bold whitespace-nowrap">
-                        {s.match_score}% {isRtl ? "تطابق" : "Match"}
-                      </span>
+                    {s.deadline && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Clock className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                        <span>{s.deadline}</span>
+                      </div>
                     )}
                   </div>
+                </div>
 
-                  <span className="text-primary font-bold flex items-center gap-1 whitespace-nowrap flex-shrink-0 group-hover:underline">
-                    <span>{isRtl ? "استكشف المنحة" : "Explore Scholarship"}</span>
-                    <ArrowRight className={`w-3 h-3 ${isRtl ? "rotate-180" : ""}`} />
+                {/* Clean Dedicated Bottom Action Strip - exactly as in the in-app list card, without x or favorite */}
+                <div className="pt-3 mt-3 border-t border-border/40 flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    className="h-9 px-4 rounded-xl bg-primary/15 hover:bg-primary/25 border border-primary/30 text-primary text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-xs active:scale-95"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>{isRtl ? "معاينة المنحة" : "View Details"}</span>
+                    <span className="text-xs">↗</span>
+                  </button>
+                  <span className="text-[11px] text-muted-foreground font-medium hidden sm:inline">
+                    {isRtl ? "انتقال فوري للمنحة" : "Direct In-App"}
                   </span>
                 </div>
               </motion.div>
@@ -501,42 +507,69 @@ const Landing = () => {
                 transition={{ delay: idx * 0.08 }}
                 whileHover={{ y: -3 }}
                 onClick={() => goApp("jobs", { job: job.id })}
-                className="glass rounded-2xl p-4 sm:p-5 border-primary/25 cursor-pointer transition-all hover:border-primary/60 shadow-luxe flex flex-col justify-between bg-card/85"
+                className="cursor-pointer rounded-2xl p-4 sm:p-5 bg-card/85 hover:bg-card backdrop-blur-md border border-primary/25 hover:border-primary/60 transition-all shadow-luxe flex flex-col justify-between group"
               >
                 <div>
+                  {/* Card Header: Job Icon + Company (start) & Match Score Badge (end) */}
                   <div className="flex items-center justify-between gap-2 mb-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="w-10 h-10 rounded-full bg-card/90 border border-primary/20 flex items-center justify-center text-xl flex-shrink-0 shadow-sm">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-10 h-10 rounded-full bg-background/90 border border-border/80 flex items-center justify-center text-xl flex-shrink-0 shadow-xs">
                         <span>{job.emoji || "💼"}</span>
                       </div>
                       <div className="min-w-0">
-                        <span className="text-xs sm:text-sm font-bold text-primary block truncate">{job.company}</span>
-                        <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                          {isRtl ? "عن بُعد 100% · حر" : "100% Remote · Freelance"}
+                        <p className="text-xs sm:text-sm font-black truncate text-sky-400">{job.company}</p>
+                        <span className="text-[10px] text-muted-foreground whitespace-nowrap block truncate">
+                          {isRtl ? "عمل عن بُعد 100% · حر" : "100% Remote · Freelance"}
                         </span>
                       </div>
                     </div>
-                    <span className="px-2.5 py-1 rounded-lg bg-gold/15 border border-gold/30 text-gold text-2xs sm:text-xs font-bold whitespace-nowrap flex-shrink-0">
-                      💰 {earning}
+
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] sm:text-2xs font-bold bg-sky-500/15 border border-sky-500/40 text-sky-400 flex-shrink-0 shadow-xs">
+                      <Sparkles className="w-3 h-3 text-sky-400" />
+                      <span>98% {isRtl ? "تطابق" : "Match"}</span>
                     </span>
                   </div>
 
-                  <h3 className="font-bold text-foreground text-sm sm:text-base line-clamp-2 leading-relaxed [text-wrap:pretty] mb-1.5">{displayTitle}</h3>
-                  <p className="text-xs text-gray-300/90 line-clamp-2 leading-relaxed [text-wrap:pretty]">{displayDesc}</p>
+                  {/* Full-width Title */}
+                  <h3 className="text-sm sm:text-base font-bold text-foreground leading-relaxed line-clamp-2 mt-1 mb-2 group-hover:text-primary transition-colors">
+                    {displayTitle}
+                  </h3>
+
+                  {/* Clean Vertical Metadata List (identical to in-app list card) */}
+                  <div className="space-y-1.5 mt-2.5 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-2 text-xs">
+                      <Globe2 className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                      <span className="truncate text-foreground/90 font-medium">
+                        {isRtl ? "العمل متاح لجميع الدول العربية والعالمية" : "Available Globally & Arab Countries"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-amber-400 font-semibold">
+                      <DollarSign className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+                      <span className="truncate">{earning}</span>
+                    </div>
+                    {((lang === "en" ? (job.skillsEn || job.skills) : job.skills) || []).length > 0 && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Briefcase className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                        <span className="truncate">
+                          {((lang === "en" ? (job.skillsEn || job.skills) : job.skills) || []).slice(0, 3).join(" • ")}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                <div className="mt-4 pt-2.5 border-t border-primary/10 flex items-center justify-between gap-2 text-2xs">
-                  <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                    {((lang === "en" ? (job.skillsEn || job.skills) : job.skills) || []).slice(0, 2).map((sk) => (
-                      <span key={sk} className="px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20 truncate">
-                        {sk}
-                      </span>
-                    ))}
-                  </div>
-
-                  <span className="text-primary font-bold flex items-center gap-1 whitespace-nowrap flex-shrink-0 group-hover:underline">
-                    <span>{isRtl ? "التقديم عبر المنصة" : "Apply via App"}</span>
-                    <ArrowRight className={`w-3 h-3 ${isRtl ? "rotate-180" : ""}`} />
+                {/* Clean Dedicated Bottom Action Strip - exactly as in the in-app list card, without x or favorite */}
+                <div className="pt-3 mt-3 border-t border-border/40 flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    className="h-9 px-4 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/30 text-sky-400 text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-xs active:scale-95"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>{isRtl ? "معاينة الفرصة" : "View Details"}</span>
+                    <span className="text-xs">↗</span>
+                  </button>
+                  <span className="text-[11px] text-muted-foreground font-medium hidden sm:inline">
+                    {isRtl ? "انتقال فوري للفرصة" : "Direct In-App"}
                   </span>
                 </div>
               </motion.div>

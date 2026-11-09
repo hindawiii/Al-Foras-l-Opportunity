@@ -488,18 +488,18 @@ export const ProfileTab = () => {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="relative rounded-3xl overflow-hidden border border-primary/30 bg-card/90 backdrop-blur-xl shadow-luxe p-4 sm:p-5"
+          className="relative rounded-3xl overflow-hidden border border-primary/35 bg-card/90 backdrop-blur-xl shadow-luxe p-6 sm:p-7 min-h-[175px] flex flex-col justify-center"
           dir={dir}
         >
           {/* Subtle Ambient Backdrop */}
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_80%_at_50%_0%,hsl(var(--primary)/0.18),transparent_70%),linear-gradient(180deg,hsl(var(--primary)/0.05),hsl(var(--card)))]" />
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-[2px] bg-gold-gradient opacity-70" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_80%_at_50%_0%,hsl(var(--primary)/0.2),transparent_70%),linear-gradient(180deg,hsl(var(--primary)/0.06),hsl(var(--card)))]" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-[2.5px] bg-gold-gradient opacity-80" />
 
           {/* Top-End Floating Executive Action Button (Circular Glass Edit Button) */}
-          <div className="absolute top-3.5 end-3.5 z-10">
+          <div className="absolute top-4 end-4 z-10">
             <button
               onClick={startEdit}
-              className="w-9 h-9 rounded-full bg-background/70 hover:bg-primary/20 text-primary border border-primary/30 flex items-center justify-center shadow-xs transition-all cursor-pointer active:scale-90"
+              className="w-10 h-10 rounded-full bg-background/80 hover:bg-primary/20 text-primary border border-primary/35 flex items-center justify-center shadow-xs transition-all cursor-pointer active:scale-90"
               title={t("edit")}
               aria-label={t("edit")}
             >
@@ -507,8 +507,8 @@ export const ProfileTab = () => {
             </button>
           </div>
 
-          {/* Unified Identity Row: 98px Pro Avatar with Carved Camera Button + Tightly Aligned Info Stack with Safe Spacing */}
-          <div className="relative flex items-center gap-4 sm:gap-6 pe-12">
+          {/* Unified Identity Row: 98px Pro Avatar with Carved Camera Button + Spacious Aligned Info Stack */}
+          <div className="relative flex items-center gap-5 sm:gap-7 pe-12">
             {/* 98px Pro Avatar with Gold Progress Ring + Carved Camera Action */}
             <div className="relative flex-shrink-0">
               <div
@@ -516,7 +516,7 @@ export const ProfileTab = () => {
                   setPendingAvatarUrl(null);
                   setPreviewOpen(true);
                 }}
-                className="relative cursor-pointer transition-transform duration-200 hover:scale-[1.02] active:scale-95"
+                className="relative cursor-pointer transition-transform duration-200 hover:scale-[1.03] active:scale-95"
                 title={ar ? "انقر للمعاينة بملء الشاشة" : "Click for full screen preview"}
               >
                 <LuxeAvatar
@@ -551,17 +551,17 @@ export const ProfileTab = () => {
               </div>
             </div>
 
-            {/* Profile Identity Details (Full Name, Sub-info, Badges) - Safe Spacing: 8px & 12px */}
-            <div className={`flex-1 min-w-0 flex flex-col justify-center ${alignClass}`}>
+            {/* Profile Identity Details (Full Name, Sub-info, Badges) - Linear Aligned Stack */}
+            <div className={`flex-1 min-w-0 flex flex-col justify-center space-y-2 ${alignClass}`}>
               {/* Line 1: Full Name */}
-              <h2 className="font-display text-xl sm:text-2xl font-bold text-gold-gradient truncate leading-tight">
+              <h2 className="font-display text-2xl sm:text-3xl font-bold text-gold-gradient truncate leading-tight tracking-tight">
                 {hideProfile ? "•••••" : (profile.full_name || t("yourFullName"))}
               </h2>
 
-              {/* Safe Spacing - Line 2: Sub-identity (Major/Role or Email/Guest) */}
-              <div className="mt-1.5 text-xs sm:text-sm text-muted-foreground truncate">
+              {/* Line 2: Sub-identity (Major/Role or Email/Guest) */}
+              <div className="text-xs sm:text-sm font-semibold text-primary/95 truncate">
                 {(extras.major || extras.university) && !hideProfile ? (
-                  <p className="font-semibold text-primary truncate">
+                  <p className="truncate">
                     {extras.major || extras.university}
                     {extras.university && extras.major ? ` • ${extras.university}` : ""}
                   </p>
@@ -572,7 +572,7 @@ export const ProfileTab = () => {
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 text-xs truncate">
-                    <span className="inline-flex items-center gap-1 text-amber-300 font-medium">
+                    <span className="inline-flex items-center gap-1.5 text-amber-300 font-medium">
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse flex-shrink-0" />
                       <span>{ar ? "حساب زائر محلي" : "Guest Account"}</span>
                     </span>
@@ -588,10 +588,10 @@ export const ProfileTab = () => {
                 )}
               </div>
 
-              {/* Safe Spacing - Line 3: Metadata Badges (Location / Phone) */}
-              <div className="flex flex-wrap items-center gap-2 mt-2.5 text-xs">
+              {/* Line 3: Linear Aligned Badges (Location / Phone / Verified) */}
+              <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 pt-1 text-xs">
                 {profile.location && !hideProfile && (
-                  <span className="inline-flex items-center gap-1.5 bg-background/80 border border-border/80 px-2.5 py-1 rounded-lg text-foreground font-medium truncate max-w-[170px]">
+                  <span className="inline-flex items-center gap-1.5 bg-background/85 border border-border/90 px-3 py-1.5 rounded-xl text-foreground font-medium truncate max-w-[180px] shadow-2xs">
                     <MapPin className="w-3.5 h-3.5 text-primary flex-shrink-0" />
                     <span className="truncate">{profile.location}</span>
                   </span>
@@ -601,7 +601,7 @@ export const ProfileTab = () => {
                     type="button"
                     onClick={() => handleCopyPhone(profile.phone)}
                     title={ar ? "انقر لنسخ رقم الهاتف" : "Click to copy"}
-                    className="inline-flex items-center gap-1.5 bg-background/80 hover:bg-primary/15 border border-border/80 px-2.5 py-1 rounded-lg text-foreground font-medium transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 bg-background/85 hover:bg-primary/15 border border-border/90 px-3 py-1.5 rounded-xl text-foreground font-medium transition-colors cursor-pointer shadow-2xs"
                     dir="ltr"
                   >
                     <Phone className="w-3.5 h-3.5 text-primary flex-shrink-0" />
@@ -610,7 +610,7 @@ export const ProfileTab = () => {
                   </button>
                 )}
                 {!isGuest && (
-                  <span className="inline-flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1 rounded-lg text-emerald-400 text-xs font-semibold">
+                  <span className="inline-flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 rounded-xl text-emerald-400 text-xs font-semibold shadow-2xs">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                     <span>{ar ? "حساب موثق ومزامن" : "Verified Account"}</span>
                   </span>
