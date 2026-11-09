@@ -194,16 +194,22 @@ export const ScholarshipsTab = () => {
     return () => { clearTimeout(showT); clearTimeout(hideT); };
   }, []);
 
-  // Deep-link: open detail when ?scholarship=ID is in URL
+  // Deep-link: open detail when ?scholarship=ID is in URL or set view mode (?view=list|deck)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const id = params.get("scholarship");
+    const viewParam = params.get("view");
+    if (viewParam === "list" || viewParam === "deck") {
+      setViewMode(viewParam);
+    }
     if (!id) return;
-    const target = SCHOLARSHIPS.find(s => s.id === id);
+    const allAvailable = dynamicStore.getScholarships();
+    const target = allAvailable.find(s => s.id === id) || SCHOLARSHIPS.find(s => s.id === id);
     if (target) {
       setDetail(target);
       const url = new URL(window.location.href);
       url.searchParams.delete("scholarship");
+      url.searchParams.delete("view");
       window.history.replaceState({}, "", url.toString());
     }
   }, []);

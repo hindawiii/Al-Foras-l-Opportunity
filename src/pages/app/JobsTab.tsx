@@ -180,6 +180,21 @@ export const JobsTab = () => {
     return () => window.removeEventListener("foras:data-updated", handleUpdate);
   }, [convertCustomJobs]);
 
+  // Deep-link: automatically open job detail modal when ?job=ID or ?opportunity=ID is in URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const jobId = params.get("job") || params.get("opportunity");
+    if (!jobId) return;
+    const target = liveJobs.find(j => j.id === jobId) || JOBS.find(j => j.id === jobId);
+    if (target) {
+      setSelectedJob(target);
+      const url = new URL(window.location.href);
+      url.searchParams.delete("job");
+      url.searchParams.delete("opportunity");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, [liveJobs]);
+
   // Filtered jobs list
   const filteredJobs = useMemo(() => {
     return liveJobs.filter((job) => {

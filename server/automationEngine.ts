@@ -8,6 +8,37 @@ import {
 } from "./opportunitiesDb";
 import { GoogleGenAI } from "@google/genai";
 
+const FALLBACK_MODELS = [
+  "gemini-3.6-flash",
+  "gemini-3.8-flash",
+  "gemini-3.5-flash-lite",
+  "gemini-3.1-flash-lite",
+  "gemini-flash-latest",
+];
+
+async function generateContentWithFallback(
+  aiClient: GoogleGenAI,
+  options: { contents: any; config?: any }
+) {
+  let lastError: any = null;
+  for (const model of FALLBACK_MODELS) {
+    try {
+      const res = await aiClient.models.generateContent({
+        model,
+        contents: options.contents,
+        config: options.config,
+      });
+      if (res && (res.text || res.candidates)) {
+        return res;
+      }
+    } catch (err: any) {
+      lastError = err;
+      console.warn(`[AutomationEngine] Model ${model} unavailable, trying next fallback:`, err?.message || err);
+    }
+  }
+  throw lastError || new Error("All Gemini models in automation fallback chain failed.");
+}
+
 export interface QualityValidationResult {
   score: number;
   missingFields: string[];
@@ -150,8 +181,7 @@ export async function evaluateOpportunityTriage(
 أعطني النتيجة بتنسيق JSON فقط:
 {"priority": "critical" | "medium" | "low", "importanceReason": "...", "canDefer": boolean}`;
 
-      const res = await aiClient.models.generateContent({
-        model: "gemini-2.5-flash",
+      const res = await generateContentWithFallback(aiClient, {
         contents: prompt,
         config: { responseMimeType: "application/json" },
       });
@@ -546,8 +576,7 @@ export async function runOpportunitiesAutomation(
 أعطني JSON:
 {"title_ar": "...", "description_ar": "...", "salary_est": "..."}`;
 
-              const res = await aiClient.models.generateContent({
-                model: "gemini-2.5-flash",
+              const res = await generateContentWithFallback(aiClient, {
                 contents: prompt,
                 config: { responseMimeType: "application/json" },
               });
