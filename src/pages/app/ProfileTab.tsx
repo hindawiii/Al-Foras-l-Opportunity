@@ -79,6 +79,14 @@ const SKILL_CATEGORY_META: Record<SkillEntry["category"], { labelAr: string; lab
   other:    { labelAr: "مهارات عملية وقيادية", labelEn: "Practical & Leadership Skills", emoji: "🛠️" },
 };
 
+const SKILL_LEVEL_META: Record<number, { labelAr: string; labelEn: string; color: string; badgeAr: string }> = {
+  1: { labelAr: "مبتدئ (1 / 5)", labelEn: "Beginner (1/5)", color: "text-amber-400", badgeAr: "مبتدئ" },
+  2: { labelAr: "أساسي (2 / 5)", labelEn: "Elementary (2/5)", color: "text-amber-300", badgeAr: "أساسي" },
+  3: { labelAr: "متوسط (3 / 5)", labelEn: "Intermediate (3/5)", color: "text-primary", badgeAr: "متوسط" },
+  4: { labelAr: "متقدم (4 / 5)", labelEn: "Advanced (4/5)", color: "text-emerald-400", badgeAr: "متقدم" },
+  5: { labelAr: "خبير / طليق (5 / 5)", labelEn: "Expert / Fluent (5/5)", color: "text-emerald-300 font-extrabold", badgeAr: "خبير / طليق" },
+};
+
 export const ProfileTab = () => {
   const navigate = useNavigate();
   const { user, isGuest } = useAuth();
@@ -101,6 +109,7 @@ export const ProfileTab = () => {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [pendingAvatarUrl, setPendingAvatarUrl] = useState<string | null>(null);
   const [geoHelpOpen, setGeoHelpOpen] = useState(false);
 
   const handleCopyPhone = (numberToCopy?: string) => {
@@ -309,41 +318,60 @@ export const ProfileTab = () => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file || !user) return;
-    if (!file.type.startsWith("image/")) { toast.error(isRtl ? "الرجاء اختيار صورة" : "Please select an image"); return; }
-    if (file.size > 4 * 1024 * 1024) { toast.error(isRtl ? "الصورة أكبر من 4 ميجابايت" : "Image size exceeds 4MB"); return; }
-    setUploading(true);
-    if (isGuest) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const dataUrl = reader.result as string;
-        const next = { ...draft, avatar_url: dataUrl };
-        setDraft(next);
-        setProfile(next);
-        guestStorage.set("profile", next);
-        setUploading(false);
-        toast.success(isRtl ? "تم تحديث الصورة بنجاح" : "Avatar updated");
-      };
-      reader.readAsDataURL(file);
+    if (!file.type.startsWith("image/")) {
+      toast.error(isRtl ? "الرجاء اختيار ملف صورة صالح (PNG, JPG, WEBP)" : "Please select a valid image file");
       return;
     }
-
+    if (file.size > 4 * 1024 * 1024) {
+      toast.error(isRtl ? "حجم الصورة أكبر من 4 ميجابايت" : "Image size exceeds 4MB");
+      return;
+    }
+    setUploading(true);
     const reader = new FileReader();
-    reader.onload = async () => {
+    reader.onload = () => {
       const dataUrl = reader.result as string;
-      const next = { ...draft, avatar_url: dataUrl };
+      setPendingAvatarUrl(dataUrl);
+      setPreviewOpen(true);
+      setUploading(false);
+      toast.info(
+        isRtl
+          ? "📸 تمت قراءة الصورة بنجاح — يرجى معاينتها والضغط على 'حفظ الصورة' لتأكيد التغيير"
+          : "📸 Photo loaded — please preview and click 'Save Photo' to confirm"
+      );
+    };
+    reader.onerror = () => {
+      setUploading(false);
+      toast.error(isRtl ? "تعذر قراءة ملف الصورة" : "Failed to read image file");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const confirmSavePendingAvatar = async () => {
+    if (!pendingAvatarUrl || !user) return;
+    setUploading(true);
+    try {
+      const next = { ...draft, avatar_url: pendingAvatarUrl };
       setDraft(next);
       setProfile(next);
       if (!isGuest && user) {
-        try {
-          await setDoc(doc(db, "users", user.id), { avatar_url: dataUrl }, { merge: true });
-        } catch {}
+        await setDoc(doc(db, "users", user.id), { avatar_url: pendingAvatarUrl }, { merge: true });
       } else {
         guestStorage.set("profile", next);
       }
+      setPendingAvatarUrl(null);
+      setPreviewOpen(false);
+      toast.success(isRtl ? "✅ تم حفظ الصورة الشخصية الجديدة بنجاح" : "✅ Profile photo updated successfully");
+    } catch (err) {
+      console.error("Avatar save error:", err);
+      toast.error(isRtl ? "حدث خطأ أثناء حفظ الصورة" : "Error saving photo");
+    } finally {
       setUploading(false);
-      toast.success(isRtl ? "تم تحديث الصورة بنجاح" : "Avatar updated");
-    };
-    reader.readAsDataURL(file);
+    }
+  };
+
+  const cancelPendingAvatar = () => {
+    setPendingAvatarUrl(null);
+    toast.info(isRtl ? "تم إلغاء التغيير والاحتفاظ بالصورة السابقة" : "Photo change canceled");
   };
 
   const handleRemoveAvatar = async () => {
@@ -357,6 +385,8 @@ export const ProfileTab = () => {
     } else {
       guestStorage.set("profile", next);
     }
+    setPendingAvatarUrl(null);
+    setPreviewOpen(false);
     toast.success(isRtl ? "تمت إزالة الصورة بنجاح" : "Profile photo removed");
   };
 
@@ -477,19 +507,22 @@ export const ProfileTab = () => {
             </button>
           </div>
 
-          {/* Unified Identity Row: 88px Avatar with Carved Camera Button + Tightly Aligned Info Stack with Safe Spacing */}
-          <div className="relative flex items-center gap-4 sm:gap-5 pe-12">
-            {/* 88px Satisfying Avatar with Gold Progress Ring + Carved Camera Action */}
+          {/* Unified Identity Row: 98px Pro Avatar with Carved Camera Button + Tightly Aligned Info Stack with Safe Spacing */}
+          <div className="relative flex items-center gap-4 sm:gap-6 pe-12">
+            {/* 98px Pro Avatar with Gold Progress Ring + Carved Camera Action */}
             <div className="relative flex-shrink-0">
               <div
-                onClick={() => setPreviewOpen(true)}
+                onClick={() => {
+                  setPendingAvatarUrl(null);
+                  setPreviewOpen(true);
+                }}
                 className="relative cursor-pointer transition-transform duration-200 hover:scale-[1.02] active:scale-95"
                 title={ar ? "انقر للمعاينة بملء الشاشة" : "Click for full screen preview"}
               >
                 <LuxeAvatar
                   src={profile.avatar_url && !hideProfile ? profile.avatar_url : null}
                   name={hideProfile ? "•" : (profile.full_name || user?.email || "User")}
-                  size="executive"
+                  size="pro"
                   shape="squircle"
                   showRing={true}
                   ringProgress={completion}
@@ -518,15 +551,15 @@ export const ProfileTab = () => {
               </div>
             </div>
 
-            {/* Profile Identity Details (Full Name, Sub-info, Badges) - Safe Spacing: 6px & 10px */}
+            {/* Profile Identity Details (Full Name, Sub-info, Badges) - Safe Spacing: 8px & 12px */}
             <div className={`flex-1 min-w-0 flex flex-col justify-center ${alignClass}`}>
               {/* Line 1: Full Name */}
-              <h2 className="font-display text-lg sm:text-xl font-bold text-gold-gradient truncate leading-tight">
+              <h2 className="font-display text-xl sm:text-2xl font-bold text-gold-gradient truncate leading-tight">
                 {hideProfile ? "•••••" : (profile.full_name || t("yourFullName"))}
               </h2>
 
-              {/* Safe Spacing (mt-1.5 = 6px) - Line 2: Sub-identity (Major/Role or Email/Guest) */}
-              <div className="mt-1.5 text-xs text-muted-foreground truncate">
+              {/* Safe Spacing - Line 2: Sub-identity (Major/Role or Email/Guest) */}
+              <div className="mt-1.5 text-xs sm:text-sm text-muted-foreground truncate">
                 {(extras.major || extras.university) && !hideProfile ? (
                   <p className="font-semibold text-primary truncate">
                     {extras.major || extras.university}
@@ -555,11 +588,11 @@ export const ProfileTab = () => {
                 )}
               </div>
 
-              {/* Safe Spacing (mt-2.5 = 10px) - Line 3: Metadata Badges (Location / Phone) */}
-              <div className="flex flex-wrap items-center gap-2 mt-2.5 text-[11px]">
+              {/* Safe Spacing - Line 3: Metadata Badges (Location / Phone) */}
+              <div className="flex flex-wrap items-center gap-2 mt-2.5 text-xs">
                 {profile.location && !hideProfile && (
-                  <span className="inline-flex items-center gap-1 bg-background/80 border border-border/80 px-2.5 py-1 rounded-lg text-foreground font-medium truncate max-w-[150px]">
-                    <MapPin className="w-3 h-3 text-primary flex-shrink-0" />
+                  <span className="inline-flex items-center gap-1.5 bg-background/80 border border-border/80 px-2.5 py-1 rounded-lg text-foreground font-medium truncate max-w-[170px]">
+                    <MapPin className="w-3.5 h-3.5 text-primary flex-shrink-0" />
                     <span className="truncate">{profile.location}</span>
                   </span>
                 )}
@@ -568,16 +601,16 @@ export const ProfileTab = () => {
                     type="button"
                     onClick={() => handleCopyPhone(profile.phone)}
                     title={ar ? "انقر لنسخ رقم الهاتف" : "Click to copy"}
-                    className="inline-flex items-center gap-1 bg-background/80 hover:bg-primary/15 border border-border/80 px-2.5 py-1 rounded-lg text-foreground font-medium transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 bg-background/80 hover:bg-primary/15 border border-border/80 px-2.5 py-1 rounded-lg text-foreground font-medium transition-colors cursor-pointer"
                     dir="ltr"
                   >
-                    <Phone className="w-3 h-3 text-primary flex-shrink-0" />
+                    <Phone className="w-3.5 h-3.5 text-primary flex-shrink-0" />
                     <span>{profile.phone}</span>
-                    {copiedPhone ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-2.5 h-2.5 opacity-60" />}
+                    {copiedPhone ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3 h-3 opacity-60" />}
                   </button>
                 )}
                 {!isGuest && (
-                  <span className="inline-flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1 rounded-lg text-emerald-400 text-[10px] font-semibold">
+                  <span className="inline-flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1 rounded-lg text-emerald-400 text-xs font-semibold">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                     <span>{ar ? "حساب موثق ومزامن" : "Verified Account"}</span>
                   </span>
@@ -596,13 +629,26 @@ export const ProfileTab = () => {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
               className="fixed inset-0 z-50 bg-black/95 backdrop-blur-2xl flex flex-col justify-between p-4 sm:p-6"
-              onClick={() => setPreviewOpen(false)}
+              onClick={() => {
+                setPendingAvatarUrl(null);
+                setPreviewOpen(false);
+              }}
             >
               {/* Top Floating Controls: Pure Close Button */}
-              <div className="w-full flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
+              <div className="w-full flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
+                {pendingAvatarUrl ? (
+                  <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-semibold">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                    <span>{ar ? "معاينة الصورة الجديدة قبل الحفظ" : "Previewing new photo before saving"}</span>
+                  </div>
+                ) : <div />}
+
                 <button
                   type="button"
-                  onClick={() => setPreviewOpen(false)}
+                  onClick={() => {
+                    setPendingAvatarUrl(null);
+                    setPreviewOpen(false);
+                  }}
                   className="w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 active:scale-90 border border-white/20 text-white flex items-center justify-center transition-all cursor-pointer shadow-lg"
                   title={ar ? "إغلاق" : "Close"}
                   aria-label={ar ? "إغلاق" : "Close"}
@@ -613,10 +659,21 @@ export const ProfileTab = () => {
 
               {/* Center: Full-Dimension Cinema Media Display */}
               <div
-                className="flex-1 w-full flex items-center justify-center p-2"
+                className="flex-1 w-full flex flex-col items-center justify-center p-2"
                 onClick={(e) => e.stopPropagation()}
               >
-                {profile.avatar_url && !hideProfile ? (
+                {pendingAvatarUrl ? (
+                  <div className="flex flex-col items-center text-center space-y-3">
+                    <img
+                      src={pendingAvatarUrl}
+                      alt="avatar-pending-preview"
+                      className="max-w-[88vw] max-h-[62vh] object-contain rounded-3xl shadow-[0_0_50px_rgba(234,179,8,0.35)] border-2 border-primary"
+                    />
+                    <p className="text-xs sm:text-sm text-amber-200/90 font-medium">
+                      {ar ? "انقر 'حفظ الصورة' لاعتمادها كصورتك الشخصية، أو 'إلغاء' للتراجع" : "Click 'Save Photo' to confirm or 'Cancel' to discard"}
+                    </p>
+                  </div>
+                ) : profile.avatar_url && !hideProfile ? (
                   <img
                     src={profile.avatar_url}
                     alt="avatar-full"
@@ -631,37 +688,67 @@ export const ProfileTab = () => {
                 )}
               </div>
 
-              {/* Bottom Action Bar: Crisp actions */}
+              {/* Bottom Action Bar: Staged Confirmation or Single-Word Action */}
               <div
                 className="w-full max-w-sm mx-auto flex items-center justify-center gap-3 pb-4"
                 onClick={(e) => e.stopPropagation()}
               >
-                <label className="flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gold-gradient text-primary-foreground font-bold text-sm cursor-pointer shadow-gold hover:brightness-110 active:scale-95 transition-all">
-                  {uploading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Camera className="w-4 h-4" />
-                  )}
-                  <span>{ar ? "تغيير الصورة" : "Change Photo"}</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleAvatarUpload}
-                    disabled={uploading}
-                  />
-                </label>
+                {pendingAvatarUrl ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={cancelPendingAvatar}
+                      disabled={uploading}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 border border-white/20 text-white font-bold text-xs sm:text-sm transition-all cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                      <span>{ar ? "إلغاء" : "Cancel"}</span>
+                    </button>
 
-                {profile.avatar_url && (
-                  <button
-                    type="button"
-                    onClick={handleRemoveAvatar}
-                    className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-white/10 hover:bg-rose-500/20 text-white hover:text-rose-300 border border-white/15 text-sm font-bold transition-all cursor-pointer active:scale-95"
-                    title={ar ? "إزالة الصورة" : "Remove photo"}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    <span>{ar ? "حذف" : "Delete"}</span>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={confirmSavePendingAvatar}
+                      disabled={uploading}
+                      className="flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gold-gradient text-primary-foreground font-bold text-xs sm:text-sm shadow-gold hover:brightness-110 active:scale-95 transition-all cursor-pointer"
+                    >
+                      {uploading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Check className="w-4 h-4" />
+                      )}
+                      <span>{ar ? "حفظ الصورة" : "Save Photo"}</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <label className="flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gold-gradient text-primary-foreground font-bold text-sm cursor-pointer shadow-gold hover:brightness-110 active:scale-95 transition-all">
+                      {uploading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Camera className="w-4 h-4" />
+                      )}
+                      <span>{ar ? "تغيير" : "Change"}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleAvatarUpload}
+                        disabled={uploading}
+                      />
+                    </label>
+
+                    {profile.avatar_url && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveAvatar}
+                        className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-white/10 hover:bg-rose-500/20 text-white hover:text-rose-300 border border-white/15 text-sm font-bold transition-all cursor-pointer active:scale-95"
+                        title={ar ? "إزالة الصورة" : "Remove photo"}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        <span>{ar ? "حذف" : "Delete"}</span>
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             </motion.div>
@@ -1163,25 +1250,25 @@ export const ProfileTab = () => {
       {/* 1. PERSONAL INFORMATION */}
       <Section title={ar ? "المعلومات الشخصية وبيانات التواصل" : "Personal Information & Contact"} alignClass={alignClass}>
         {/* Avatar Photo Edit Widget */}
-        <div className="flex items-center gap-4 p-3 rounded-2xl bg-background/50 border border-primary/20">
+        <div className="flex items-center gap-4 sm:gap-5 p-3.5 rounded-2xl bg-background/50 border border-primary/25">
           <LuxeAvatar
             src={draft.avatar_url || null}
             name={draft.full_name || user?.email || "User"}
-            size="executive"
+            size="pro"
             shape="squircle"
             showRing={true}
             ringStatus="gold"
           />
           <div className={`flex-1 ${alignClass}`}>
-            <p className="text-xs font-bold text-foreground">
+            <p className="text-sm font-bold text-foreground">
               {ar ? "الصورة الشخصية" : "Profile Picture"}
             </p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              {ar ? "انقر لرفع صورة شخصية أو تغييرها" : "Click to upload or replace your photo"}
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {ar ? "انقر لاختيار صورة ومعاينتها ثم تأكيد حفظها" : "Click to select and preview before saving"}
             </p>
-            <label className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gold-gradient text-primary-foreground text-xs font-bold shadow-sm cursor-pointer hover:brightness-105 transition-all">
+            <label className="mt-2 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gold-gradient text-primary-foreground text-xs font-bold shadow-sm cursor-pointer hover:brightness-105 active:scale-95 transition-all">
               {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
-              <span>{uploading ? (ar ? "جاري الرفع..." : "Uploading...") : (ar ? "تغيير الصورة" : "Change Photo")}</span>
+              <span>{uploading ? (ar ? "جاري الرفع..." : "Uploading...") : (ar ? "تغيير" : "Change")}</span>
               <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} disabled={uploading} />
             </label>
           </div>
@@ -1337,55 +1424,87 @@ export const ProfileTab = () => {
           {/* PROFESSIONAL EDIT 2: DETAILED SKILLS WITH RATINGS */}
           <div id="field-skills">
             <Section title={ar ? "المهارات المتقدمة ومستوى الإتقان (1 - 5)" : "Detailed Skills & Proficiency (Level 1 - 5)"} alignClass={alignClass}>
-              <div className="space-y-2.5">
+              <div className="space-y-3">
                 {extrasDraft.detailedSkills.map((sk, idx) => (
-                  <div key={idx} className="flex flex-wrap sm:flex-nowrap gap-2 items-center bg-background/50 p-2.5 rounded-2xl border border-border/80">
-                    <Input
-                      value={sk.name}
-                      onChange={e => updateDetailedSkill(idx, { name: e.target.value })}
-                      placeholder={ar ? "اسم المهارة (مثل: Python, Figma, إدارة مشاريع...)" : "Skill name (e.g. Python, Figma, Project Management...)"}
-                      className="bg-input border-gold/30 flex-1 text-xs"
-                    />
-                    <Select
-                      value={sk.category}
-                      onValueChange={(val: any) => updateDetailedSkill(idx, { category: val })}
-                    >
-                      <SelectTrigger className="w-[140px] bg-input border-gold/30 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(SKILL_CATEGORY_META).map(([k, meta]) => (
-                          <SelectItem key={k} value={k}>
-                            <span>{meta.emoji} {ar ? meta.labelAr : meta.labelEn}</span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    <div className="flex gap-1.5 items-center px-2">
-                      {[1, 2, 3, 4, 5].map((lvl) => (
-                        <button
-                          key={lvl}
-                          type="button"
-                          onClick={() => updateDetailedSkill(idx, { level: lvl })}
-                          className={`h-3 w-3 rounded-full border transition-all ${
-                            lvl <= sk.level
-                              ? "bg-primary border-primary shadow-2xs"
-                              : "bg-muted/40 border-border/80 hover:border-primary/50"
-                          }`}
-                          title={`${lvl} / 5`}
+                  <div
+                    key={idx}
+                    className="p-3 sm:p-3.5 rounded-2xl bg-card/60 hover:bg-card border border-border/80 hover:border-primary/40 space-y-3 transition-all shadow-xs"
+                  >
+                    {/* Row 1: Skill Name Input (Generous width) + Category Select + Delete Button */}
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 min-w-0">
+                        <Input
+                          value={sk.name}
+                          onChange={e => updateDetailedSkill(idx, { name: e.target.value })}
+                          placeholder={ar ? "اسم المهارة (مثل: Python, Figma, إدارة مشاريع...)" : "Skill name (e.g. Python, Figma, Project Management...)"}
+                          className="h-11 bg-input border-gold/30 text-xs sm:text-sm font-medium w-full"
                         />
-                      ))}
+                      </div>
+
+                      <div className="w-[130px] sm:w-[160px] flex-shrink-0">
+                        <Select
+                          value={sk.category}
+                          onValueChange={(val: any) => updateDetailedSkill(idx, { category: val })}
+                        >
+                          <SelectTrigger className="h-11 bg-input border-gold/30 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Object.entries(SKILL_CATEGORY_META).map(([k, meta]) => (
+                              <SelectItem key={k} value={k}>
+                                <span>{meta.emoji} {ar ? meta.labelAr : meta.labelEn}</span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <Button
+                        variant="ghostGold"
+                        size="sm"
+                        type="button"
+                        onClick={() => removeDetailedSkill(idx)}
+                        className="h-11 w-11 p-0 text-destructive hover:bg-destructive/10 rounded-xl flex-shrink-0"
+                        title={ar ? "حذف المهارة" : "Delete skill"}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
 
-                    <Button
-                      variant="ghostGold"
-                      size="sm"
-                      onClick={() => removeDetailedSkill(idx)}
-                      className="text-destructive h-9 px-2 hover:bg-destructive/10"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    {/* Row 2: Proficiency Level with Clear Label & 44px Touch Targets */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/40 text-xs">
+                      <div className="flex items-center gap-1.5 text-muted-foreground font-medium">
+                        <Sparkles className="w-3.5 h-3.5 text-primary" />
+                        <span>{ar ? "مستوى الإتقان:" : "Proficiency:"}</span>
+                        <span className={`font-bold ${SKILL_LEVEL_META[sk.level]?.color || "text-primary"}`}>
+                          {ar ? SKILL_LEVEL_META[sk.level]?.labelAr : SKILL_LEVEL_META[sk.level]?.labelEn}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        {[1, 2, 3, 4, 5].map((lvl) => {
+                          const active = lvl <= sk.level;
+                          const isCurrent = lvl === sk.level;
+                          return (
+                            <button
+                              key={lvl}
+                              type="button"
+                              onClick={() => updateDetailedSkill(idx, { level: lvl })}
+                              className={`h-8 min-w-[32px] sm:min-w-[36px] px-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center border ${
+                                isCurrent
+                                  ? "bg-gold-gradient text-primary-foreground border-primary shadow-gold scale-105"
+                                  : active
+                                  ? "bg-primary/20 text-primary border-primary/40"
+                                  : "bg-background/80 text-muted-foreground border-border/70 hover:border-primary/50"
+                              }`}
+                              title={`${lvl} / 5`}
+                            >
+                              {lvl}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1398,10 +1517,10 @@ export const ProfileTab = () => {
                     variant="outline"
                     size="sm"
                     onClick={() => addDetailedSkill(k as any)}
-                    className="text-xs border-primary/30 text-primary hover:bg-primary/10"
+                    className="text-xs border-primary/30 text-primary hover:bg-primary/10 rounded-xl py-2 px-3 h-auto"
                   >
-                    <Plus className="w-3.5 h-3.5 me-1" />
-                    <span>{meta.emoji} {ar ? `إضافة مهارة (${meta.labelAr.slice(0, 12)})` : `Add (${meta.labelEn.slice(0, 12)})`}</span>
+                    <Plus className="w-3.5 h-3.5 me-1.5 text-primary" />
+                    <span>{meta.emoji} {ar ? `+ ${meta.labelAr}` : `+ ${meta.labelEn}`}</span>
                   </Button>
                 ))}
               </div>
@@ -1604,55 +1723,87 @@ export const ProfileTab = () => {
           {/* STUDENT EDIT 3: DETAILED SKILLS */}
           <div id="field-skills">
             <Section title={ar ? "المهارات الأكاديمية واللغات ومستوى الإتقان" : "Academic Skills & Languages"} alignClass={alignClass}>
-              <div className="space-y-2.5">
+              <div className="space-y-3">
                 {extrasDraft.detailedSkills.map((sk, idx) => (
-                  <div key={idx} className="flex flex-wrap sm:flex-nowrap gap-2 items-center bg-background/50 p-2.5 rounded-2xl border border-border/80">
-                    <Input
-                      value={sk.name}
-                      onChange={e => updateDetailedSkill(idx, { name: e.target.value })}
-                      placeholder={ar ? "اسم المهارة أو اللغة (مثل: الإنجليزية، البحث العلمي...)" : "Skill/Language (e.g. English, Academic Writing...)"}
-                      className="bg-input border-gold/30 flex-1 text-xs"
-                    />
-                    <Select
-                      value={sk.category}
-                      onValueChange={(val: any) => updateDetailedSkill(idx, { category: val })}
-                    >
-                      <SelectTrigger className="w-[140px] bg-input border-gold/30 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(SKILL_CATEGORY_META).map(([k, meta]) => (
-                          <SelectItem key={k} value={k}>
-                            <span>{meta.emoji} {ar ? meta.labelAr : meta.labelEn}</span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    <div className="flex gap-1.5 items-center px-2">
-                      {[1, 2, 3, 4, 5].map((lvl) => (
-                        <button
-                          key={lvl}
-                          type="button"
-                          onClick={() => updateDetailedSkill(idx, { level: lvl })}
-                          className={`h-3 w-3 rounded-full border transition-all ${
-                            lvl <= sk.level
-                              ? "bg-primary border-primary shadow-2xs"
-                              : "bg-muted/40 border-border/80 hover:border-primary/50"
-                          }`}
-                          title={`${lvl} / 5`}
+                  <div
+                    key={idx}
+                    className="p-3 sm:p-3.5 rounded-2xl bg-card/60 hover:bg-card border border-border/80 hover:border-primary/40 space-y-3 transition-all shadow-xs"
+                  >
+                    {/* Row 1: Skill/Language Name Input (Generous width) + Category Select + Delete Button */}
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 min-w-0">
+                        <Input
+                          value={sk.name}
+                          onChange={e => updateDetailedSkill(idx, { name: e.target.value })}
+                          placeholder={ar ? "اسم المهارة أو اللغة (مثل: الإنجليزية، البحث العلمي...)" : "Skill/Language (e.g. English, Academic Writing...)"}
+                          className="h-11 bg-input border-gold/30 text-xs sm:text-sm font-medium w-full"
                         />
-                      ))}
+                      </div>
+
+                      <div className="w-[130px] sm:w-[160px] flex-shrink-0">
+                        <Select
+                          value={sk.category}
+                          onValueChange={(val: any) => updateDetailedSkill(idx, { category: val })}
+                        >
+                          <SelectTrigger className="h-11 bg-input border-gold/30 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Object.entries(SKILL_CATEGORY_META).map(([k, meta]) => (
+                              <SelectItem key={k} value={k}>
+                                <span>{meta.emoji} {ar ? meta.labelAr : meta.labelEn}</span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <Button
+                        variant="ghostGold"
+                        size="sm"
+                        type="button"
+                        onClick={() => removeDetailedSkill(idx)}
+                        className="h-11 w-11 p-0 text-destructive hover:bg-destructive/10 rounded-xl flex-shrink-0"
+                        title={ar ? "حذف المهارة" : "Delete skill"}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
 
-                    <Button
-                      variant="ghostGold"
-                      size="sm"
-                      onClick={() => removeDetailedSkill(idx)}
-                      className="text-destructive h-9 px-2 hover:bg-destructive/10"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    {/* Row 2: Proficiency Level with Clear Label & 44px Touch Targets */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/40 text-xs">
+                      <div className="flex items-center gap-1.5 text-muted-foreground font-medium">
+                        <Sparkles className="w-3.5 h-3.5 text-primary" />
+                        <span>{ar ? "مستوى الإتقان:" : "Proficiency:"}</span>
+                        <span className={`font-bold ${SKILL_LEVEL_META[sk.level]?.color || "text-primary"}`}>
+                          {ar ? SKILL_LEVEL_META[sk.level]?.labelAr : SKILL_LEVEL_META[sk.level]?.labelEn}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        {[1, 2, 3, 4, 5].map((lvl) => {
+                          const active = lvl <= sk.level;
+                          const isCurrent = lvl === sk.level;
+                          return (
+                            <button
+                              key={lvl}
+                              type="button"
+                              onClick={() => updateDetailedSkill(idx, { level: lvl })}
+                              className={`h-8 min-w-[32px] sm:min-w-[36px] px-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center border ${
+                                isCurrent
+                                  ? "bg-gold-gradient text-primary-foreground border-primary shadow-gold scale-105"
+                                  : active
+                                  ? "bg-primary/20 text-primary border-primary/40"
+                                  : "bg-background/80 text-muted-foreground border-border/70 hover:border-primary/50"
+                              }`}
+                              title={`${lvl} / 5`}
+                            >
+                              {lvl}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1665,10 +1816,10 @@ export const ProfileTab = () => {
                     variant="outline"
                     size="sm"
                     onClick={() => addDetailedSkill(k as any)}
-                    className="text-xs border-primary/30 text-primary hover:bg-primary/10"
+                    className="text-xs border-primary/30 text-primary hover:bg-primary/10 rounded-xl py-2 px-3 h-auto"
                   >
-                    <Plus className="w-3.5 h-3.5 me-1" />
-                    <span>{meta.emoji} {ar ? `إضافة (${meta.labelAr.slice(0, 12)})` : `Add (${meta.labelEn.slice(0, 12)})`}</span>
+                    <Plus className="w-3.5 h-3.5 me-1.5 text-primary" />
+                    <span>{meta.emoji} {ar ? `+ ${meta.labelAr}` : `+ ${meta.labelEn}`}</span>
                   </Button>
                 ))}
               </div>

@@ -396,54 +396,64 @@ const Landing = () => {
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.08 }}
                 whileHover={{ y: -3 }}
-                className="glass rounded-2xl p-4 sm:p-5 border-primary/25 cursor-pointer transition-all hover:border-primary/60 shadow-luxe flex flex-col justify-between"
+                className="glass rounded-2xl p-4 sm:p-5 border-primary/25 cursor-pointer transition-all hover:border-primary/60 shadow-luxe flex flex-col justify-between bg-card/85 group"
                 onClick={() => goApp("scholarships", { scholarship: s.id })}
               >
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-full bg-card/90 border border-primary/20 flex items-center justify-center text-xl flex-shrink-0 shadow-sm mt-0.5">
-                    <span>{s.flag}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2 mb-1.5 min-w-0">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        {s.verified && <BadgeCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[hsl(var(--verified))] flex-shrink-0" />}
-                        <span className="text-xs sm:text-sm font-bold tracking-wide text-primary truncate">
-                          {displayOrg}
-                        </span>
+                <div>
+                  {/* Top Header: Flag + Organization & Country (Start) vs Funding Badge (End) */}
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-10 h-10 rounded-full bg-card/90 border border-primary/20 flex items-center justify-center text-xl flex-shrink-0 shadow-sm">
+                        <span>{s.flag}</span>
                       </div>
-                      {s.match_score && (
-                        <span className="px-2 py-0.5 rounded-full bg-primary/10 border border-primary/25 text-primary text-[10px] sm:text-2xs font-bold flex-shrink-0 whitespace-nowrap">
-                          {s.match_score}% {isRtl ? "تطابق" : "Match"}
-                        </span>
-                      )}
-                    </div>
-                    
-                    <h3 className="font-bold text-foreground text-sm sm:text-base line-clamp-2 leading-relaxed [text-wrap:pretty]">{displayTitle}</h3>
-                    <p className="text-xs text-gray-300/90 mt-1.5 line-clamp-2 leading-relaxed [text-wrap:pretty]">{displayDesc}</p>
-                    
-                    {/* Modern Fluid Luxe Metadata layout */}
-                    <div className="mt-3.5 pt-2.5 border-t border-primary/10 space-y-2">
-                      {displayAmount && (
-                        <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1 rounded-lg">
-                          <Award className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
-                          <span className="truncate leading-normal">{displayAmount}</span>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1 min-w-0">
+                          {s.verified && <BadgeCheck className="w-3.5 h-3.5 text-[hsl(var(--verified))] flex-shrink-0" />}
+                          <span className="text-xs sm:text-sm font-bold text-primary block truncate">{displayOrg}</span>
                         </div>
-                      )}
-                      
-                      <div className="flex items-center justify-between gap-2 text-2xs text-muted-foreground">
-                        <span className="inline-flex items-center gap-1 font-semibold text-foreground truncate max-w-[60%]">
-                          <MapPin className="w-3 h-3 text-primary flex-shrink-0" />
-                          <span className="truncate">{displayCountry}</span>
+                        <span className="text-[10px] text-muted-foreground whitespace-nowrap block truncate">
+                          {displayCountry} {s.category === "arab" ? (isRtl ? "· منحة عربية" : "· Arab") : (isRtl ? "· دولية" : "· Global")}
                         </span>
-                        {s.deadline && (
-                          <span className="inline-flex items-center gap-1 font-medium whitespace-nowrap flex-shrink-0">
-                            <Clock className="w-3 h-3 text-primary flex-shrink-0" />
-                            <span>{s.deadline}</span>
-                          </span>
-                        )}
                       </div>
                     </div>
+
+                    {/* Concise Funding Badge (mirrors the salary badge in Jobs cards) */}
+                    <span className="px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-2xs sm:text-xs font-bold whitespace-nowrap flex-shrink-0">
+                      🏷️ {displayAmount ? (displayAmount.includes("(") ? displayAmount.split("(")[0].trim() : displayAmount) : (isRtl ? "ممولة بالكامل" : "Fully Funded")}
+                    </span>
                   </div>
+
+                  {/* Full-Width Title (100% width, no lateral squeezing or Bidi clipping) */}
+                  <h3 className="font-bold text-foreground text-sm sm:text-base line-clamp-2 leading-relaxed [text-wrap:pretty] mb-1.5 group-hover:text-primary transition-colors">
+                    {displayTitle}
+                  </h3>
+
+                  {/* Full-Width Description */}
+                  <p className="text-xs text-gray-300/90 line-clamp-2 leading-relaxed [text-wrap:pretty]">
+                    {displayDesc}
+                  </p>
+                </div>
+
+                {/* Symmetric Footer Strip: Deadline & Match (Start) vs Action Link (End) */}
+                <div className="mt-4 pt-2.5 border-t border-primary/10 flex items-center justify-between gap-2 text-2xs">
+                  <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                    {s.deadline && (
+                      <span className="px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20 flex items-center gap-1 whitespace-nowrap">
+                        <Clock className="w-3 h-3 text-primary flex-shrink-0" />
+                        <span>{s.deadline}</span>
+                      </span>
+                    )}
+                    {s.match_score && (
+                      <span className="px-2 py-0.5 rounded-md bg-gold/10 text-gold border border-gold/25 font-bold whitespace-nowrap">
+                        {s.match_score}% {isRtl ? "تطابق" : "Match"}
+                      </span>
+                    )}
+                  </div>
+
+                  <span className="text-primary font-bold flex items-center gap-1 whitespace-nowrap flex-shrink-0 group-hover:underline">
+                    <span>{isRtl ? "استكشف المنحة" : "Explore Scholarship"}</span>
+                    <ArrowRight className={`w-3 h-3 ${isRtl ? "rotate-180" : ""}`} />
+                  </span>
                 </div>
               </motion.div>
             );

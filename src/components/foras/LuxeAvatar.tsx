@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { User } from "lucide-react";
 
-export type AvatarSize = "xs" | "sm" | "md" | "lg" | "xl" | "hero" | "executive";
+export type AvatarSize = "xs" | "sm" | "md" | "lg" | "xl" | "hero" | "executive" | "pro";
 
 export interface LuxeAvatarProps {
   src?: string | null;
@@ -62,6 +62,7 @@ const SIZE_CONFIG: Record<AvatarSize, { px: number; text: string; icon: number; 
   xl: { px: 80, text: "text-2xl font-bold", icon: 34, ringStroke: 4, radius: "rounded-[24px]", cornerRx: 24 },
   hero: { px: 130, text: "text-4xl font-bold", icon: 54, ringStroke: 4.5, radius: "rounded-[28px]", cornerRx: 30 },
   executive: { px: 88, text: "text-2xl font-bold", icon: 38, ringStroke: 4, radius: "rounded-[24px]", cornerRx: 24 },
+  pro: { px: 98, text: "text-3xl font-bold", icon: 44, ringStroke: 4, radius: "rounded-[28px]", cornerRx: 28 },
 };
 
 export const LuxeAvatar: React.FC<LuxeAvatarProps> = ({

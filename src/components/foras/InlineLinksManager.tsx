@@ -340,29 +340,19 @@ export const InlineLinksManager: React.FC<InlineLinksManagerProps> = ({
                                 ? activeEditingPlatformMeta.placeholderAr
                                 : activeEditingPlatformMeta.placeholderEn
                             }
-                            className="bg-background border-primary/40 focus:border-primary text-xs sm:text-sm font-mono h-11 ps-3 pe-8 shadow-inner"
+                            className="bg-background border-primary/40 focus:border-primary text-xs sm:text-sm font-mono h-11 px-3.5 shadow-inner"
                             dir="ltr"
                           />
-                          {editInputVal && (
-                            <button
-                              type="button"
-                              onClick={() => setEditInputVal("")}
-                              className="absolute end-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs p-1"
-                              title={ar ? "مسح النص" : "Clear"}
-                            >
-                              ✕
-                            </button>
-                          )}
                         </div>
 
                         {/* Ergonomic In-Place Action Buttons (Ample Spacing, Clear Target) */}
-                        <div className="flex items-center gap-2 justify-end">
+                        <div className="flex items-center gap-2 justify-end flex-wrap sm:flex-nowrap">
                           <Button
                             type="button"
                             variant="outline"
                             size="sm"
                             onClick={handlePasteToActive}
-                            className="h-11 px-3.5 text-xs border-border/80 hover:border-primary text-foreground flex-shrink-0"
+                            className="h-11 px-3.5 text-xs border-border/80 hover:border-primary text-foreground flex-shrink-0 cursor-pointer"
                             title={ar ? "لصق من الحافظة" : "Paste from clipboard"}
                           >
                             <Copy className="w-4 h-4 me-1 text-primary" />
@@ -374,7 +364,7 @@ export const InlineLinksManager: React.FC<InlineLinksManagerProps> = ({
                             variant="ghost"
                             size="sm"
                             onClick={handleCancelInPlaceEdit}
-                            className="h-11 px-3.5 text-xs text-muted-foreground hover:text-foreground border border-border/60 hover:bg-muted/30 flex-shrink-0"
+                            className="h-11 px-3.5 text-xs text-muted-foreground hover:text-foreground border border-border/60 hover:bg-muted/30 flex-shrink-0 cursor-pointer"
                           >
                             <X className="w-4 h-4 me-1" />
                             <span>{ar ? "إلغاء" : "Cancel"}</span>
@@ -385,7 +375,7 @@ export const InlineLinksManager: React.FC<InlineLinksManagerProps> = ({
                             variant="gold"
                             size="sm"
                             onClick={() => handleSaveInPlace(link.id)}
-                            className="h-11 px-5 text-xs font-bold shadow-gold flex-shrink-0"
+                            className="h-11 px-5 text-xs font-bold shadow-gold flex-shrink-0 cursor-pointer"
                           >
                             <Save className="w-4 h-4 me-1.5" />
                             <span>{ar ? "حفظ التعديل" : "Save Link"}</span>
@@ -435,23 +425,23 @@ export const InlineLinksManager: React.FC<InlineLinksManagerProps> = ({
 
                     <div className="flex flex-col min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-foreground truncate">
+                        <span className="text-sm font-bold text-foreground truncate">
                           {ar ? meta.labelAr : meta.labelEn}
                         </span>
                         {link.url.trim().length > 0 && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+                          <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block shadow-2xs" />
                         )}
                       </div>
 
                       {link.url ? (
                         <p
-                          className="text-[11px] font-mono text-muted-foreground hover:text-primary transition-colors truncate max-w-xs sm:max-w-md"
+                          className="text-xs sm:text-sm font-mono font-medium text-primary hover:text-amber-300 transition-colors truncate max-w-xs sm:max-w-md pt-0.5"
                           dir="ltr"
                         >
                           {displayHandle || link.url.replace(/^https?:\/\//, "")}
                         </p>
                       ) : (
-                        <span className="text-[10px] text-destructive/80 font-medium">
+                        <span className="text-xs text-amber-400/90 font-medium pt-0.5">
                           {ar ? "لم يتم إدخال الرابط بعد — اضغط تعديل" : "Empty URL — click edit to add"}
                         </span>
                       )}
