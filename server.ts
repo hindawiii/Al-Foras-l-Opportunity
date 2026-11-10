@@ -22,21 +22,15 @@ function getGeminiClient(): GoogleGenAI | null {
   }
   return new GoogleGenAI({
     apiKey,
-    httpOptions: {
-      headers: {
-        "User-Agent": "aistudio-build",
-      },
-    },
   });
 }
 
 /**
  * Executes Gemini generateContent using modern available models with tiered fallback
- * Primary: gemini-3.6-flash
- * Secondary: gemini-3.8-flash
- * Tertiary: gemini-3.5-flash-lite
- * Quaternary: gemini-3.1-flash-lite
- * Quinary: gemini-flash-latest
+ * Primary: gemini-2.5-flash (Standard workhorse model)
+ * Secondary: gemini-flash-latest (Auto-updating stable flash)
+ * Tertiary: gemini-3.8-flash (Preview high-capacity flash)
+ * Quaternary: gemini-3.1-flash-lite (Cost-efficient low-latency model)
  */
 async function generateWithFallback(
   ai: GoogleGenAI,
@@ -46,11 +40,10 @@ async function generateWithFallback(
   }
 ) {
   const models = [
-    "gemini-3.6-flash",
-    "gemini-3.8-flash",
-    "gemini-3.5-flash-lite",
-    "gemini-3.1-flash-lite",
+    "gemini-2.5-flash",
     "gemini-flash-latest",
+    "gemini-3.8-flash",
+    "gemini-3.1-flash-lite",
   ];
 
   let lastError: any = null;

@@ -1,6 +1,7 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import {
   getFirestore,
+  setLogLevel,
   doc,
   setDoc,
   deleteDoc,
@@ -12,6 +13,12 @@ import {
 } from "firebase/firestore";
 import fs from "fs";
 import path from "path";
+
+try {
+  setLogLevel("silent");
+} catch {
+  // Silent fallback
+}
 
 // Load configuration safely
 let dbInstance: Firestore | null = null;

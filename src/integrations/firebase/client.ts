@@ -1,11 +1,11 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore, setLogLevel } from "firebase/firestore";
+import { initializeFirestore, getFirestore, setLogLevel } from "firebase/firestore";
 import firebaseConfig from "../../../firebase-applet-config.json";
 
-// Set Firestore log level to error to quiet routine stream reconnection notices
+// Quiet routine stream reconnection notices to prevent noisy console logs
 try {
-  setLogLevel("error");
+  setLogLevel("silent");
 } catch {
   // Silent fallback
 }
@@ -16,10 +16,22 @@ export const firebaseApp = getApps().length > 0 ? getApp() : initializeApp(fireb
 // Initialize Auth
 export const auth = getAuth(firebaseApp);
 
-// Initialize Firestore with specific database ID if provided
-export const db = firebaseConfig.firestoreDatabaseId
-  ? getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId)
-  : getFirestore(firebaseApp);
+// Initialize Firestore with experimentalAutoDetectLongPolling to eliminate 10s WebChannel stream timeouts
+export const db = (() => {
+  try {
+    return initializeFirestore(
+      firebaseApp,
+      {
+        experimentalAutoDetectLongPolling: true,
+      },
+      firebaseConfig.firestoreDatabaseId || undefined
+    );
+  } catch {
+    return firebaseConfig.firestoreDatabaseId
+      ? getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId)
+      : getFirestore(firebaseApp);
+  }
+})();
 
 // Connection test helper
 export async function testFirebaseConnection(): Promise<boolean> {
