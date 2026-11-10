@@ -40,6 +40,11 @@ import { PendingReviewsAdminView } from "./admin/PendingReviewsAdminView";
 import { DataBackupAdminView } from "./admin/DataBackupAdminView";
 import { ScholarshipsManagementView } from "./admin/ScholarshipsManagementView";
 import { JobsManagementView } from "./admin/JobsManagementView";
+import { AdminUrlParserView } from "./admin/AdminUrlParserView";
+import { AdminEditScholarshipModal } from "./admin/AdminEditScholarshipModal";
+import { AdminEditJobModal } from "./admin/AdminEditJobModal";
+import { AdminRecoveryModal } from "./admin/AdminRecoveryModal";
+import { AdminBroadcastModal } from "./admin/AdminBroadcastModal";
 
 // Active Task Section in Slide Sidebar
 export type AdminTab =
@@ -1844,307 +1849,54 @@ export const AdminDashboardModal: React.FC<{
 
                 {/* 4. AI URL Smart Parser */}
                 {activeTab === "url_parser" && (
-                  <div className="h-full overflow-y-auto p-1 sm:p-2 space-y-4 max-w-3xl mx-auto scrollbar-thin scrollbar-thumb-primary/25 pb-24">
-                    <div className="p-5 rounded-2xl bg-card border-2 border-primary/30">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-xl bg-gold-gradient flex items-center justify-center shadow-gold">
-                          <Sparkles className="w-6 h-6 text-primary-foreground" />
-                        </div>
-                        <div>
-                          <h4 className="text-base font-bold text-white">{t("adminAiUrlExtractor")}</h4>
-                          <p className="text-xs text-gray-300">{t("adminAiUrlExtractorDesc")}</p>
-                        </div>
-                      </div>
-
-                      <div className="space-y-3">
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => setUrlType("scholarship")}
-                            className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                              urlType === "scholarship" ? "bg-primary text-primary-foreground shadow-gold" : "bg-card border border-primary/20 text-gray-300 hover:text-white"
-                            }`}
-                          >
-                            <GraduationCap className="w-3.5 h-3.5" />
-                            <span>{isRtl ? "منحة دراسية" : "Scholarship"}</span>
-                          </button>
-                          <button
-                            onClick={() => setUrlType("job")}
-                            className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                              urlType === "job" ? "bg-primary text-primary-foreground shadow-gold" : "bg-card border border-primary/20 text-gray-300 hover:text-white"
-                            }`}
-                          >
-                            <Briefcase className="w-3.5 h-3.5" />
-                            <span>{isRtl ? "فرصة عمل عن بعد" : "Remote Job"}</span>
-                          </button>
-                        </div>
-
-                        {/* URL Input Bar - Luxe Pro Responsive Architecture (Zero Collision) */}
-                        <div className="space-y-3">
-                          <div className="flex flex-col sm:flex-row items-stretch gap-2.5">
-                            {/* The URL input container with proper LTR / internal icon */}
-                            <div className={`relative flex-1 flex items-center rounded-xl bg-background/90 border transition-all h-11 px-3.5 ${
-                              urlDuplicateResult.isDuplicate
-                                ? "border-amber-500/60 focus-within:border-amber-400"
-                                : urlInput.trim().length > 10
-                                ? "border-emerald-500/50 focus-within:border-emerald-400"
-                                : "border-primary/30 focus-within:border-primary"
-                            }`}>
-                              <Link2 className="w-4 h-4 text-primary shrink-0 me-2.5" />
-                              <input
-                                type="url"
-                                value={urlInput}
-                                onChange={e => {
-                                  const val = e.target.value;
-                                  setUrlInput(val);
-                                  // Auto detect type if URL contains distinctive keywords
-                                  const lower = val.toLowerCase();
-                                  if (
-                                    lower.includes("burslari") ||
-                                    lower.includes("scholarship") ||
-                                    lower.includes("daad") ||
-                                    lower.includes("chevening") ||
-                                    lower.includes("fulbright") ||
-                                    lower.includes("university") ||
-                                    lower.includes("edu")
-                                  ) {
-                                    setUrlType("scholarship");
-                                  } else if (
-                                    lower.includes("job") ||
-                                    lower.includes("career") ||
-                                    lower.includes("remote") ||
-                                    lower.includes("weworkremotely") ||
-                                    lower.includes("upwork") ||
-                                    lower.includes("freelance") ||
-                                    lower.includes("linkedin.com/jobs")
-                                  ) {
-                                    setUrlType("job");
-                                  }
-                                }}
-                                placeholder={
-                                  urlType === "scholarship"
-                                    ? "https://turkiyeburslari.gov.tr أو https://for9a.com/opportunity..."
-                                    : "https://weworkremotely.com/jobs/..."
-                                }
-                                className="w-full bg-transparent text-white text-xs sm:text-sm outline-none placeholder:text-gray-500 font-mono tracking-tight"
-                                dir="ltr"
-                              />
-
-                              {urlInput && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setUrlInput("");
-                                    setParsedPreview(null);
-                                    toast.info(isRtl ? "تم مسح الرابط" : "URL cleared");
-                                  }}
-                                  title={isRtl ? "مسح الرابط الحالي" : "Clear current URL"}
-                                  className="ms-1.5 p-1 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors shrink-0 cursor-pointer"
-                                >
-                                  <X className="w-4 h-4" />
-                                </button>
-                              )}
-                            </div>
-
-                            {/* Actions Group: Smart Clipboard Paste Button */}
-                            <button
-                              type="button"
-                              onClick={async () => {
-                                try {
-                                  // Attempt standard clipboard read
-                                  if (navigator.clipboard && navigator.clipboard.readText) {
-                                    const text = await navigator.clipboard.readText();
-                                    if (text && (text.startsWith("http://") || text.startsWith("https://") || text.includes("."))) {
-                                      const trimmed = text.trim();
-                                      setUrlInput(trimmed);
-                                      setParsedPreview(null);
-
-                                      // Auto-detect type
-                                      const lower = trimmed.toLowerCase();
-                                      if (
-                                        lower.includes("burslari") ||
-                                        lower.includes("scholarship") ||
-                                        lower.includes("daad") ||
-                                        lower.includes("chevening") ||
-                                        lower.includes("fulbright") ||
-                                        lower.includes("university") ||
-                                        lower.includes("edu")
-                                      ) {
-                                        setUrlType("scholarship");
-                                      } else if (
-                                        lower.includes("job") ||
-                                        lower.includes("career") ||
-                                        lower.includes("remote") ||
-                                        lower.includes("weworkremotely") ||
-                                        lower.includes("upwork") ||
-                                        lower.includes("freelance") ||
-                                        lower.includes("linkedin.com/jobs")
-                                      ) {
-                                        setUrlType("job");
-                                      }
-
-                                      toast.success(isRtl ? "تم سحب ولصق الرابط من الحافظة تلقائياً!" : "Pasted URL from clipboard!");
-                                      return;
-                                    } else if (text && text.trim().length > 0) {
-                                      toast.warning(isRtl ? "الحافظة لا تحتوي على رابط صالح" : "Clipboard does not contain a valid URL");
-                                      return;
-                                    }
-                                  }
-                                } catch {
-                                  // Browser security restriction (e.g. inside iframe sandbox without clipboard-read grant)
-                                }
-
-                                // Graceful Fallback: Prompt user politely or focus input directly
-                                const manualUrl = window.prompt(
-                                  isRtl
-                                    ? "متصفحك يفرض حماية على قراءة الحافظة المباشرة داخل الإطار. يرجى لصق الرابط (Ctrl+V أو Cmd+V) هنا:"
-                                    : "Browser sandbox blocks direct clipboard read. Please paste (Ctrl+V) the URL here:"
-                                );
-                                if (manualUrl && manualUrl.trim()) {
-                                  const trimmed = manualUrl.trim();
-                                  setUrlInput(trimmed);
-                                  setParsedPreview(null);
-                                  const lower = trimmed.toLowerCase();
-                                  if (
-                                    lower.includes("burslari") ||
-                                    lower.includes("scholarship") ||
-                                    lower.includes("daad") ||
-                                    lower.includes("chevening") ||
-                                    lower.includes("fulbright") ||
-                                    lower.includes("university") ||
-                                    lower.includes("edu")
-                                  ) {
-                                    setUrlType("scholarship");
-                                  } else if (
-                                    lower.includes("job") ||
-                                    lower.includes("career") ||
-                                    lower.includes("remote") ||
-                                    lower.includes("weworkremotely") ||
-                                    lower.includes("upwork") ||
-                                    lower.includes("freelance") ||
-                                    lower.includes("linkedin.com/jobs")
-                                  ) {
-                                    setUrlType("job");
-                                  }
-                                  toast.success(isRtl ? "تم اعتماد الرابط بنجاح!" : "URL pasted successfully!");
-                                } else {
-                                  toast.info(isRtl ? "يمكنك النقر مباشرة داخل حقل الرابط واستخدام اختصار اللصق (Ctrl+V)" : "You can click the URL input and press Ctrl+V to paste.");
-                                }
-                              }}
-                              title={isRtl ? "سحب ولصق الرابط المنسوخ تلقائياً" : "Paste copied URL automatically"}
-                              className="h-11 px-4 rounded-xl text-xs sm:text-sm font-bold bg-primary/15 border border-primary/30 text-primary hover:bg-primary/25 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 shrink-0 shadow-sm"
-                            >
-                              <Copy className="w-4 h-4" />
-                              <span>{isRtl ? "لصق الرابط" : "Paste Link"}</span>
-                            </button>
-                          </div>
-
-                          <div className="flex justify-end pt-1">
-                            <Button
-                              variant="luxe"
-                              disabled={isParsing || !urlInput.trim()}
-                              onClick={async () => {
-                                if (urlDuplicateResult.isDuplicate) {
-                                  toast.warning(
-                                    isRtl
-                                      ? `⚠️ تنبيه: هذا الرابط مسجل مسبقاً! جاري المتابعة بناءً على طلبك...`
-                                      : `⚠️ Warning: URL already exists. Parsing anyway...`
-                                  );
-                                }
-                                setIsParsing(true);
-                                try {
-                                  const parsed = await dynamicStore.parseFromUrl(urlInput, urlType);
-                                  setParsedPreview(parsed);
-                                  toast.success(isRtl ? "تم استخراج ومعالجة بيانات الرابط بنجاح" : "Parsed successfully");
-                                } catch (err: any) {
-                                  toast.error(
-                                    err?.message || (isRtl ? "تعذر الاستخراج من الرابط" : "Failed to parse"),
-                                    { duration: 6000 }
-                                  );
-                                } finally {
-                                  setIsParsing(false);
-                                }
-                              }}
-                              className="font-bold text-xs sm:text-sm shadow-gold cursor-pointer w-full sm:w-auto px-6 h-11 rounded-xl"
-                            >
-                              {isParsing ? (
-                                <span className="flex items-center gap-2">
-                                  <RefreshCw className="w-4 h-4 animate-spin" />
-                                  <span>{isRtl ? "جاري الاستخراج والتدقيق..." : "Extracting..."}</span>
-                                </span>
-                              ) : (
-                                <span className="flex items-center gap-2">
-                                  <Sparkles className="w-4 h-4" />
-                                  <span>{t("adminExtractBtn")}</span>
-                                </span>
-                              )}
-                            </Button>
-                          </div>
-                        </div>
-
-                        {/* Real-time URL Duplicate & Integrity Notice */}
-                        <UrlDuplicateNotice
-                          urlInput={urlInput}
-                          urlType={urlType}
-                          duplicateItem={urlDuplicateResult.matchedItem}
-                          confidence={urlDuplicateResult.confidence}
-                          reasonAr={urlDuplicateResult.reasonAr}
-                          reasonEn={urlDuplicateResult.reasonEn}
-                          isRtl={isRtl}
-                          onNavigateToExisting={(item, type) => {
-                            if (type === "scholarship") {
-                              setEditingScholarship(item);
-                              setActiveTab("scholarships");
-                              setMobileViewPane("detail");
-                            } else {
-                              setEditingJob(item);
-                              setActiveTab("jobs");
-                              setMobileViewPane("detail");
-                            }
-                            toast.info(
-                              isRtl
-                                ? `تم الانتقال مباشرة للعنصر المسجل: "${item.title_ar || item.title}"`
-                                : `Navigated to registered item: "${item.titleEn || item.title}"`
-                            );
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    {parsedPreview && (
-                      <ExtractedOpportunityPreview
-                        data={parsedPreview}
-                        type={urlType}
-                        isRtl={isRtl}
-                        onApprove={(approvedData) => {
-                          if (urlType === "scholarship") {
-                            dynamicStore.saveScholarship(approvedData);
-                            setScholarshipCategoryFilter("all");
-                            setScholarshipSearchQuery("");
-                          } else {
-                            dynamicStore.saveJob(approvedData);
-                            setJobCategoryFilter("all");
-                            setJobSearchQuery("");
-                          }
-                          toast.success(
-                            isRtl
-                              ? `تم اعتماد ونشر "${approvedData.title_ar || approvedData.title}" بنجاح!`
-                              : `Published "${approvedData.title_en || approvedData.title}" successfully!`
-                          );
-                          setParsedPreview(null);
-                          setUrlInput("");
-                          setActiveTab(urlType === "scholarship" ? "scholarships" : "jobs");
-                        }}
-                        onCancel={() => {
-                          setParsedPreview(null);
-                          toast.info(
-                            isRtl
-                              ? "تم إلغاء وتجاهل نتيجة الاستخراج"
-                              : "Extracted result cancelled and dismissed"
-                          );
-                        }}
-                      />
-                    )}
-                  </div>
+                  <AdminUrlParserView
+                    isRtl={isRtl}
+                    t={t}
+                    urlType={urlType}
+                    setUrlType={setUrlType}
+                    urlInput={urlInput}
+                    setUrlInput={setUrlInput}
+                    isParsing={isParsing}
+                    setIsParsing={setIsParsing}
+                    parsedPreview={parsedPreview}
+                    setParsedPreview={setParsedPreview}
+                    urlDuplicateResult={urlDuplicateResult}
+                    onNavigateToExisting={(item, type) => {
+                      if (type === "scholarship") {
+                        setEditingScholarship(item);
+                        setActiveTab("scholarships");
+                        setMobileViewPane("detail");
+                      } else {
+                        setEditingJob(item);
+                        setActiveTab("jobs");
+                        setMobileViewPane("detail");
+                      }
+                      toast.info(
+                        isRtl
+                          ? `تم الانتقال مباشرة للعنصر المسجل: "${item.title_ar || item.title}"`
+                          : `Navigated to registered item: "${item.titleEn || item.title}"`
+                      );
+                    }}
+                    onApproveParsed={(approvedData) => {
+                      if (urlType === "scholarship") {
+                        dynamicStore.saveScholarship(approvedData);
+                        setScholarshipCategoryFilter("all");
+                        setScholarshipSearchQuery("");
+                      } else {
+                        dynamicStore.saveJob(approvedData);
+                        setJobCategoryFilter("all");
+                        setJobSearchQuery("");
+                      }
+                      toast.success(
+                        isRtl
+                          ? `تم اعتماد ونشر "${approvedData.title_ar || approvedData.title}" بنجاح!`
+                          : `Published "${approvedData.title_en || approvedData.title}" successfully!`
+                      );
+                      setParsedPreview(null);
+                      setUrlInput("");
+                      setActiveTab(urlType === "scholarship" ? "scholarships" : "jobs");
+                    }}
+                  />
                 )}
 
                 {/* Automation Engine Tab */}
@@ -2351,797 +2103,54 @@ export const AdminDashboardModal: React.FC<{
         )}
       </AnimatePresence>
 
-      {/* Editing Scholarship Modal with Full Fields & Dynamic Custom Fields */}
-      {editingScholarship && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-          <div className="w-full max-w-3xl max-h-[90vh] p-6 rounded-3xl bg-card border-2 border-primary/40 shadow-2xl space-y-4 my-auto overflow-y-auto scrollbar-thin scrollbar-thumb-primary/30" dir={dir}>
-            <div className="flex items-center justify-between border-b border-primary/20 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-primary/20 flex items-center justify-center text-primary">
-                  <GraduationCap className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-base sm:text-lg font-bold text-white">{t("adminEditScholarshipTitle")}</h4>
-                  <p className="text-[11px] text-gray-400">{t("adminEditScholarshipDesc")}</p>
-                </div>
-              </div>
-              <button onClick={() => setEditingScholarship(null)} className="text-gray-400 hover:text-white p-1 rounded-lg">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      {/* Modular Admin Modals: Edit Scholarship, Edit Job, Password Recovery, and Broadcast Notification */}
+      <AdminEditScholarshipModal
+        editingScholarship={editingScholarship}
+        setEditingScholarship={setEditingScholarship}
+        onSave={(scholarship) => {
+          dynamicStore.saveScholarship(scholarship);
+          setEditingScholarship(null);
+          toast.success(isRtl ? "تم حفظ وتحديث بيانات المنحة بنجاح" : "Scholarship saved successfully");
+        }}
+        onClose={() => setEditingScholarship(null)}
+        isRtl={isRtl}
+        dir={dir}
+        t={t}
+      />
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs sm:text-sm">
-              <div>
-                <label className="block font-bold text-gray-200 mb-1">{t("adminTitleAr")} <span className="text-destructive">*</span></label>
-                <input
-                  type="text"
-                  value={(editingScholarship as any).title_ar || editingScholarship.title}
-                  onChange={e => setEditingScholarship({ ...editingScholarship, title: e.target.value, title_ar: e.target.value } as any)}
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
-                  dir="rtl"
-                />
-              </div>
+      <AdminEditJobModal
+        editingJob={editingJob}
+        setEditingJob={setEditingJob}
+        onSave={(job) => {
+          dynamicStore.saveJob(job);
+          setEditingJob(null);
+          toast.success(isRtl ? "تم حفظ ونشر فرصة العمل بنجاح" : "Job saved successfully");
+        }}
+        onClose={() => setEditingJob(null)}
+        isRtl={isRtl}
+        dir={dir}
+        t={t}
+      />
 
-              <div>
-                <label className="block font-bold text-gray-200 mb-1">{t("adminTitleEn")}</label>
-                <input
-                  type="text"
-                  value={(editingScholarship as any).title_en || (editingScholarship as any).titleEn || ""}
-                  onChange={e => setEditingScholarship({ ...editingScholarship, title_en: e.target.value, titleEn: e.target.value } as any)}
-                  placeholder="e.g. Fully Funded Oxford Scholarship"
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
-                  dir="ltr"
-                />
-              </div>
+      <AdminRecoveryModal
+        isOpen={isRecoveryOpen}
+        onClose={() => setIsRecoveryOpen(false)}
+        isRtl={isRtl}
+        dir={dir}
+        t={t}
+        onSuccess={() => {
+          setLockoutState(adminAuthStore.getLockoutState());
+          setPasswordInput("");
+          setPinDigits(["", "", "", ""]);
+        }}
+      />
 
-              <div>
-                <label className="block font-bold text-gray-200 mb-1">{t("adminCountryUniversity")}</label>
-                <input
-                  type="text"
-                  value={editingScholarship.country}
-                  onChange={e => setEditingScholarship({ ...editingScholarship, country: e.target.value })}
-                  placeholder={isRtl ? "بريطانيا - جامعة أكسفورد" : "UK - Oxford University"}
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
-                  dir={dir}
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-gray-200 mb-1">{t("adminDegreeLevel")}</label>
-                <select
-                  value={editingScholarship.degree || "all"}
-                  onChange={e => setEditingScholarship({ ...editingScholarship, degree: e.target.value as any })}
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
-                >
-                  <option value="bachelor">{isRtl ? "بكالوريوس" : "Bachelor's"}</option>
-                  <option value="master">{isRtl ? "ماجستير" : "Master's"}</option>
-                  <option value="phd">{isRtl ? "دكتوراه / أبحاث" : "PhD / Research"}</option>
-                  <option value="bachelor_master">{isRtl ? "بكالوريوس + ماجستير" : "Bachelor + Master"}</option>
-                  <option value="all">{isRtl ? "كافة المراحل (شامل)" : "All Levels"}</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-bold text-gray-200 mb-1">{t("adminFundingCoverage")}</label>
-                <select
-                  value={editingScholarship.coverage || "full"}
-                  onChange={e => setEditingScholarship({ ...editingScholarship, coverage: e.target.value as any })}
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
-                >
-                  <option value="full">{isRtl ? "ممولة بالكامل (رسوم + راتب + سكن + طيران)" : "Fully Funded"}</option>
-                  <option value="partial">{isRtl ? "تمويل جزئي (رسوم دراسية فقط)" : "Partial Funded"}</option>
-                  <option value="tuition_only">{isRtl ? "إعفاء من الرسوم" : "Tuition Waiver Only"}</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-bold text-gray-200 mb-1">{t("adminDeadline")}</label>
-                <input
-                  type="date"
-                  value={editingScholarship.deadline}
-                  onChange={e => setEditingScholarship({ ...editingScholarship, deadline: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-gray-200 mb-1">{t("adminApplyUrl")}</label>
-                <input
-                  type="url"
-                  value={editingScholarship.apply_url}
-                  onChange={e => setEditingScholarship({ ...editingScholarship, apply_url: e.target.value })}
-                  placeholder="https://..."
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
-                  dir="ltr"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-gray-200 mb-1">{t("adminLanguageReq")}</label>
-                <input
-                  type="text"
-                  value={(editingScholarship as any).language_req || ""}
-                  onChange={e => setEditingScholarship({ ...editingScholarship, language_req: e.target.value } as any)}
-                  placeholder={isRtl ? "مثال: IELTS 6.5 أو بدون شرط لغة" : "e.g. IELTS 6.5 or No Language Req"}
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
-                  dir={dir}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block font-bold text-gray-200 mb-1">{t("adminDescriptionBenefits")}</label>
-              <textarea
-                rows={3}
-                value={(editingScholarship as any).description_ar || editingScholarship.description}
-                onChange={e => setEditingScholarship({ ...editingScholarship, description: e.target.value, description_ar: e.target.value } as any)}
-                className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary text-xs sm:text-sm"
-                dir={dir}
-              />
-            </div>
-
-            {/* DYNAMIC CUSTOM FIELDS BUILDER */}
-            <div className="p-4 rounded-2xl bg-card/60 border border-primary/30 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Plus className="w-4 h-4 text-primary" />
-                  <span className="text-xs sm:text-sm font-bold text-white">{t("adminCustomFieldsTitle")}</span>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const currentFields = (editingScholarship as any).custom_fields || [];
-                    setEditingScholarship({
-                      ...editingScholarship,
-                      custom_fields: [...currentFields, { label: "", value: "" }],
-                    } as any);
-                  }}
-                  className="text-xs border-primary/40 text-primary cursor-pointer hover:bg-primary/10"
-                >
-                  <Plus className="w-3.5 h-3.5 mx-1" />
-                  <span>{t("adminAddField")}</span>
-                </Button>
-              </div>
-
-              {((editingScholarship as any).custom_fields || []).map((f: any, fIdx: number) => (
-                <div key={fIdx} className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    placeholder={isRtl ? "اسم الحقل (مثال: شروط السن)" : "Field Label"}
-                    value={f.label}
-                    onChange={e => {
-                      const updated = [...((editingScholarship as any).custom_fields || [])];
-                      updated[fIdx].label = e.target.value;
-                      setEditingScholarship({ ...editingScholarship, custom_fields: updated } as any);
-                    }}
-                    className="w-1/3 px-3 py-1.5 rounded-xl bg-background border border-primary/30 text-white text-xs outline-none focus:border-primary"
-                    dir={dir}
-                  />
-                  <input
-                    type="text"
-                    placeholder={isRtl ? "القيمة أو الملاحظة المطلوبة" : "Field Value"}
-                    value={f.value}
-                    onChange={e => {
-                      const updated = [...((editingScholarship as any).custom_fields || [])];
-                      updated[fIdx].value = e.target.value;
-                      setEditingScholarship({ ...editingScholarship, custom_fields: updated } as any);
-                    }}
-                    className="flex-1 px-3 py-1.5 rounded-xl bg-background border border-primary/30 text-white text-xs outline-none focus:border-primary"
-                    dir={dir}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const updated = ((editingScholarship as any).custom_fields || []).filter((_: any, i: number) => i !== fIdx);
-                      setEditingScholarship({ ...editingScholarship, custom_fields: updated } as any);
-                    }}
-                    className="p-1.5 text-destructive hover:bg-destructive/10 rounded-lg cursor-pointer"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex gap-2 justify-end pt-3 border-t border-primary/20">
-              <Button variant="outline" size="sm" onClick={() => setEditingScholarship(null)} className="cursor-pointer">
-                {t("adminCancel")}
-              </Button>
-              <Button
-                variant="luxe"
-                size="sm"
-                onClick={() => {
-                  dynamicStore.saveScholarship(editingScholarship);
-                  setEditingScholarship(null);
-                  toast.success(isRtl ? "تم حفظ وتحديث بيانات المنحة بنجاح" : "Scholarship saved successfully");
-                }}
-                className="font-bold shadow-gold cursor-pointer"
-              >
-                {t("adminSavePublish")}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Editing Job Modal with Full Details & Dynamic Custom Fields */}
-      {editingJob && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-          <div className="w-full max-w-3xl max-h-[90vh] p-6 rounded-3xl bg-card border-2 border-primary/40 shadow-2xl space-y-4 my-auto overflow-y-auto scrollbar-thin scrollbar-thumb-primary/30" dir={dir}>
-            <div className="flex items-center justify-between border-b border-primary/20 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-primary/20 flex items-center justify-center text-primary">
-                  <Briefcase className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-base sm:text-lg font-bold text-white">{t("adminEditJobTitle")}</h4>
-                  <p className="text-[11px] text-gray-400">{t("adminEditJobDesc")}</p>
-                </div>
-              </div>
-              <button onClick={() => setEditingJob(null)} className="text-gray-400 hover:text-white p-1 rounded-lg">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs sm:text-sm">
-              <div>
-                <label className="block font-bold text-gray-200 mb-1">{t("adminJobTitleAr")} <span className="text-destructive">*</span></label>
-                <input
-                  type="text"
-                  value={editingJob.title_ar}
-                  onChange={e => setEditingJob({ ...editingJob, title_ar: e.target.value })}
-                  placeholder="مطور واجهات ومواقع عن بُعد"
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
-                  dir="rtl"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-gray-200 mb-1">{t("adminJobTitleEn")}</label>
-                <input
-                  type="text"
-                  value={editingJob.title_en || ""}
-                  onChange={e => setEditingJob({ ...editingJob, title_en: e.target.value })}
-                  placeholder="Remote Frontend Engineer"
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
-                  dir="ltr"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-gray-200 mb-1">{t("adminCompany")}</label>
-                <input
-                  type="text"
-                  value={editingJob.company}
-                  onChange={e => setEditingJob({ ...editingJob, company: e.target.value })}
-                  placeholder="Upwork / Toptal / Global Remote"
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
-                  dir={dir}
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-gray-200 mb-1">{t("adminSalaryUsd")}</label>
-                <input
-                  type="text"
-                  value={editingJob.salary || ""}
-                  onChange={e => setEditingJob({ ...editingJob, salary: e.target.value })}
-                  placeholder="$2,500 - $4,500 / month"
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
-                  dir="ltr"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-gray-200 mb-1">{t("adminJobType")}</label>
-                <select
-                  value={editingJob.type || "remote_freelance"}
-                  onChange={e => setEditingJob({ ...editingJob, type: e.target.value as any })}
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
-                >
-                  <option value="remote_freelance">{isRtl ? "عن بُعد بالكامل (Remote Freelance)" : "100% Remote Freelance"}</option>
-                  <option value="full_time">{isRtl ? "دوام كامل عن بُعد (Full-Time Remote)" : "Full-Time Remote"}</option>
-                  <option value="part_time">{isRtl ? "دوام جزئي مرن (Part-Time)" : "Part-Time Flexible"}</option>
-                  <option value="contract">{isRtl ? "عقد مشروع محدد (Project Contract)" : "Project Contract"}</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-bold text-gray-200 mb-1">{t("adminPayoutMethod")}</label>
-                <input
-                  type="text"
-                  value={(editingJob as any).payout_method || ""}
-                  onChange={e => setEditingJob({ ...editingJob, payout_method: e.target.value } as any)}
-                  placeholder={isRtl ? "بايبال، بايونير، تحويل بنكي دولي" : "PayPal, Payoneer, Wire Transfer"}
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
-                  dir={dir}
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-gray-200 mb-1">{t("adminApplyUrl")}</label>
-                <input
-                  type="url"
-                  value={editingJob.apply_url}
-                  onChange={e => setEditingJob({ ...editingJob, apply_url: e.target.value })}
-                  placeholder="https://..."
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
-                  dir="ltr"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-gray-200 mb-1">{t("adminSkillsReq")}</label>
-                <input
-                  type="text"
-                  value={(editingJob.skills || []).join(", ")}
-                  onChange={e => setEditingJob({ ...editingJob, skills: e.target.value.split(",").map(s => s.trim()).filter(Boolean) })}
-                  placeholder="React, English B2, Node.js"
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary"
-                  dir="ltr"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block font-bold text-gray-200 mb-1">{t("adminJobDescription")}</label>
-              <textarea
-                rows={3}
-                value={editingJob.description_ar}
-                onChange={e => setEditingJob({ ...editingJob, description_ar: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl bg-background border border-primary/30 text-white outline-none focus:border-primary text-xs sm:text-sm"
-                dir={dir}
-              />
-            </div>
-
-            {/* DYNAMIC CUSTOM FIELDS BUILDER FOR JOBS */}
-            <div className="p-4 rounded-2xl bg-card/60 border border-primary/30 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Plus className="w-4 h-4 text-primary" />
-                  <span className="text-xs sm:text-sm font-bold text-white">{t("adminCustomFieldsTitle")}</span>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const currentFields = (editingJob as any).custom_fields || [];
-                    setEditingJob({
-                      ...editingJob,
-                      custom_fields: [...currentFields, { label: "", value: "" }],
-                    } as any);
-                  }}
-                  className="text-xs border-primary/40 text-primary cursor-pointer hover:bg-primary/10"
-                >
-                  <Plus className="w-3.5 h-3.5 mx-1" />
-                  <span>{t("adminAddField")}</span>
-                </Button>
-              </div>
-
-              {((editingJob as any).custom_fields || []).map((f: any, fIdx: number) => (
-                <div key={fIdx} className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    placeholder={isRtl ? "اسم الحقل (مثال: عدد ساعات العمل)" : "Field Label"}
-                    value={f.label}
-                    onChange={e => {
-                      const updated = [...((editingJob as any).custom_fields || [])];
-                      updated[fIdx].label = e.target.value;
-                      setEditingJob({ ...editingJob, custom_fields: updated } as any);
-                    }}
-                    className="w-1/3 px-3 py-1.5 rounded-xl bg-background border border-primary/30 text-white text-xs outline-none focus:border-primary"
-                    dir={dir}
-                  />
-                  <input
-                    type="text"
-                    placeholder={isRtl ? "القيمة أو الملاحظة المطلوبة" : "Field Value"}
-                    value={f.value}
-                    onChange={e => {
-                      const updated = [...((editingJob as any).custom_fields || [])];
-                      updated[fIdx].value = e.target.value;
-                      setEditingJob({ ...editingJob, custom_fields: updated } as any);
-                    }}
-                    className="flex-1 px-3 py-1.5 rounded-xl bg-background border border-primary/30 text-white text-xs outline-none focus:border-primary"
-                    dir={dir}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const updated = ((editingJob as any).custom_fields || []).filter((_: any, i: number) => i !== fIdx);
-                      setEditingJob({ ...editingJob, custom_fields: updated } as any);
-                    }}
-                    className="p-1.5 text-destructive hover:bg-destructive/10 rounded-lg cursor-pointer"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex gap-2 justify-end pt-3 border-t border-primary/20">
-              <Button variant="outline" size="sm" onClick={() => setEditingJob(null)} className="cursor-pointer">
-                {t("adminCancel")}
-              </Button>
-              <Button
-                variant="luxe"
-                size="sm"
-                onClick={() => {
-                  dynamicStore.saveJob(editingJob);
-                  setEditingJob(null);
-                  toast.success(isRtl ? "تم حفظ ونشر فرصة العمل بنجاح" : "Job saved successfully");
-                }}
-                className="font-bold shadow-gold cursor-pointer"
-              >
-                {t("adminSavePublish")}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Admin Password Recovery Modal (OTP to alforas.one@gmail.com) */}
-      <AnimatePresence>
-        {isRecoveryOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="w-full max-w-md p-6 rounded-3xl bg-card border-2 border-primary/40 shadow-2xl space-y-4"
-              dir={dir}
-            >
-              <div className="flex items-center justify-between border-b border-primary/20 pb-3">
-                <div className="flex items-center gap-2 text-primary font-bold">
-                  <KeyRound className="w-5 h-5" />
-                  <span className="text-base text-white">{t("adminRecoveryTitle")}</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsRecoveryOpen(false)}
-                  className="p-1 rounded-full text-gray-400 hover:text-white hover:bg-white/10"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Step 1: Send OTP to Unified Email */}
-              {recoveryStep === "send_otp" && (
-                <div className="space-y-4">
-                  <div className="p-3 rounded-2xl bg-primary/10 border border-primary/20 text-xs text-gray-300 space-y-1.5">
-                    <p className="font-bold text-white text-xs">{t("adminRecoveryDesc")}</p>
-                    <div className="flex items-center gap-1.5 text-primary font-mono font-bold text-xs pt-1" dir="ltr">
-                      <Mail className="w-3.5 h-3.5" />
-                      <span>{UNIFIED_ADMIN_EMAIL}</span>
-                    </div>
-                  </div>
-
-                  <p className="text-2xs text-gray-400 leading-relaxed">
-                    {isRtl
-                      ? "عند الضغط على إرسال، سيقوم النظام بتوليد رمز تحقق آمن مكون من 6 أرقام وإرساله للبريد الرسمي الموحد لضمان أمان اللوحة."
-                      : "Clicking send will generate a secure 6-digit one-time passcode to the verified unified email address."}
-                  </p>
-
-                  <div className="flex gap-2 justify-end pt-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setIsRecoveryOpen(false)}
-                      className="cursor-pointer"
-                    >
-                      {t("adminCancel")}
-                    </Button>
-                    <Button
-                      variant="luxe"
-                      size="sm"
-                      disabled={isSendingRecoveryOtp}
-                      onClick={() => {
-                        setIsSendingRecoveryOtp(true);
-                        setTimeout(() => {
-                          const res = adminAuthStore.sendRecoveryOtp();
-                          setIsSendingRecoveryOtp(false);
-                          if (res.success) {
-                            toast.success(res.message || t("adminOtpSentMsg"));
-                            setRecoveryStep("verify_otp");
-                          } else {
-                            toast.error(res.message);
-                          }
-                        }, 500);
-                      }}
-                      className="font-bold shadow-gold cursor-pointer"
-                    >
-                      <Mail className="w-4 h-4 mx-1.5" />
-                      <span>{isSendingRecoveryOtp ? (isRtl ? "جاري الإرسال..." : "Sending...") : t("adminSendOtpBtn")}</span>
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {/* Step 2: Enter & Verify 6-digit OTP */}
-              {recoveryStep === "verify_otp" && (
-                <div className="space-y-4">
-                  <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 text-xs text-gray-200">
-                    <p>{t("adminOtpSentMsg")}</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-gray-200 mb-2">
-                      {t("adminEnterOtpLabel")}
-                    </label>
-
-                    <div className="flex items-center justify-center gap-1.5 xs:gap-2 sm:gap-2.5 py-1" dir="ltr">
-                      {recoveryOtpDigits.map((digit, idx) => (
-                        <input
-                          key={idx}
-                          ref={el => (recoveryOtpRefs.current[idx] = el)}
-                          type="text"
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          maxLength={1}
-                          value={digit}
-                          onChange={e => {
-                            const val = e.target.value.replace(/[^\d]/g, "").slice(-1);
-                            const updated = [...recoveryOtpDigits];
-                            updated[idx] = val;
-                            setRecoveryOtpDigits(updated);
-                            if (val && idx < 5) recoveryOtpRefs.current[idx + 1]?.focus();
-                          }}
-                          onKeyDown={e => {
-                            if (e.key === "Backspace" && !digit && idx > 0) {
-                              recoveryOtpRefs.current[idx - 1]?.focus();
-                            }
-                          }}
-                          onPaste={e => {
-                            e.preventDefault();
-                            const pasted = e.clipboardData.getData("text").replace(/[^\d]/g, "").slice(0, 6);
-                            if (!pasted) return;
-                            const digits = pasted.split("");
-                            const updated = [...recoveryOtpDigits];
-                            for (let i = 0; i < 6; i++) {
-                              updated[i] = digits[i] || "";
-                            }
-                            setRecoveryOtpDigits(updated);
-                            const next = Math.min(digits.length, 5);
-                            recoveryOtpRefs.current[next]?.focus();
-                          }}
-                          className={`w-8 h-10 xs:w-9 xs:h-11 sm:w-10 sm:h-12 text-center text-base sm:text-lg font-bold rounded-lg sm:rounded-xl border-2 transition-all outline-none ${
-                            digit
-                              ? "border-primary bg-white text-gray-950 shadow-gold"
-                              : "border-primary/40 bg-white/95 text-gray-900 focus:border-primary focus:bg-white"
-                          }`}
-                          autoFocus={idx === 0}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2 justify-end pt-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setRecoveryStep("send_otp")}
-                      className="cursor-pointer"
-                    >
-                      {isRtl ? "إعادة إرسال" : "Resend"}
-                    </Button>
-                    <Button
-                      variant="luxe"
-                      size="sm"
-                      onClick={() => {
-                        const code = recoveryOtpDigits.join("");
-                        const verifyRes = adminAuthStore.verifyRecoveryOtp(code);
-                        if (verifyRes.success) {
-                          toast.success(verifyRes.message);
-                          setRecoveryStep("new_password");
-                        } else {
-                          toast.error(verifyRes.message);
-                        }
-                      }}
-                      className="font-bold shadow-gold cursor-pointer"
-                    >
-                      <CheckCircle2 className="w-4 h-4 mx-1.5" />
-                      <span>{t("adminVerifyOtpBtn")}</span>
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {/* Step 3: Set New Password & Unlock Account */}
-              {recoveryStep === "new_password" && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-200 mb-1">
-                      {t("adminNewPasswordLabel")}
-                    </label>
-                    <div className="relative">
-                      <StarMaskedInput
-                        value={recoveryNewPassword}
-                        onChange={setRecoveryNewPassword}
-                        showPlain={showRecoveryNewPass}
-                        placeholder="★★★★★★"
-                        className="w-full py-2.5 px-4 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 text-sm border-2 border-primary/40 focus:border-primary focus:ring-2 focus:ring-primary/40 shadow-sm outline-none ps-4 pe-11"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowRecoveryNewPass(p => !p)}
-                        className="absolute top-1/2 -translate-y-1/2 end-3 text-gray-600 hover:text-gray-900 cursor-pointer p-1"
-                      >
-                        {showRecoveryNewPass ? <EyeOff className="w-4 h-4 text-gray-700" /> : <Eye className="w-4 h-4 text-primary" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-gray-200 mb-1">
-                      {t("adminConfirmNewPasswordLabel")}
-                    </label>
-                    <div className="relative">
-                      <StarMaskedInput
-                        value={recoveryConfirmPassword}
-                        onChange={setRecoveryConfirmPassword}
-                        showPlain={showRecoveryConfirmPass}
-                        placeholder="★ ★ ★ ★ ★ ★"
-                        className="w-full py-2.5 px-4 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 text-sm border-2 border-primary/40 focus:border-primary focus:ring-2 focus:ring-primary/40 shadow-sm outline-none ps-4 pe-11"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowRecoveryConfirmPass(p => !p)}
-                        className="absolute top-1/2 -translate-y-1/2 end-3 text-gray-600 hover:text-gray-900 cursor-pointer p-1"
-                      >
-                        {showRecoveryConfirmPass ? <EyeOff className="w-4 h-4 text-gray-700" /> : <Eye className="w-4 h-4 text-primary" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2 justify-end pt-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setIsRecoveryOpen(false)}
-                      className="cursor-pointer"
-                    >
-                      {t("adminCancel")}
-                    </Button>
-                    <Button
-                      variant="luxe"
-                      size="sm"
-                      onClick={() => {
-                        if (!recoveryNewPassword.trim() || recoveryNewPassword.length < 4) {
-                          toast.error(isRtl ? "يجب أن تكون كلمة المرور 4 خانات على الأقل" : "Password must be at least 4 chars");
-                          return;
-                        }
-                        if (recoveryNewPassword !== recoveryConfirmPassword) {
-                          toast.error(isRtl ? "كلمتا المرور غير متطابقتين" : "Passwords do not match");
-                          return;
-                        }
-
-                        const code = recoveryOtpDigits.join("");
-                        const resetRes = adminAuthStore.resetAdminPasswordWithOtp(code, recoveryNewPassword);
-                        if (resetRes.success) {
-                          setLockoutState(adminAuthStore.getLockoutState());
-                          setIsRecoveryOpen(false);
-                          setPasswordInput("");
-                          setPinDigits(["", "", "", ""]);
-                          toast.success(resetRes.message || (isRtl ? "تم تغيير كلمة المرور وفك الحظر بنجاح!" : "Password updated & lockout reset!"));
-                        } else {
-                          toast.error(resetRes.message);
-                        }
-                      }}
-                      className="font-bold shadow-gold cursor-pointer"
-                    >
-                      <LockKeyhole className="w-4 h-4 mx-1.5" />
-                      <span>{t("adminSaveNewPasswordBtn")}</span>
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </motion.div>
-          </div>
-        )}
-        {/* Real-time Broadcast Notification Modal */}
-        {broadcastModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="w-full max-w-lg bg-slate-900 border-2 border-amber-500/50 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
-              <div className="p-4 border-b border-amber-500/30 flex items-center justify-between bg-card/60">
-                <div className="flex items-center gap-2">
-                  <Radio className="w-5 h-5 text-amber-400 animate-pulse" />
-                  <h3 className="font-bold text-white text-base">
-                    {isRtl ? "بث إشعار عام لحظي لجميع المستخدمين" : "Broadcast Notification to All Users"}
-                  </h3>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setBroadcastModalOpen(false)}
-                  className="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <form onSubmit={handleSendBroadcast} className="p-5 space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-200">
-                    {isRtl ? "عنوان التنبيه (بالعربية) *" : "Notification Title (Arabic) *"}
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={broadcastTitle}
-                    onChange={(e) => setBroadcastTitle(e.target.value)}
-                    placeholder={isRtl ? "مثال: فتح باب التقديم لمنحة الحكومة التركية 2026" : "e.g. Turkiye Burslari 2026 Now Open"}
-                    className="w-full h-11 px-3 rounded-xl bg-card border border-primary/30 text-xs text-white focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-200">
-                    {isRtl ? "عنوان التنبيه (بالإنجليزية)" : "Notification Title (English)"}
-                  </label>
-                  <input
-                    type="text"
-                    value={broadcastTitleEn}
-                    onChange={(e) => setBroadcastTitleEn(e.target.value)}
-                    placeholder="e.g. Turkiye Burslari 2026 Open for Applications"
-                    className="w-full h-11 px-3 rounded-xl bg-card border border-primary/30 text-xs text-white focus:outline-none focus:ring-2 focus:ring-primary text-start"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-200">
-                    {isRtl ? "القسم المرتبط عند النقر" : "Target Section"}
-                  </label>
-                  <select
-                    value={broadcastTab}
-                    onChange={(e) => setBroadcastTab(e.target.value as any)}
-                    className="w-full h-11 px-3 rounded-xl bg-card border border-primary/30 text-xs font-medium text-white focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    <option value="scholarships">{isRtl ? "قسم المنح الدراسية" : "Scholarships"}</option>
-                    <option value="jobs">{isRtl ? "قسم وظائف العمل الحر" : "Jobs"}</option>
-                    <option value="arab_unis">{isRtl ? "دليل الجامعات العربية" : "Arab Universities"}</option>
-                    <option value="news">{isRtl ? "مركز الأخبار والاقتصاد" : "News & Economy"}</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-200">
-                    {isRtl ? "نص الإشعار والتفاصيل *" : "Notification Message *"}
-                  </label>
-                  <textarea
-                    rows={3}
-                    required
-                    value={broadcastBody}
-                    onChange={(e) => setBroadcastBody(e.target.value)}
-                    placeholder={isRtl ? "اكتب تفاصيل التنبيه المباشر الذي سيصل لجميع الطلاب..." : "Write message..."}
-                    className="w-full p-3 rounded-xl bg-card border border-primary/30 text-xs text-white focus:outline-none focus:ring-2 focus:ring-primary resize-none"
-                  />
-                </div>
-
-                <div className="flex items-center justify-end gap-3 pt-2 border-t border-primary/20">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setBroadcastModalOpen(false)}
-                    className="h-10 px-4 text-xs font-bold"
-                  >
-                    {isRtl ? "إلغاء" : "Cancel"}
-                  </Button>
-                  <Button
-                    type="submit"
-                    variant="luxe"
-                    disabled={isBroadcasting}
-                    className="h-10 px-6 text-xs font-bold shadow-gold flex items-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white"
-                  >
-                    <Radio className={`w-4 h-4 ${isBroadcasting ? "animate-spin" : ""}`} />
-                    <span>{isRtl ? "إرسال وبث فوري لجميع المستخدمين" : "Broadcast Now"}</span>
-                  </Button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-      </AnimatePresence>
+      <AdminBroadcastModal
+        isOpen={broadcastModalOpen}
+        onClose={() => setBroadcastModalOpen(false)}
+        isRtl={isRtl}
+        t={t}
+      />
     </div>
   );
 

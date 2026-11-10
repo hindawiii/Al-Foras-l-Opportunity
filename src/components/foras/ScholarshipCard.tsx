@@ -174,13 +174,13 @@ export const ScholarshipCard = ({
                   <span>{scholarship.flag}</span>
                 </div>
                 <span
-                  className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border backdrop-blur-md ${
+                  className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[11px] font-bold font-mono border backdrop-blur-md ${
                     isArab
                       ? "bg-primary/15 border-primary/40 text-primary"
                       : "bg-[hsl(210_70%_55%/0.15)] border-[hsl(210_70%_60%/0.5)] text-[hsl(210_90%_75%)]"
                   }`}
                 >
-                  {matchScore}% {ar ? "توافق" : "Match"}
+                  {matchScore}%
                 </span>
               </div>
               <div className="flex gap-1.5 items-center">

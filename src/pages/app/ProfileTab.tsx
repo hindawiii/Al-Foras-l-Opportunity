@@ -34,58 +34,22 @@ import {
 } from "@/components/ui/select";
 import { LuxeAvatar } from "@/components/foras/LuxeAvatar";
 
-interface ProfileState {
-  full_name: string; bio: string; education: string; location: string; avatar_url: string; phone: string;
-  skills: string[]; interests: string[];
-}
-
-const empty: ProfileState = { full_name: "", bio: "", education: "", location: "", avatar_url: "", phone: "", skills: [], interests: [] };
-
-const LINK_META: Record<LinkType, { labelAr: string; labelEn: string; emoji: string; placeholder: string }> = {
-  portfolio: { labelAr: "موقع شخصي / معرض أعمال", labelEn: "Portfolio / Website", emoji: "💼", placeholder: "https://myportfolio.com" },
-  linkedin:  { labelAr: "لينكد إن (LinkedIn)", labelEn: "LinkedIn", emoji: "💼", placeholder: "https://linkedin.com/in/..." },
-  github:    { labelAr: "جيت هاب (GitHub)", labelEn: "GitHub", emoji: "💻", placeholder: "https://github.com/..." },
-  twitter:   { labelAr: "تويتر / إكس (Twitter / X)", labelEn: "Twitter / X", emoji: "🐦", placeholder: "https://x.com/..." },
-  telegram:  { labelAr: "تيليجرام (Telegram)", labelEn: "Telegram", emoji: "📱", placeholder: "https://t.me/..." },
-  instagram: { labelAr: "إنستغرام (Instagram)", labelEn: "Instagram", emoji: "📸", placeholder: "https://instagram.com/..." },
-  youtube:   { labelAr: "يوتيوب (YouTube)", labelEn: "YouTube", emoji: "🎥", placeholder: "https://youtube.com/..." },
-  behance:   { labelAr: "بيهانس (Behance)", labelEn: "Behance", emoji: "🎨", placeholder: "https://behance.net/..." },
-  medium:    { labelAr: "ميديوم (Medium)", labelEn: "Medium", emoji: "📝", placeholder: "https://medium.com/@..." },
-  cv:        { labelAr: "رابط السيرة الذاتية (CV / Drive)", labelEn: "Resume / CV (Drive)", emoji: "📄", placeholder: "https://drive.google.com/..." },
-  other:     { labelAr: "رابط مخصص آخر", labelEn: "Other Custom Link", emoji: "🔗", placeholder: "https://..." },
-};
-
-const DEGREE_OPTIONS: { value: NonNullable<ProfileExtras["degree"]>; labelAr: string; labelEn: string }[] = [
-  { value: "secondary", labelAr: "شهادة ثانوية", labelEn: "High School Certificate" },
-  { value: "diploma",   labelAr: "دبلوم تقني / مهني", labelEn: "Diploma / Vocational" },
-  { value: "bachelor",  labelAr: "بكالوريوس (جامعي)", labelEn: "Bachelor's Degree" },
-  { value: "master",    labelAr: "ماجستير", labelEn: "Master's Degree" },
-  { value: "phd",       labelAr: "دكتوراه", labelEn: "PhD / Doctorate" },
-];
-
-const EXPERIENCE_OPTIONS: { value: NonNullable<ProfileExtras["experienceYears"]>; labelAr: string; labelEn: string }[] = [
-  { value: "none",  labelAr: "طالب / بدون خبرة رسمية", labelEn: "Student / No formal experience" },
-  { value: "0-1",   labelAr: "أقل من سنة (0 - 1 سنة)", labelEn: "Less than a year (0 - 1 yr)" },
-  { value: "1-3",   labelAr: "1 - 3 سنوات", labelEn: "1 - 3 years" },
-  { value: "3-5",   labelAr: "3 - 5 سنوات", labelEn: "3 - 5 years" },
-  { value: "5-10",  labelAr: "5 - 10 سنوات", labelEn: "5 - 10 years" },
-  { value: "10+",   labelAr: "أكثر من 10 سنوات (خبير)", labelEn: "10+ years (Expert)" },
-];
-
-const SKILL_CATEGORY_META: Record<SkillEntry["category"], { labelAr: string; labelEn: string; emoji: string }> = {
-  tech:     { labelAr: "المهارات التقنية والبرمجية", labelEn: "Technical & Coding Skills", emoji: "💻" },
-  creative: { labelAr: "المهارات الإبداعية والتصميم", labelEn: "Creative & Design Skills", emoji: "🎨" },
-  language: { labelAr: "اللغات والتواصل", labelEn: "Languages & Communication", emoji: "📝" },
-  other:    { labelAr: "مهارات عملية وقيادية", labelEn: "Practical & Leadership Skills", emoji: "🛠️" },
-};
-
-const SKILL_LEVEL_META: Record<number, { labelAr: string; labelEn: string; color: string; badgeAr: string }> = {
-  1: { labelAr: "مبتدئ (1 / 5)", labelEn: "Beginner (1/5)", color: "text-amber-400", badgeAr: "مبتدئ" },
-  2: { labelAr: "أساسي (2 / 5)", labelEn: "Elementary (2/5)", color: "text-amber-300", badgeAr: "أساسي" },
-  3: { labelAr: "متوسط (3 / 5)", labelEn: "Intermediate (3/5)", color: "text-primary", badgeAr: "متوسط" },
-  4: { labelAr: "متقدم (4 / 5)", labelEn: "Advanced (4/5)", color: "text-emerald-400", badgeAr: "متقدم" },
-  5: { labelAr: "خبير / طليق (5 / 5)", labelEn: "Expert / Fluent (5/5)", color: "text-emerald-300 font-extrabold", badgeAr: "خبير / طليق" },
-};
+import {
+  type ProfileState,
+  emptyProfileState as empty,
+  LINK_META,
+  DEGREE_OPTIONS,
+  EXPERIENCE_OPTIONS,
+  SKILL_CATEGORY_META,
+  SKILL_LEVEL_META,
+} from "@/components/foras/profile/profileTypes";
+import { Section, Field } from "@/components/foras/profile/ProfileSection";
+import { ProfileHeroHeader } from "@/components/foras/profile/ProfileHeroHeader";
+import { ProfileAvatarCinemaModal } from "@/components/foras/profile/ProfileAvatarCinemaModal";
+import { ProfileAcademicView } from "@/components/foras/profile/ProfileAcademicView";
+import { ProfileExperienceView } from "@/components/foras/profile/ProfileExperienceView";
+import { ProfileDetailedSkillsView } from "@/components/foras/profile/ProfileDetailedSkillsView";
+import { ProfileLinksView } from "@/components/foras/profile/ProfileLinksView";
 
 export const ProfileTab = () => {
   const navigate = useNavigate();
@@ -479,283 +443,50 @@ export const ProfileTab = () => {
   // ===== DASHBOARD (VIEW) MODE =====
   if (!editing) {
     const initial = (profile.full_name || user?.email || "ض")[0].toUpperCase();
-    const degreeLabel = DEGREE_OPTIONS.find(d => d.value === extras.degree);
-    const expLabel = EXPERIENCE_OPTIONS.find(e => e.value === extras.experienceYears);
 
     return (
       <div className="space-y-4 w-full pb-10">
         {/* === Executive Profile Card: Edge-Anchored Hero Frame + Linear Aligned Info Stack === */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="relative rounded-3xl overflow-hidden border border-primary/35 bg-card/90 backdrop-blur-xl shadow-luxe min-h-[195px] sm:min-h-[215px] flex flex-col sm:flex-row items-stretch"
+        <ProfileHeroHeader
+          profile={profile}
+          extras={extras}
+          completion={completion}
+          user={user}
+          isGuest={isGuest}
+          hideProfile={hideProfile}
+          alignClass={alignClass}
           dir={dir}
-        >
-          {/* Subtle Ambient Backdrop */}
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_80%_at_50%_0%,hsl(var(--primary)/0.18),transparent_70%),linear-gradient(180deg,hsl(var(--primary)/0.05),hsl(var(--card)))]" />
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-[2.5px] bg-gold-gradient opacity-80" />
+          ar={ar}
+          uploading={uploading}
+          copiedPhone={copiedPhone}
+          startEdit={startEdit}
+          onAvatarClick={() => {
+            setPendingAvatarUrl(null);
+            setPreviewOpen(true);
+          }}
+          handleAvatarUpload={handleAvatarUpload}
+          handleCopyPhone={handleCopyPhone}
+          t={t}
+        />
 
-          {/* Top-End Floating Executive Action Button (Circular Glass Edit Button) */}
-          <div className="absolute top-3.5 end-3.5 sm:top-4 sm:end-4 z-20">
-            <button
-              onClick={startEdit}
-              className="w-10 h-10 rounded-full bg-background/85 hover:bg-primary/20 text-primary border border-primary/35 flex items-center justify-center shadow-xs transition-all cursor-pointer active:scale-90"
-              title={t("edit")}
-              aria-label={t("edit")}
-            >
-              <Edit3 className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Edge-Anchored Hero Photo Column (Flush to Card Start Edge) */}
-          <div className="relative flex-shrink-0 flex items-center justify-center p-6 sm:p-7 sm:w-44 md:w-52 bg-gradient-to-b sm:bg-gradient-to-e from-primary/25 via-gold/10 to-transparent border-b sm:border-b-0 sm:border-e border-primary/25 overflow-hidden group">
-            {/* Ambient Radial Spotlight behind Avatar */}
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,hsl(var(--gold)/0.25),transparent_70%)]" />
-
-            <div className="relative">
-              <div
-                onClick={() => {
-                  setPendingAvatarUrl(null);
-                  setPreviewOpen(true);
-                }}
-                className="relative cursor-pointer transition-transform duration-200 hover:scale-[1.03] active:scale-95"
-                title={ar ? "انقر للمعاينة بملء الشاشة" : "Click for full screen preview"}
-              >
-                <LuxeAvatar
-                  src={profile.avatar_url && !hideProfile ? profile.avatar_url : null}
-                  name={hideProfile ? "•" : (profile.full_name || user?.email || "User")}
-                  size="hero"
-                  shape="squircle"
-                  showRing={true}
-                  ringProgress={completion}
-                  ringStatus="gold"
-                />
-
-                {/* Smart Embedded Camera Badge (Carved Anchor Cutout) */}
-                <label
-                  onClick={(e) => e.stopPropagation()}
-                  className="absolute bottom-1 end-1 w-9 h-9 rounded-full bg-gold-gradient border-2 border-card flex items-center justify-center shadow-gold cursor-pointer hover:scale-110 active:scale-90 transition-transform z-20"
-                  title={ar ? "تغيير الصورة الشخصية" : "Change photo"}
-                >
-                  {uploading ? (
-                    <Loader2 className="w-4 h-4 text-primary-foreground animate-spin" />
-                  ) : (
-                    <Camera className="w-4 h-4 text-primary-foreground" />
-                  )}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleAvatarUpload}
-                    disabled={uploading}
-                  />
-                </label>
-              </div>
-            </div>
-          </div>
-
-          {/* Profile Identity Details (Full Name, Sub-info, Badges) - Spacious Linear Aligned Stack */}
-          <div className={`flex-1 min-w-0 p-5 sm:p-7 flex flex-col justify-center space-y-3 ${alignClass} pe-14 sm:pe-16`}>
-            {/* Line 1: Full Name with Fluid Responsive Typography */}
-            <h2 className="font-display text-fluid-title sm:text-2xl md:text-3xl font-bold text-gold-gradient truncate leading-tight tracking-tight">
-              {hideProfile ? "•••••" : (profile.full_name || t("yourFullName"))}
-            </h2>
-
-            {/* Line 2: Sub-identity (Major/Role or Email/Guest) */}
-            <div className="text-fluid-body font-semibold text-primary/95 truncate">
-              {(extras.major || extras.university) && !hideProfile ? (
-                <p className="truncate">
-                  {extras.major || extras.university}
-                  {extras.university && extras.major ? ` • ${extras.university}` : ""}
-                </p>
-              ) : !isGuest && user?.email ? (
-                <div className="flex items-center gap-1.5 truncate">
-                  <Mail className="w-3.5 h-3.5 text-primary flex-shrink-0" />
-                  <span className="truncate">{hideProfile ? "•••••@•••••" : user.email}</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 text-xs truncate">
-                  <span className="inline-flex items-center gap-1.5 text-amber-300 font-medium">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse flex-shrink-0" />
-                    <span>{ar ? "حساب زائر محلي" : "Guest Account"}</span>
-                  </span>
-                  <span className="text-muted-foreground/40">•</span>
-                  <button
-                    type="button"
-                    onClick={() => navigate("/auth")}
-                    className="text-primary hover:underline font-bold text-xs cursor-pointer transition-colors"
-                  >
-                    {ar ? "تسجيل الدخول" : "Sign in"}
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Line 3: Linear Aligned Badges (Location / Phone / Verified) */}
-            <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 pt-1 text-xs">
-              {profile.location && !hideProfile && (
-                <span className="inline-flex items-center gap-1.5 bg-background/85 border border-border/90 px-3.5 py-1.5 rounded-xl text-foreground font-medium truncate max-w-[200px] shadow-2xs">
-                  <MapPin className="w-3.5 h-3.5 text-primary flex-shrink-0" />
-                  <span className="truncate">{profile.location}</span>
-                </span>
-              )}
-              {profile.phone && !hideProfile && (
-                <button
-                  type="button"
-                  onClick={() => handleCopyPhone(profile.phone)}
-                  title={ar ? "انقر لنسخ رقم الهاتف" : "Click to copy"}
-                  className="inline-flex items-center gap-1.5 bg-background/85 hover:bg-primary/15 border border-border/90 px-3.5 py-1.5 rounded-xl text-foreground font-medium transition-colors cursor-pointer shadow-2xs"
-                  dir="ltr"
-                >
-                  <Phone className="w-3.5 h-3.5 text-primary flex-shrink-0" />
-                  <span>{profile.phone}</span>
-                  {copiedPhone ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3 h-3 opacity-60" />}
-                </button>
-              )}
-              {!isGuest && (
-                <span className="inline-flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 px-3.5 py-1.5 rounded-xl text-emerald-400 text-xs font-semibold shadow-2xs">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>{ar ? "حساب موثق ومزامن" : "Verified Account"}</span>
-                </span>
-              )}
-            </div>
-          </div>
-        </motion.div>
-
-        {/* === Full-Screen Immersive Cinema Lightbox (Telegram / iOS Photos Style) === */}
-        <AnimatePresence>
-          {previewOpen && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-50 bg-black/95 backdrop-blur-2xl flex flex-col justify-between p-4 sm:p-6"
-              onClick={() => {
-                setPendingAvatarUrl(null);
-                setPreviewOpen(false);
-              }}
-            >
-              {/* Top Floating Controls: Pure Close Button */}
-              <div className="w-full flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
-                {pendingAvatarUrl ? (
-                  <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-semibold">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                    <span>{ar ? "معاينة الصورة الجديدة قبل الحفظ" : "Previewing new photo before saving"}</span>
-                  </div>
-                ) : <div />}
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPendingAvatarUrl(null);
-                    setPreviewOpen(false);
-                  }}
-                  className="w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 active:scale-90 border border-white/20 text-white flex items-center justify-center transition-all cursor-pointer shadow-lg"
-                  title={ar ? "إغلاق" : "Close"}
-                  aria-label={ar ? "إغلاق" : "Close"}
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Center: Full-Dimension Cinema Media Display */}
-              <div
-                className="flex-1 w-full flex flex-col items-center justify-center p-2"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {pendingAvatarUrl ? (
-                  <div className="flex flex-col items-center text-center space-y-3">
-                    <img
-                      src={pendingAvatarUrl}
-                      alt="avatar-pending-preview"
-                      className="max-w-[88vw] max-h-[62vh] object-contain rounded-3xl shadow-[0_0_50px_rgba(234,179,8,0.35)] border-2 border-primary"
-                    />
-                    <p className="text-xs sm:text-sm text-amber-200/90 font-medium">
-                      {ar ? "انقر 'حفظ الصورة' لاعتمادها كصورتك الشخصية، أو 'إلغاء' للتراجع" : "Click 'Save Photo' to confirm or 'Cancel' to discard"}
-                    </p>
-                  </div>
-                ) : profile.avatar_url && !hideProfile ? (
-                  <img
-                    src={profile.avatar_url}
-                    alt="avatar-full"
-                    className="max-w-[92vw] max-h-[72vh] object-contain rounded-3xl shadow-[0_0_60px_rgba(0,0,0,0.9)] border border-primary/40"
-                  />
-                ) : (
-                  <div className="w-64 h-64 sm:w-80 sm:h-80 rounded-[32px] bg-gradient-to-br from-[#3D2C04] via-[#5C4308] to-[#1E2530] border-2 border-primary/60 flex items-center justify-center shadow-2xl">
-                    <span className="font-display text-8xl text-amber-200 font-bold">
-                      {initial}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Bottom Action Bar: Staged Confirmation or Single-Word Action */}
-              <div
-                className="w-full max-w-sm mx-auto flex items-center justify-center gap-3 pb-4"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {pendingAvatarUrl ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={cancelPendingAvatar}
-                      disabled={uploading}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 border border-white/20 text-white font-bold text-xs sm:text-sm transition-all cursor-pointer"
-                    >
-                      <X className="w-4 h-4" />
-                      <span>{ar ? "إلغاء" : "Cancel"}</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={confirmSavePendingAvatar}
-                      disabled={uploading}
-                      className="flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gold-gradient text-primary-foreground font-bold text-xs sm:text-sm shadow-gold hover:brightness-110 active:scale-95 transition-all cursor-pointer"
-                    >
-                      {uploading ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Check className="w-4 h-4" />
-                      )}
-                      <span>{ar ? "حفظ الصورة" : "Save Photo"}</span>
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <label className="flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gold-gradient text-primary-foreground font-bold text-sm cursor-pointer shadow-gold hover:brightness-110 active:scale-95 transition-all">
-                      {uploading ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Camera className="w-4 h-4" />
-                      )}
-                      <span>{ar ? "تغيير" : "Change"}</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleAvatarUpload}
-                        disabled={uploading}
-                      />
-                    </label>
-
-                    {profile.avatar_url && (
-                      <button
-                        type="button"
-                        onClick={handleRemoveAvatar}
-                        className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-white/10 hover:bg-rose-500/20 text-white hover:text-rose-300 border border-white/15 text-sm font-bold transition-all cursor-pointer active:scale-95"
-                        title={ar ? "إزالة الصورة" : "Remove photo"}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        <span>{ar ? "حذف" : "Delete"}</span>
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* === Full-Screen Immersive Cinema Lightbox Modal === */}
+        <ProfileAvatarCinemaModal
+          previewOpen={previewOpen}
+          pendingAvatarUrl={pendingAvatarUrl}
+          profile={profile}
+          hideProfile={hideProfile}
+          initial={initial}
+          uploading={uploading}
+          ar={ar}
+          onClose={() => {
+            setPendingAvatarUrl(null);
+            setPreviewOpen(false);
+          }}
+          confirmSavePendingAvatar={confirmSavePendingAvatar}
+          cancelPendingAvatar={cancelPendingAvatar}
+          handleAvatarUpload={handleAvatarUpload}
+          handleRemoveAvatar={handleRemoveAvatar}
+        />
 
         {/* === AI MATCHING PRECISION & READINESS CARD (PRO AI ADVISOR) === */}
         {!hideProfile && (
@@ -767,417 +498,55 @@ export const ProfileTab = () => {
 
         {/* === SECTION: BIO & SUMMARY === */}
         {profile.bio && !hideProfile && (
-          <div className="bg-card-gradient border border-border rounded-2xl p-4 space-y-1.5">
-            <p className="text-xs text-primary font-bold flex items-center gap-1.5">
-              <BookOpen className="w-3.5 h-3.5" /> {t("bio")}
+          <div className="bg-card-gradient border border-primary/25 rounded-2xl p-4 sm:p-5 space-y-2 shadow-luxe">
+            <p className="text-xs sm:text-sm text-gold-gradient font-bold flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-gold flex-shrink-0" />
+              <span>{t("bio")}</span>
             </p>
-            <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{profile.bio}</p>
+            <p className="text-sm text-foreground/95 leading-relaxed whitespace-pre-wrap">{profile.bio}</p>
           </div>
         )}
 
         {/* === PERSONA-DRIVEN PROGRESSIVE SECTIONS === */}
         {extras.persona === "professional" ? (
           <>
-            {/* 1. PROFESSIONAL PERSONA: WORK & EXPERIENCE FIRST */}
-            {(expLabel && !hideProfile) && (
-              <div className="bg-card-gradient border border-border rounded-2xl p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold text-primary flex items-center gap-1.5">
-                    <Clock className="w-4 h-4 text-primary" />
-                    {ar ? "سنوات الخبرة العملية" : "Work Experience"}
-                  </h3>
-                  <span className="text-[10px] text-primary bg-primary/10 px-2 py-0.5 rounded-md font-semibold border border-primary/20">
-                    {ar ? "موثق" : "Verified"}
-                  </span>
-                </div>
-                <div className="bg-background/50 border border-border/70 rounded-xl p-3 flex items-center justify-between">
-                  <span className="text-xs font-bold text-foreground">
-                    {ar ? expLabel.labelAr : expLabel.labelEn}
-                  </span>
-                  <Briefcase className="w-4 h-4 text-primary/70" />
-                </div>
-              </div>
-            )}
-
-            {/* 2. PROFESSIONAL PERSONA: DETAILED SKILLS WITH RATINGS */}
-            {(extras.detailedSkills.length > 0 && !hideProfile) && (
-              <div className="bg-card-gradient border border-border rounded-2xl p-4 space-y-3">
-                <h3 className="text-xs font-bold text-primary flex items-center gap-1.5">
-                  <Award className="w-4 h-4 text-primary" />
-                  {ar ? "المهارات المتقدمة ومستوى الإتقان" : "Detailed Skills & Proficiency"}
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {extras.detailedSkills.map((sk, idx) => {
-                    const cat = SKILL_CATEGORY_META[sk.category];
-                    return (
-                      <div key={idx} className="bg-background/50 border border-border/70 rounded-xl p-2.5 flex items-center justify-between">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="flex-shrink-0">{cat?.emoji || "⚡"}</span>
-                          <div className="min-w-0">
-                            <p className="font-bold text-xs text-foreground truncate">{sk.name}</p>
-                            <p className="text-[10px] text-muted-foreground truncate">{ar ? cat?.labelAr : cat?.labelEn}</p>
-                          </div>
-                        </div>
-                        <div className="flex gap-1 items-center flex-shrink-0" title={`Level: ${sk.level} / 5`}>
-                          {[1, 2, 3, 4, 5].map((lvl) => (
-                            <div
-                              key={lvl}
-                              className={`h-1.5 w-3 rounded-full transition-colors ${lvl <= sk.level ? "bg-primary" : "bg-muted/70"}`}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* 3. PROFESSIONAL PERSONA: PORTFOLIO & PROFESSIONAL LINKS */}
-            {(!hideProfile) && (
-              <div className="bg-card-gradient border border-border rounded-2xl p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold text-primary flex items-center gap-1.5">
-                    <Globe className="w-4 h-4 text-primary" />
-                    {ar ? "الروابط المهنية ومعرض الأعمال" : "Professional & Portfolio Links"}
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={() => setEditing(true)}
-                    className="flex items-center gap-1 text-[11px] font-bold text-primary hover:bg-primary/10 px-2.5 py-1 rounded-full border border-primary/30 transition-all shadow-sm"
-                  >
-                    <Edit3 className="w-3 h-3" />
-                    <span>{extras.links.length > 0 ? (ar ? "إدارة الروابط" : "Manage Links") : (ar ? "إضافة رابط" : "Add Link")}</span>
-                  </button>
-                </div>
-
-                {extras.links.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {extras.links.map((link) => {
-                      const meta = LINK_META[link.type] || LINK_META.other;
-                      const displayHandle = getLinkDisplayHandle(link.type, link.url);
-                      return (
-                        <div
-                          key={link.id}
-                          className="flex items-center justify-between p-3 rounded-2xl bg-background/60 border border-border/80 hover:border-primary/50 text-xs transition-all group shadow-xs"
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <span className="text-lg flex-shrink-0 w-8 h-8 rounded-xl bg-card border border-border/70 flex items-center justify-center">{meta.emoji}</span>
-                            <div className="flex flex-col min-w-0">
-                              <span className="font-bold text-foreground truncate text-xs">
-                                {ar ? meta.labelAr.split(" ")[0] : meta.labelEn.split(" ")[0]}
-                              </span>
-                              {displayHandle && (
-                                <span className="text-[10px] text-muted-foreground font-mono truncate max-w-[130px]" dir="ltr">
-                                  {displayHandle}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                navigator.clipboard.writeText(link.url);
-                                toast.success(ar ? "تم نسخ الرابط" : "Link copied");
-                              }}
-                              className="h-8 w-8 rounded-xl border border-border/80 bg-card hover:bg-background text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors"
-                              title={ar ? "نسخ الرابط" : "Copy link"}
-                            >
-                              <Copy className="w-3.5 h-3.5" />
-                            </button>
-                            <a
-                              href={link.url.startsWith("http") ? link.url : `https://${link.url}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="h-8 px-2.5 rounded-xl border border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary flex items-center gap-1 font-bold text-[11px] transition-colors"
-                              title={ar ? "فتح الرابط" : "Open link"}
-                            >
-                              <ExternalLink className="w-3.5 h-3.5 flex-shrink-0" />
-                              <span>{ar ? "فتح" : "Open"}</span>
-                            </a>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="p-3 bg-background/30 rounded-xl border border-dashed border-border text-center space-y-2">
-                    <p className="text-xs text-muted-foreground">
-                      {ar ? "لم يتم ربط أي موقع أو معرض أعمال حتى الآن." : "No portfolio or professional links connected yet."}
-                    </p>
-                    <div className="flex justify-center pt-1">
-                      <button
-                        type="button"
-                        onClick={() => setEditing(true)}
-                        className="flex items-center gap-1 text-[11px] bg-card border border-primary/30 hover:bg-primary/15 text-primary px-3 py-1 rounded-full font-medium transition-all"
-                      >
-                        <Plus className="w-3 h-3" />
-                        <span>{ar ? "إضافة وتعديل الروابط المهنية" : "Add & Edit Professional Links"}</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* 4. PROFESSIONAL PERSONA: ACADEMIC QUALIFICATIONS AS SECONDARY */}
-            {((degreeLabel || extras.university || extras.highSchool || extras.gpa || profile.education) && !hideProfile) && (
-              <div className="bg-card-gradient border border-border rounded-2xl p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold text-primary flex items-center gap-1.5">
-                    <GraduationCap className="w-4 h-4 text-primary" />
-                    {ar ? "المؤهلات الأكاديمية والتعليم" : "Academic Background & Education"}
-                  </h3>
-                  {degreeLabel && (
-                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary/10 text-primary border border-primary/20">
-                      {ar ? degreeLabel.labelAr : degreeLabel.labelEn}
-                    </span>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
-                  {extras.university && (
-                    <div className="bg-background/50 border border-border/70 rounded-xl p-3">
-                      <p className="text-[11px] text-muted-foreground">{ar ? "الجامعة / الكلية" : "University / College"}</p>
-                      <p className="font-bold text-foreground mt-0.5">{extras.university}</p>
-                    </div>
-                  )}
-                  {extras.major && (
-                    <div className="bg-background/50 border border-border/70 rounded-xl p-3">
-                      <p className="text-[11px] text-muted-foreground">{ar ? "التخصص الأكاديمي" : "Field / Major"}</p>
-                      <p className="font-bold text-foreground mt-0.5">{extras.major}</p>
-                    </div>
-                  )}
-                  {extras.gpa && (
-                    <div className="bg-background/50 border border-border/70 rounded-xl p-3">
-                      <p className="text-[11px] text-muted-foreground">{ar ? "المعدل التراكمي" : "GPA"}</p>
-                      <p className="font-bold text-gold-gradient mt-0.5 font-mono">
-                        {extras.gpa} {extras.gpaScale === "100" ? "%" : `/ ${extras.gpaScale}`}
-                      </p>
-                    </div>
-                  )}
-                  {extras.highSchool && (
-                    <div className="bg-background/50 border border-border/70 rounded-xl p-3">
-                      <p className="text-[11px] text-muted-foreground">{ar ? "المدرسة الثانوية" : "High School"}</p>
-                      <p className="font-bold text-foreground mt-0.5">{extras.highSchool}</p>
-                    </div>
-                  )}
-                </div>
-
-                {profile.education && (
-                  <p className="text-xs text-foreground/90 leading-relaxed pt-1 border-t border-border/60">
-                    {profile.education}
-                  </p>
-                )}
-              </div>
+            {!hideProfile && <ProfileExperienceView extras={extras} ar={ar} />}
+            {!hideProfile && <ProfileDetailedSkillsView skills={extras.detailedSkills} ar={ar} />}
+            {!hideProfile && <ProfileLinksView links={extras.links} ar={ar} onEdit={() => setEditing(true)} />}
+            {((extras.degree || extras.university || extras.highSchool || extras.gpa || profile.education) && !hideProfile) && (
+              <ProfileAcademicView extras={extras} educationNotes={profile.education} ar={ar} />
             )}
           </>
         ) : (
           <>
-            {/* 1. STUDENT PERSONA: ACADEMIC QUALIFICATIONS FIRST */}
-            {((degreeLabel || extras.university || extras.highSchool || extras.gpa || profile.education) && !hideProfile) && (
-              <div className="bg-card-gradient border border-border rounded-2xl p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold text-primary flex items-center gap-1.5">
-                    <GraduationCap className="w-4 h-4 text-primary" />
-                    {ar ? "المؤهلات الأكاديمية والتعليم" : "Academic Background & Education"}
-                  </h3>
-                  {degreeLabel && (
-                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary/10 text-primary border border-primary/20">
-                      {ar ? degreeLabel.labelAr : degreeLabel.labelEn}
-                    </span>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
-                  {extras.university && (
-                    <div className="bg-background/50 border border-border/70 rounded-xl p-3">
-                      <p className="text-[11px] text-muted-foreground">{ar ? "الجامعة / الكلية" : "University / College"}</p>
-                      <p className="font-bold text-foreground mt-0.5">{extras.university}</p>
-                    </div>
-                  )}
-                  {extras.highSchool && (
-                    <div className="bg-background/50 border border-border/70 rounded-xl p-3">
-                      <p className="text-[11px] text-muted-foreground">{ar ? "المدرسة الثانوية" : "High School"}</p>
-                      <p className="font-bold text-foreground mt-0.5">{extras.highSchool}</p>
-                    </div>
-                  )}
-                  {extras.major && (
-                    <div className="bg-background/50 border border-border/70 rounded-xl p-3">
-                      <p className="text-[11px] text-muted-foreground">{ar ? "التخصص الأكاديمي" : "Field / Major"}</p>
-                      <p className="font-bold text-foreground mt-0.5">{extras.major}</p>
-                    </div>
-                  )}
-                  {extras.gpa && (
-                    <div className="bg-background/50 border border-border/70 rounded-xl p-3">
-                      <p className="text-[11px] text-muted-foreground">{ar ? "المعدل التراكمي / النسبة" : "GPA / Grade"}</p>
-                      <p className="font-bold text-gold-gradient mt-0.5 font-mono">
-                        {extras.gpa} {extras.gpaScale === "100" ? "%" : `/ ${extras.gpaScale}`}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {profile.education && (
-                  <p className="text-xs text-foreground/90 leading-relaxed pt-1 border-t border-border/60">
-                    {profile.education}
-                  </p>
-                )}
-              </div>
+            {((extras.degree || extras.university || extras.highSchool || extras.gpa || profile.education) && !hideProfile) && (
+              <ProfileAcademicView extras={extras} educationNotes={profile.education} ar={ar} />
             )}
-
-            {/* 2. STUDENT PERSONA: LINKS & PORTFOLIO */}
-            {(!hideProfile) && (
-              <div className="bg-card-gradient border border-border rounded-2xl p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold text-primary flex items-center gap-1.5">
-                    <Globe className="w-4 h-4 text-primary" />
-                    {ar ? "الروابط وملف السيرة الذاتية" : "Links & Resume (CV / Portfolio)"}
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={() => setEditing(true)}
-                    className="flex items-center gap-1 text-[11px] font-bold text-primary hover:bg-primary/10 px-2.5 py-1 rounded-full border border-primary/30 transition-all shadow-sm"
-                  >
-                    <Edit3 className="w-3 h-3" />
-                    <span>{extras.links.length > 0 ? (ar ? "إدارة الروابط" : "Manage Links") : (ar ? "إضافة رابط" : "Add Link")}</span>
-                  </button>
-                </div>
-
-                {extras.links.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {extras.links.map((link) => {
-                      const meta = LINK_META[link.type] || LINK_META.other;
-                      const displayHandle = getLinkDisplayHandle(link.type, link.url);
-                      return (
-                        <div
-                          key={link.id}
-                          className="flex items-center justify-between p-3 rounded-2xl bg-background/60 border border-border/80 hover:border-primary/50 text-xs transition-all group shadow-xs"
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <span className="text-lg flex-shrink-0 w-8 h-8 rounded-xl bg-card border border-border/70 flex items-center justify-center">{meta.emoji}</span>
-                            <div className="flex flex-col min-w-0">
-                              <span className="font-bold text-foreground truncate text-xs">
-                                {ar ? meta.labelAr.split(" ")[0] : meta.labelEn.split(" ")[0]}
-                              </span>
-                              {displayHandle && (
-                                <span className="text-[10px] text-muted-foreground font-mono truncate max-w-[130px]" dir="ltr">
-                                  {displayHandle}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                navigator.clipboard.writeText(link.url);
-                                toast.success(ar ? "تم نسخ الرابط" : "Link copied");
-                              }}
-                              className="h-8 w-8 rounded-xl border border-border/80 bg-card hover:bg-background text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors"
-                              title={ar ? "نسخ الرابط" : "Copy link"}
-                            >
-                              <Copy className="w-3.5 h-3.5" />
-                            </button>
-                            <a
-                              href={link.url.startsWith("http") ? link.url : `https://${link.url}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="h-8 px-2.5 rounded-xl border border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary flex items-center gap-1 font-bold text-[11px] transition-colors"
-                              title={ar ? "فتح الرابط" : "Open link"}
-                            >
-                              <ExternalLink className="w-3.5 h-3.5 flex-shrink-0" />
-                              <span>{ar ? "فتح" : "Open"}</span>
-                            </a>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="p-3 bg-background/30 rounded-xl border border-dashed border-border text-center space-y-2">
-                    <p className="text-xs text-muted-foreground">
-                      {ar ? "لم تقم بإضافة رابط سيرتك الذاتية أو حساباتك الأكاديمية بعد." : "No CV or academic links connected yet."}
-                    </p>
-                    <div className="flex justify-center pt-1">
-                      <button
-                        type="button"
-                        onClick={() => setEditing(true)}
-                        className="flex items-center gap-1 text-[11px] bg-card border border-primary/30 hover:bg-primary/15 text-primary px-3 py-1 rounded-full font-medium transition-all"
-                      >
-                        <Plus className="w-3 h-3" />
-                        <span>{ar ? "إضافة وتعديل روابط السيرة والشهادات" : "Add & Edit CV / Academic Links"}</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
+            {!hideProfile && (
+              <ProfileLinksView
+                links={extras.links}
+                ar={ar}
+                onEdit={() => setEditing(true)}
+                title={ar ? "الروابط وملف السيرة الذاتية" : "Links & Resume (CV / Portfolio)"}
+                emptyNotice={ar ? "لم تقم بإضافة رابط سيرتك الذاتية أو حساباتك الأكاديمية بعد." : "No CV or academic links connected yet."}
+                addBtnText={ar ? "إضافة وتعديل روابط السيرة والشهادات" : "Add & Edit CV / Academic Links"}
+              />
             )}
-
-            {/* 3. STUDENT PERSONA: DETAILED SKILLS */}
-            {(extras.detailedSkills.length > 0 && !hideProfile) && (
-              <div className="bg-card-gradient border border-border rounded-2xl p-4 space-y-3">
-                <h3 className="text-xs font-bold text-primary flex items-center gap-1.5">
-                  <Award className="w-4 h-4 text-primary" />
-                  {ar ? "المهارات المتقدمة ومستوى الإتقان" : "Detailed Skills & Proficiency"}
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {extras.detailedSkills.map((sk, idx) => {
-                    const cat = SKILL_CATEGORY_META[sk.category];
-                    return (
-                      <div key={idx} className="bg-background/50 border border-border/70 rounded-xl p-2.5 flex items-center justify-between">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="flex-shrink-0">{cat?.emoji || "⚡"}</span>
-                          <div className="min-w-0">
-                            <p className="font-bold text-xs text-foreground truncate">{sk.name}</p>
-                            <p className="text-[10px] text-muted-foreground truncate">{ar ? cat?.labelAr : cat?.labelEn}</p>
-                          </div>
-                        </div>
-                        <div className="flex gap-1 items-center flex-shrink-0" title={`Level: ${sk.level} / 5`}>
-                          {[1, 2, 3, 4, 5].map((lvl) => (
-                            <div
-                              key={lvl}
-                              className={`h-1.5 w-3 rounded-full transition-colors ${lvl <= sk.level ? "bg-primary" : "bg-muted/70"}`}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* 4. STUDENT PERSONA: WORK & EXPERIENCE AS SECONDARY */}
-            {(expLabel && !hideProfile) && (
-              <div className="bg-card-gradient border border-border rounded-2xl p-4 space-y-2">
-                <h3 className="text-xs font-bold text-primary flex items-center gap-1.5">
-                  <Clock className="w-4 h-4 text-primary" />
-                  {ar ? "سنوات الخبرة العملية" : "Work Experience"}
-                </h3>
-                <div className="bg-background/50 border border-border/70 rounded-xl p-3 flex items-center justify-between">
-                  <span className="text-xs font-bold text-foreground">
-                    {ar ? expLabel.labelAr : expLabel.labelEn}
-                  </span>
-                  <span className="text-[10px] text-primary bg-primary/10 px-2 py-0.5 rounded-md font-semibold">
-                    {ar ? "تم التحقق" : "Verified"}
-                  </span>
-                </div>
-              </div>
-            )}
+            {!hideProfile && <ProfileDetailedSkillsView skills={extras.detailedSkills} ar={ar} />}
+            {!hideProfile && <ProfileExperienceView extras={extras} ar={ar} />}
           </>
         )}
 
-        {/* === SECTION 6: GENERAL SKILLS TAGS === */}
+        {/* === SECTION: GENERAL SKILLS TAGS === */}
         {(profile.skills.length > 0 && !hideProfile) && (
-          <div className="bg-card-gradient border border-border rounded-2xl p-4 space-y-2">
-            <p className="text-xs text-primary font-bold flex items-center gap-1.5">
-              <Briefcase className="w-3.5 h-3.5" /> {t("skills")}
+          <div className="bg-card-gradient border border-primary/25 rounded-2xl p-4 sm:p-5 space-y-3 shadow-luxe">
+            <p className="text-xs sm:text-sm text-gold-gradient font-bold flex items-center gap-2">
+              <Briefcase className="w-4 h-4 text-gold flex-shrink-0" />
+              <span>{t("skills")}</span>
             </p>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-2">
               {profile.skills.map(s => (
-                <span key={s} className="text-xs bg-card border border-primary/30 text-foreground font-medium px-2.5 py-1 rounded-full">
+                <span key={s} className="text-xs bg-background/80 border border-primary/30 text-foreground font-medium px-3 py-1.5 rounded-xl shadow-2xs">
                   {s}
                 </span>
               ))}
@@ -1949,19 +1318,3 @@ export const ProfileTab = () => {
     </div>
   );
 };
-
-const Section = ({ title, children, alignClass }: { title: string; children: React.ReactNode; alignClass: string }) => (
-  <div className="bg-card-gradient border border-border rounded-3xl p-5 space-y-4 shadow-sm">
-    <h3 className={`font-display text-base text-primary font-bold ${alignClass}`}>{title}</h3>
-    {children}
-  </div>
-);
-
-const Field = ({ icon: Icon, label, children }: { icon: React.ElementType; label: string; children: React.ReactNode }) => (
-  <div className="space-y-1.5">
-    <Label className="text-xs text-muted-foreground flex items-center gap-1.5 font-semibold">
-      <Icon className="w-3.5 h-3.5 text-primary" /> {label}
-    </Label>
-    {children}
-  </div>
-);

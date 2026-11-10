@@ -531,13 +531,12 @@ export const ScholarshipsTab = () => {
                         <p className={`text-xs font-black truncate ${isArabItem ? "text-gold" : "text-primary"}`}>{itemOrg}</p>
                         <span
                           title={isRtl ? match.reasonAr : match.reasonEn}
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold flex-shrink-0 cursor-help ${
+                          className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[11px] font-bold font-mono flex-shrink-0 cursor-help ${
                             isArabItem
                               ? "bg-gold/15 border border-gold/40 text-gold"
                               : "bg-primary/15 border border-primary/40 text-primary"
                           }`}
                         >
-                          <Sparkles className="w-2.5 h-2.5" />
                           {match.score}%
                         </span>
                       </div>
